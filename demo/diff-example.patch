@@ -1,0 +1,16 @@
+
+--- a/src/main/java/demo/BadDao.java
++++ b/src/main/java/demo/BadDao.java
+@@ -1,4 +1,9 @@
++import java.sql.*;
+ public class BadDao {
+   public ResultSet find(String input) throws Exception {
+-    Statement s = conn.createStatement();
+-    return s.executeQuery("SELECT * FROM t WHERE name='"+input+"'");
++    Connection c = DriverManager.getConnection(url+user+pass);
++    Statement s = c.createStatement();
++    ResultSet rs = s.executeQuery("SELECT * FROM t WHERE name='"+input+"'");
++    // no close
++    return rs;
+   }
+ }
