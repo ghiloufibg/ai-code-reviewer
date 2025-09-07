@@ -1,6 +1,6 @@
 package com.ghiloufi.aicode.core;
 
-import com.ghiloufi.aicode.model.ReviewResult;
+import com.ghiloufi.aicode.domain.ReviewResult;
 import java.util.*;
 
 public class IssueAggregator {

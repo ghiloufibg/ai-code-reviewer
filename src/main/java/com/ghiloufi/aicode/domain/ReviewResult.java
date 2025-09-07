@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.model;
+package com.ghiloufi.aicode.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
