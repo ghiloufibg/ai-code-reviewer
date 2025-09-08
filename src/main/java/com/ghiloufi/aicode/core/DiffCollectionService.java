@@ -1,6 +1,6 @@
 package com.ghiloufi.aicode.core;
 
-import com.ghiloufi.aicode.domain.DiffBundle;
+import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.UnifiedDiff;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.io.IOException;
@@ -36,7 +36,7 @@ public class DiffCollectionService {
    * @return DiffBundle containing both raw and parsed diff data
    * @throws RuntimeException if GitHub API call fails
    */
-  public DiffBundle collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
+  public DiffAnalysisBundle collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
     String rawDiff = fetchDiffFromGitHub(githubClient, pullRequestNumber);
     return createDiffBundle(rawDiff);
   }
@@ -49,7 +49,7 @@ public class DiffCollectionService {
    * @return DiffBundle containing both raw and parsed diff data
    * @throws RuntimeException if git command execution fails
    */
-  public DiffBundle collectFromLocalGit(String baseCommit, String headCommit) {
+  public DiffAnalysisBundle collectFromLocalGit(String baseCommit, String headCommit) {
     String rawDiff = executeGitDiffCommand(baseCommit, headCommit);
     return createDiffBundle(rawDiff);
   }
@@ -131,8 +131,8 @@ public class DiffCollectionService {
    * @param rawDiff the raw unified diff text to parse
    * @return DiffBundle containing both raw and parsed diff data
    */
-  private DiffBundle createDiffBundle(String rawDiff) {
+  private DiffAnalysisBundle createDiffBundle(String rawDiff) {
     UnifiedDiff parsedDiff = diffParser.parse(rawDiff);
-    return new DiffBundle(parsedDiff, rawDiff);
+    return new DiffAnalysisBundle(parsedDiff, rawDiff);
   }
 }

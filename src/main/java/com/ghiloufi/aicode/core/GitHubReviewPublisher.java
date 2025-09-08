@@ -1,6 +1,6 @@
 package com.ghiloufi.aicode.core;
 
-import com.ghiloufi.aicode.domain.DiffBundle;
+import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.ReviewResult;
 import com.ghiloufi.aicode.domain.UnifiedDiff;
 import com.ghiloufi.aicode.github.GithubClient;
@@ -68,9 +68,9 @@ public class GitHubReviewPublisher {
    *
    * @param pullRequestNumber le numéro de la Pull Request cible
    * @param reviewResult le résultat de l'analyse contenant le résumé et les issues
-   * @param diffBundle le bundle contenant le diff unifié nécessaire pour le mapping des positions
+   * @param diffAnalysisBundle le bundle contenant le diff unifié nécessaire pour le mapping des positions
    */
-  public void publish(int pullRequestNumber, ReviewResult reviewResult, DiffBundle diffBundle) {
+  public void publish(int pullRequestNumber, ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
     if (reviewResult == null) {
       log.warn("ReviewResult est null, rien à publier.");
       return;
@@ -79,7 +79,7 @@ public class GitHubReviewPublisher {
     log.info("Début de la publication des résultats pour la PR #{}", pullRequestNumber);
 
     publishSummaryComment(pullRequestNumber, reviewResult);
-    publishInlineComments(pullRequestNumber, reviewResult, diffBundle);
+    publishInlineComments(pullRequestNumber, reviewResult, diffAnalysisBundle);
 
     log.info("Publication terminée pour la PR #{}", pullRequestNumber);
   }
@@ -157,11 +157,11 @@ public class GitHubReviewPublisher {
    *
    * @param pullRequestNumber le numéro de la Pull Request
    * @param reviewResult le résultat de l'analyse contenant les issues
-   * @param diffBundle le bundle contenant le diff pour le mapping des positions
+   * @param diffAnalysisBundle le bundle contenant le diff pour le mapping des positions
    */
   private void publishInlineComments(
-      int pullRequestNumber, ReviewResult reviewResult, DiffBundle diffBundle) {
-    if (!canPublishInlineComments(diffBundle)) {
+      int pullRequestNumber, ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
+    if (!canPublishInlineComments(diffAnalysisBundle)) {
       log.warn(
           "Diff bundle manquant : publication inline impossible. Les findings restent dans le résumé.");
       return;
@@ -174,7 +174,7 @@ public class GitHubReviewPublisher {
 
     log.debug("Tentative de publication de {} commentaires inline", reviewResult.issues.size());
 
-    List<GithubClient.ReviewComment> reviewComments = buildInlineComments(reviewResult, diffBundle);
+    List<GithubClient.ReviewComment> reviewComments = buildInlineComments(reviewResult, diffAnalysisBundle);
 
     if (!reviewComments.isEmpty()) {
       githubClient.createReview(pullRequestNumber, reviewComments);
@@ -187,23 +187,23 @@ public class GitHubReviewPublisher {
   /**
    * Vérifie si les commentaires inline peuvent être publiés.
    *
-   * @param diffBundle le bundle contenant le diff
+   * @param diffAnalysisBundle le bundle contenant le diff
    * @return true si les commentaires inline peuvent être publiés, false sinon
    */
-  private boolean canPublishInlineComments(DiffBundle diffBundle) {
-    return diffBundle != null && diffBundle.diff() != null;
+  private boolean canPublishInlineComments(DiffAnalysisBundle diffAnalysisBundle) {
+    return diffAnalysisBundle != null && diffAnalysisBundle.structuredDiff() != null;
   }
 
   /**
    * Construit la liste des commentaires inline à partir des issues.
    *
    * @param reviewResult le résultat de l'analyse
-   * @param diffBundle le bundle contenant le diff pour le mapping
+   * @param diffAnalysisBundle le bundle contenant le diff pour le mapping
    * @return la liste des commentaires inline valides
    */
   private List<GithubClient.ReviewComment> buildInlineComments(
-      ReviewResult reviewResult, DiffBundle diffBundle) {
-    GitHubDiffPositionMapper positionMapper = createPositionMapper(diffBundle.diff());
+      ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
+    GitHubDiffPositionMapper positionMapper = createPositionMapper(diffAnalysisBundle.structuredDiff());
     List<GithubClient.ReviewComment> comments = new ArrayList<>();
 
     for (ReviewResult.Issue issue : reviewResult.issues) {

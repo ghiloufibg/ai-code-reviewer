@@ -2,12 +2,12 @@ package com.ghiloufi.aicode;
 
 import com.ghiloufi.aicode.core.DiffCollectionService;
 import com.ghiloufi.aicode.core.GitHubReviewPublisher;
-import com.ghiloufi.aicode.core.IssueAggregator;
-import com.ghiloufi.aicode.llm.PromptBuilder;
-import com.ghiloufi.aicode.domain.DiffBundle;
+import com.ghiloufi.aicode.core.ReviewResultMerger;
+import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
+import com.ghiloufi.aicode.domain.ReviewResult;
 import com.ghiloufi.aicode.github.GithubClient;
 import com.ghiloufi.aicode.llm.LlmClient;
-import com.ghiloufi.aicode.domain.ReviewResult;
+import com.ghiloufi.aicode.llm.PromptBuilder;
 import com.ghiloufi.aicode.sast.StaticAnalysisRunner;
 import com.ghiloufi.aicode.util.JsonValidator;
 import java.nio.file.Files;
@@ -49,9 +49,9 @@ public class Application implements CommandLineRunner {
     StaticAnalysisRunner sast = new StaticAnalysisRunner();
     PromptBuilder pb = new PromptBuilder();
     LlmClient llm = new LlmClient(ollama, model, Duration.ofSeconds(timeout));
-    IssueAggregator aggr = new IssueAggregator();
+    ReviewResultMerger aggr = new ReviewResultMerger();
     GitHubReviewPublisher pub = new GitHubReviewPublisher(gh);
-    DiffBundle bundle =
+    DiffAnalysisBundle bundle =
         "local".equals(mode)
             ? diff.collectFromLocalGit("HEAD~1", "HEAD")
             : diff.collectFromGitHub(gh, pr);
@@ -69,8 +69,8 @@ public class Application implements CommandLineRunner {
               "maven",
               chunk.toUnifiedString(),
               staticReports,
-              bundle.projectConfig(),
-              bundle.testStatus());
+              bundle.getProjectConfiguration(),
+              bundle.getTestStatus());
       String resp = llm.review(PromptBuilder.SYSTEM_PROMPT, user);
       if (!validator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, resp)) {
         resp =
@@ -87,7 +87,7 @@ public class Application implements CommandLineRunner {
     Files.createDirectories(out);
     Files.writeString(out.resolve("review.json"), merged.toJson());
     Files.writeString(out.resolve("prompt.txt"), "(prompt omitted) ");
-    Files.writeString(out.resolve("diff.patch"), bundle.unifiedDiff());
+    Files.writeString(out.resolve("diff.patch"), bundle.getUnifiedDiffString());
     if ("github".equals(mode) && pr > 0) {
       pub.publish(pr, merged, bundle);
     } else {

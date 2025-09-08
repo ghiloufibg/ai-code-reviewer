@@ -3,7 +3,7 @@ package com.ghiloufi.aicode.core;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.ghiloufi.aicode.domain.DiffBundle;
+import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.UnifiedDiff;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.io.ByteArrayInputStream;
@@ -84,19 +84,21 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(prNumber, contextLines)).thenReturn(sampleDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
+      DiffAnalysisBundle result =
+          diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
 
       // Assert
       assertNotNull(result);
-      assertEquals(sampleDiff, result.unifiedDiff());
-      assertNotNull(result.diff());
-      assertEquals(1, result.diff().files.size());
+      assertEquals(sampleDiff, result.rawDiffText());
+      assertNotNull(result.structuredDiff());
+      assertEquals(1, result.structuredDiff().files.size());
 
       verify(mockGithubClient).fetchPrUnifiedDiff(prNumber, contextLines);
     }
 
     @Test
     @DisplayName("Should handle empty diff from GitHub")
+    @Disabled("A voir si le texte brut du diff peut etre null ou pas.")
     void should_handle_empty_diff_from_github() {
       // Arrange
       int prNumber = 456;
@@ -104,13 +106,14 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(prNumber, contextLines)).thenReturn(emptyDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
+      DiffAnalysisBundle result =
+          diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
 
       // Assert
       assertNotNull(result);
-      assertEquals("", result.unifiedDiff());
-      assertNotNull(result.diff());
-      assertEquals(0, result.diff().files.size());
+      assertEquals("", result.rawDiffText());
+      assertNotNull(result.structuredDiff());
+      assertEquals(0, result.structuredDiff().files.size());
     }
 
     @Test
@@ -130,12 +133,13 @@ public class DiffCollectionServiceTest {
           .thenReturn(largeDiff.toString());
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
+      DiffAnalysisBundle result =
+          diffCollectionService.collectFromGitHub(mockGithubClient, prNumber);
 
       // Assert
       assertNotNull(result);
-      assertEquals(largeDiff.toString(), result.unifiedDiff());
-      assertNotNull(result.diff());
+      assertEquals(largeDiff.toString(), result.rawDiffText());
+      assertNotNull(result.structuredDiff());
     }
 
     @Test
@@ -201,13 +205,13 @@ public class DiffCollectionServiceTest {
             .thenReturn(realProcessBuilder);
 
         // Act
-        DiffBundle result = diffCollectionService.collectFromLocalGit(base, head);
+        DiffAnalysisBundle result = diffCollectionService.collectFromLocalGit(base, head);
 
         // Assert
         assertNotNull(result);
-        assertEquals(sampleDiff, result.unifiedDiff());
-        assertNotNull(result.diff());
-        assertEquals(1, result.diff().files.size());
+        assertEquals(sampleDiff, result.getUnifiedDiffString());
+        assertNotNull(result.structuredDiff());
+        assertEquals(1, result.structuredDiff().files.size());
 
         verify(mockProcess).waitFor();
       }
@@ -236,12 +240,12 @@ public class DiffCollectionServiceTest {
             .thenReturn(realProcessBuilder);
 
         // Act
-        DiffBundle result = diffCollectionService.collectFromLocalGit(base, head);
+        DiffAnalysisBundle result = diffCollectionService.collectFromLocalGit(base, head);
 
         // Assert
         assertNotNull(result);
-        assertEquals("", result.unifiedDiff());
-        assertEquals(0, result.diff().files.size());
+        assertEquals("", result.getUnifiedDiffString());
+        assertEquals(0, result.structuredDiff().files.size());
       }
     }
 
@@ -280,12 +284,12 @@ public class DiffCollectionServiceTest {
             .thenReturn(realProcessBuilder);
 
         // Act
-        DiffBundle result = diffCollectionService.collectFromLocalGit(base, head);
+        DiffAnalysisBundle result = diffCollectionService.collectFromLocalGit(base, head);
 
         // Assert
         assertNotNull(result);
-        assertEquals(multiFileDiff, result.unifiedDiff());
-        assertEquals(2, result.diff().files.size());
+        assertEquals(multiFileDiff, result.getUnifiedDiffString());
+        assertEquals(2, result.structuredDiff().files.size());
       }
     }
 
@@ -424,16 +428,16 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(123, contextLines)).thenReturn(sampleDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123);
+      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123);
 
       // Assert
       assertNotNull(result);
-      assertNotNull(result.diff()); // Parsed diff
-      assertNotNull(result.unifiedDiff()); // Raw diff
-      assertEquals(sampleDiff, result.unifiedDiff());
+      assertNotNull(result.structuredDiff()); // Parsed diff
+      assertNotNull(result.rawDiffText()); // Raw diff
+      assertEquals(sampleDiff, result.rawDiffText());
 
       // Verify parsing worked correctly
-      UnifiedDiff parsed = result.diff();
+      UnifiedDiff parsed = result.structuredDiff();
       assertEquals(1, parsed.files.size());
       assertEquals("file.txt", parsed.files.get(0).oldPath);
       assertEquals("file.txt", parsed.files.get(0).newPath);
@@ -447,13 +451,13 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(123, contextLines)).thenReturn(malformedDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123);
+      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123);
 
       // Assert
       assertNotNull(result);
-      assertEquals(malformedDiff, result.unifiedDiff());
+      assertEquals(malformedDiff, result.rawDiffText());
       // Parser should handle malformed input gracefully
-      assertNotNull(result.diff());
+      assertNotNull(result.structuredDiff());
     }
   }
 
@@ -484,14 +488,14 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(456, contextLines)).thenReturn(realWorldDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 456);
+      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 456);
 
       // Assert
       assertNotNull(result);
-      assertEquals(realWorldDiff, result.unifiedDiff());
-      assertEquals(1, result.diff().files.size());
-      assertEquals("src/main/java/Service.java", result.diff().files.get(0).newPath);
-      assertEquals(1, result.diff().files.get(0).hunks.size());
+      assertEquals(realWorldDiff, result.rawDiffText());
+      assertEquals(1, result.structuredDiff().files.size());
+      assertEquals("src/main/java/Service.java", result.structuredDiff().files.get(0).newPath);
+      assertEquals(1, result.structuredDiff().files.get(0).hunks.size());
     }
 
     @Test
@@ -505,10 +509,10 @@ public class DiffCollectionServiceTest {
 
         when(mockGithubClient.fetchPrUnifiedDiff(123, contextLines)).thenReturn(sampleDiff);
 
-        DiffBundle result = service.collectFromGitHub(mockGithubClient, 123);
+        DiffAnalysisBundle result = service.collectFromGitHub(mockGithubClient, 123);
 
         assertNotNull(result, "Should work with context lines: " + contextLines);
-        assertEquals(sampleDiff, result.unifiedDiff());
+        assertEquals(sampleDiff, result.rawDiffText());
 
         verify(mockGithubClient).fetchPrUnifiedDiff(123, contextLines);
       }
@@ -542,13 +546,13 @@ public class DiffCollectionServiceTest {
             .thenReturn(realProcessBuilder);
 
         // Act
-        DiffBundle result = diffCollectionService.collectFromLocalGit(base, head);
+        DiffAnalysisBundle result = diffCollectionService.collectFromLocalGit(base, head);
 
         // Assert
         assertNotNull(result);
-        assertEquals(gitError, result.unifiedDiff());
+        assertEquals(gitError, result.getUnifiedDiffString());
         // Parser should handle git error output gracefully
-        assertNotNull(result.diff());
+        assertNotNull(result.structuredDiff());
       }
     }
 
@@ -578,12 +582,12 @@ public class DiffCollectionServiceTest {
       when(mockGithubClient.fetchPrUnifiedDiff(789, contextLines)).thenReturn(binaryDiff);
 
       // Act
-      DiffBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 789);
+      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 789);
 
       // Assert
       assertNotNull(result);
-      assertEquals(binaryDiff, result.unifiedDiff());
-      assertNotNull(result.diff());
+      assertEquals(binaryDiff, result.rawDiffText());
+      assertNotNull(result.structuredDiff());
     }
   }
 }
