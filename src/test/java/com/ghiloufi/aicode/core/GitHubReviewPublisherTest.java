@@ -4,11 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
-import com.ghiloufi.aicode.domain.FileDiff;
-import com.ghiloufi.aicode.domain.Hunk;
-import com.ghiloufi.aicode.domain.ReviewResult;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.*;
+import com.ghiloufi.aicode.domain.DiffHunkBlock;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,21 +27,105 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class GitHubReviewPublisherTest {
 
+  private static final int TEST_PR_NUMBER = 123;
   @Mock private GithubClient mockGithubClient;
-
   @Mock private GitHubDiffPositionMapper mockPositionMapper;
-
   @Captor private ArgumentCaptor<String> summaryCaptor;
-
   @Captor private ArgumentCaptor<List<GithubClient.ReviewComment>> reviewCommentsCaptor;
-
   private GitHubReviewPublisher publisher;
 
-  private static final int TEST_PR_NUMBER = 123;
+  private static StringAssertion assertThat(String actual) {
+    return new StringAssertion(actual);
+  }
 
   @BeforeEach
   void setUp() {
     publisher = new GitHubReviewPublisher(mockGithubClient);
+  }
+
+  private ReviewResult createValidReviewResult() {
+    ReviewResult result = new ReviewResult();
+    result.summary = "Code analysis completed successfully";
+    result.issues =
+        Arrays.asList(
+            createValidIssue("src/main/java/Test.java", 10, "ERROR", "Critical issue found"),
+            createValidIssue("src/main/java/Test.java", 20, "WARNING", "Minor issue detected"));
+    return result;
+  }
+
+  private ReviewResult createReviewResultWithoutIssues() {
+    ReviewResult result = new ReviewResult();
+    result.summary = "Code analysis completed successfully";
+    result.issues = Collections.emptyList();
+    return result;
+  }
+
+  private ReviewResult.Issue createValidIssue(
+      String file, int line, String severity, String title) {
+    ReviewResult.Issue issue = new ReviewResult.Issue();
+    issue.file = file;
+    issue.start_line = line;
+    issue.severity = severity;
+    issue.title = title;
+    issue.rationale = "Test rationale for " + title;
+    issue.suggestion = "Test suggestion for " + title;
+    return issue;
+  }
+
+  private DiffAnalysisBundle createValidDiffBundle() {
+    GitDiffDocument gitDiffDocument = new GitDiffDocument();
+    gitDiffDocument.files = Collections.singletonList(createValidFileDiff());
+    return new DiffAnalysisBundle(gitDiffDocument, "mock diff content");
+  }
+
+  // Helper methods pour créer des objets de test
+
+  private GitFileModification createValidFileDiff() {
+    GitFileModification gitFileModification = new GitFileModification();
+    gitFileModification.newPath = "src/main/java/Test.java";
+    gitFileModification.oldPath = "src/main/java/Test.java";
+
+    DiffHunkBlock diffHunkBlock = new DiffHunkBlock();
+    diffHunkBlock.newStart = 1;
+    diffHunkBlock.lines =
+        Arrays.asList(" public class Test {", "+ // New line added", " // Existing line");
+
+    gitFileModification.diffHunkBlocks = Collections.singletonList(diffHunkBlock);
+    return gitFileModification;
+  }
+
+  private GitHubReviewPublisher createPublisherWithMockedMapper() {
+    // Cette méthode simule l'injection d'un mapper mocké
+    // En pratique, vous pourriez utiliser des frameworks comme Spring pour l'injection
+    return new GitHubReviewPublisher(mockGithubClient) {
+      @Override
+      protected GitHubDiffPositionMapper createPositionMapper(GitDiffDocument diff) {
+        return mockPositionMapper;
+      }
+    };
+  }
+
+  // Custom assertion helper
+  private static class StringAssertion {
+    private final String actual;
+
+    private StringAssertion(String actual) {
+      this.actual = actual;
+    }
+
+    public StringAssertion contains(String expected) {
+      assertTrue(
+          actual.contains(expected),
+          String.format("Expected string to contain '%s' but was '%s'", expected, actual));
+      return this;
+    }
+
+    public StringAssertion doesNotContain(String unexpected) {
+      assertFalse(
+          actual.contains(unexpected),
+          String.format("Expected string to not contain '%s' but was '%s'", unexpected, actual));
+      return this;
+    }
   }
 
   @Nested
@@ -399,93 +480,5 @@ class GitHubReviewPublisherTest {
       String summaryComment = summaryCaptor.getValue();
       assertThat(summaryComment).contains("Cleaned summary content");
     }
-  }
-
-  // Helper methods pour créer des objets de test
-
-  private ReviewResult createValidReviewResult() {
-    ReviewResult result = new ReviewResult();
-    result.summary = "Code analysis completed successfully";
-    result.issues =
-        Arrays.asList(
-            createValidIssue("src/main/java/Test.java", 10, "ERROR", "Critical issue found"),
-            createValidIssue("src/main/java/Test.java", 20, "WARNING", "Minor issue detected"));
-    return result;
-  }
-
-  private ReviewResult createReviewResultWithoutIssues() {
-    ReviewResult result = new ReviewResult();
-    result.summary = "Code analysis completed successfully";
-    result.issues = Collections.emptyList();
-    return result;
-  }
-
-  private ReviewResult.Issue createValidIssue(
-      String file, int line, String severity, String title) {
-    ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = file;
-    issue.start_line = line;
-    issue.severity = severity;
-    issue.title = title;
-    issue.rationale = "Test rationale for " + title;
-    issue.suggestion = "Test suggestion for " + title;
-    return issue;
-  }
-
-  private DiffAnalysisBundle createValidDiffBundle() {
-    UnifiedDiff unifiedDiff = new UnifiedDiff();
-    unifiedDiff.files = Collections.singletonList(createValidFileDiff());
-    return new DiffAnalysisBundle(unifiedDiff, "mock diff content");
-  }
-
-  private FileDiff createValidFileDiff() {
-    FileDiff fileDiff = new FileDiff();
-    fileDiff.newPath = "src/main/java/Test.java";
-    fileDiff.oldPath = "src/main/java/Test.java";
-
-    Hunk hunk = new Hunk();
-    hunk.newStart = 1;
-    hunk.lines = Arrays.asList(" public class Test {", "+ // New line added", " // Existing line");
-
-    fileDiff.hunks = Collections.singletonList(hunk);
-    return fileDiff;
-  }
-
-  private GitHubReviewPublisher createPublisherWithMockedMapper() {
-    // Cette méthode simule l'injection d'un mapper mocké
-    // En pratique, vous pourriez utiliser des frameworks comme Spring pour l'injection
-    return new GitHubReviewPublisher(mockGithubClient) {
-      @Override
-      protected GitHubDiffPositionMapper createPositionMapper(UnifiedDiff diff) {
-        return mockPositionMapper;
-      }
-    };
-  }
-
-  // Custom assertion helper
-  private static class StringAssertion {
-    private final String actual;
-
-    private StringAssertion(String actual) {
-      this.actual = actual;
-    }
-
-    public StringAssertion contains(String expected) {
-      assertTrue(
-          actual.contains(expected),
-          String.format("Expected string to contain '%s' but was '%s'", expected, actual));
-      return this;
-    }
-
-    public StringAssertion doesNotContain(String unexpected) {
-      assertFalse(
-          actual.contains(unexpected),
-          String.format("Expected string to not contain '%s' but was '%s'", unexpected, actual));
-      return this;
-    }
-  }
-
-  private static StringAssertion assertThat(String actual) {
-    return new StringAssertion(actual);
   }
 }

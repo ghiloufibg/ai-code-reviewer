@@ -11,7 +11,7 @@ Un **outil d’auto‑review de code 100 % gratuit** pour Pull Requests GitHub, 
 ## 🧩 Fonctionnement (vue d’ensemble)
 
 ```
-PR Diff  →  Chunking (par fichier/hunk)  →  Prompt LLM  →  Réponse JSON (validée)  →  Publication GitHub
+PR Diff  →  Chunking (par fichier/diffHunkBlock)  →  Prompt LLM  →  Réponse JSON (validée)  →  Publication GitHub
                   ↑                              ↑
           Linters/SAST (Maven + Semgrep)   +   Contexte projet/tests
 ```

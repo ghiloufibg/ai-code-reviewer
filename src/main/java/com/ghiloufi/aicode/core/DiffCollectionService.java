@@ -1,7 +1,7 @@
 package com.ghiloufi.aicode.core;
 
 import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -132,7 +132,7 @@ public class DiffCollectionService {
    * @return DiffBundle containing both raw and parsed diff data
    */
   private DiffAnalysisBundle createDiffBundle(String rawDiff) {
-    UnifiedDiff parsedDiff = diffParser.parse(rawDiff);
+    GitDiffDocument parsedDiff = diffParser.parse(rawDiff);
     return new DiffAnalysisBundle(parsedDiff, rawDiff);
   }
 }

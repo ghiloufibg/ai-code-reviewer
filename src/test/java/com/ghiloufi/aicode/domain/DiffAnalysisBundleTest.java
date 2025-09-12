@@ -19,12 +19,47 @@ class DiffAnalysisBundleTest {
   // BUILDERS ET FACTORY METHODS
   // ===============================
 
+  /** Factory method pour créer un builder */
+  public static DiffAnalysisBundleTestBuilder aDiffAnalysisBundle() {
+    return new DiffAnalysisBundleTestBuilder();
+  }
+
+  /** Crée un FileDiff de test avec des paramètres configurables */
+  public static GitFileModification createTestFileDiff(
+      String fileName, int hunkCount, int linesPerHunk) {
+    GitFileModification gitFileModification = new GitFileModification();
+    gitFileModification.oldPath = fileName;
+    gitFileModification.newPath = fileName;
+
+    for (int i = 0; i < hunkCount; i++) {
+      DiffHunkBlock diffHunkBlock = createTestHunk(i + 1, linesPerHunk);
+      gitFileModification.diffHunkBlocks.add(diffHunkBlock);
+    }
+
+    return gitFileModification;
+  }
+
+  /** Crée un Hunk de test avec des paramètres configurables */
+  public static DiffHunkBlock createTestHunk(int startLine, int lineCount) {
+    DiffHunkBlock diffHunkBlock = new DiffHunkBlock();
+    diffHunkBlock.oldStart = startLine;
+    diffHunkBlock.oldCount = lineCount;
+    diffHunkBlock.newStart = startLine;
+    diffHunkBlock.newCount = lineCount;
+
+    for (int i = 0; i < lineCount; i++) {
+      diffHunkBlock.lines.add("+ ligne de test " + (startLine + i));
+    }
+
+    return diffHunkBlock;
+  }
+
   /** Builder pattern pour créer facilement des instances de test */
   public static class DiffAnalysisBundleTestBuilder {
-    private UnifiedDiff structuredDiff = new UnifiedDiff();
+    private GitDiffDocument structuredDiff = new GitDiffDocument();
     private String rawDiffText = "default raw diff text";
 
-    public DiffAnalysisBundleTestBuilder withStructuredDiff(UnifiedDiff diff) {
+    public DiffAnalysisBundleTestBuilder withStructuredDiff(GitDiffDocument diff) {
       this.structuredDiff = diff;
       return this;
     }
@@ -35,14 +70,14 @@ class DiffAnalysisBundleTest {
     }
 
     public DiffAnalysisBundleTestBuilder withEmptyDiff() {
-      this.structuredDiff = new UnifiedDiff();
+      this.structuredDiff = new GitDiffDocument();
       return this;
     }
 
     public DiffAnalysisBundleTestBuilder withFileCount(int fileCount) {
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       for (int i = 0; i < fileCount; i++) {
-        FileDiff file = createTestFileDiff("file" + i + ".java", 1, 10);
+        GitFileModification file = createTestFileDiff("file" + i + ".java", 1, 10);
         diff.files.add(file);
       }
       this.structuredDiff = diff;
@@ -52,40 +87,6 @@ class DiffAnalysisBundleTest {
     public DiffAnalysisBundle build() {
       return new DiffAnalysisBundle(structuredDiff, rawDiffText);
     }
-  }
-
-  /** Factory method pour créer un builder */
-  public static DiffAnalysisBundleTestBuilder aDiffAnalysisBundle() {
-    return new DiffAnalysisBundleTestBuilder();
-  }
-
-  /** Crée un FileDiff de test avec des paramètres configurables */
-  public static FileDiff createTestFileDiff(String fileName, int hunkCount, int linesPerHunk) {
-    FileDiff fileDiff = new FileDiff();
-    fileDiff.oldPath = fileName;
-    fileDiff.newPath = fileName;
-
-    for (int i = 0; i < hunkCount; i++) {
-      Hunk hunk = createTestHunk(i + 1, linesPerHunk);
-      fileDiff.hunks.add(hunk);
-    }
-
-    return fileDiff;
-  }
-
-  /** Crée un Hunk de test avec des paramètres configurables */
-  public static Hunk createTestHunk(int startLine, int lineCount) {
-    Hunk hunk = new Hunk();
-    hunk.oldStart = startLine;
-    hunk.oldCount = lineCount;
-    hunk.newStart = startLine;
-    hunk.newCount = lineCount;
-
-    for (int i = 0; i < lineCount; i++) {
-      hunk.lines.add("+ ligne de test " + (startLine + i));
-    }
-
-    return hunk;
   }
 
   // ===============================
@@ -100,7 +101,7 @@ class DiffAnalysisBundleTest {
     @DisplayName("Construction valide avec paramètres corrects")
     void shouldCreateValidDiffAnalysisBundle() {
       // Given
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       String rawText = "raw diff content";
 
       // When
@@ -129,7 +130,8 @@ class DiffAnalysisBundleTest {
       // When & Then
       NullPointerException exception =
           assertThrows(
-              NullPointerException.class, () -> new DiffAnalysisBundle(new UnifiedDiff(), null));
+              NullPointerException.class,
+              () -> new DiffAnalysisBundle(new GitDiffDocument(), null));
 
       assertEquals("Le texte brut du diff ne peut pas être null", exception.getMessage());
     }
@@ -142,7 +144,7 @@ class DiffAnalysisBundleTest {
       IllegalArgumentException exception =
           assertThrows(
               IllegalArgumentException.class,
-              () -> new DiffAnalysisBundle(new UnifiedDiff(), emptyText));
+              () -> new DiffAnalysisBundle(new GitDiffDocument(), emptyText));
 
       assertEquals("Le texte brut du diff ne peut pas être vide", exception.getMessage());
     }
@@ -156,6 +158,15 @@ class DiffAnalysisBundleTest {
   @DisplayName("Division en Chunks")
   class SplittingTests {
 
+    private static Stream<Arguments> provideSplittingTestCases() {
+      return Stream.of(
+          Arguments.of(1, 10, 20, 1), // Un fichier, 10 lignes, limite 20 → 1 chunk
+          Arguments.of(3, 10, 25, 2), // 3 fichiers, 30 lignes total, limite 25 → 2 chunks
+          Arguments.of(2, 50, 30, 2), // 2 fichiers, chacun dépasse la limite → 2 chunks
+          Arguments.of(5, 5, 10, 3) // 5 fichiers, 25 lignes, limite 10 → 3 chunks
+          );
+    }
+
     @Test
     @DisplayName("Division avec taille par défaut")
     void shouldSplitWithDefaultMaxLines() {
@@ -163,7 +174,7 @@ class DiffAnalysisBundleTest {
       DiffAnalysisBundle bundle = aDiffAnalysisBundle().withFileCount(2).build();
 
       // When
-      List<UnifiedDiff> chunks = bundle.splitByMaxLines();
+      List<GitDiffDocument> chunks = bundle.splitByMaxLines();
 
       // Then
       assertNotNull(chunks);
@@ -176,7 +187,7 @@ class DiffAnalysisBundleTest {
     void shouldSplitAccordingToMaxLines(
         int fileCount, int linesPerHunk, int maxLinesPerChunk, int expectedChunks) {
       // Given
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       for (int i = 0; i < fileCount; i++) {
         diff.files.add(createTestFileDiff("file" + i + ".java", 1, linesPerHunk));
       }
@@ -184,36 +195,27 @@ class DiffAnalysisBundleTest {
       DiffAnalysisBundle bundle = aDiffAnalysisBundle().withStructuredDiff(diff).build();
 
       // When
-      List<UnifiedDiff> chunks = bundle.splitByMaxLines(maxLinesPerChunk);
+      List<GitDiffDocument> chunks = bundle.splitByMaxLines(maxLinesPerChunk);
 
       // Then
       assertEquals(expectedChunks, chunks.size());
 
       // Vérifier que chaque chunk respecte la limite (sauf le dernier hunk trop gros)
-      for (UnifiedDiff chunk : chunks) {
+      for (GitDiffDocument chunk : chunks) {
         int chunkLineCount =
             chunk.files.stream()
-                .flatMap(file -> file.hunks.stream())
+                .flatMap(file -> file.diffHunkBlocks.stream())
                 .mapToInt(hunk -> hunk.lines.size())
                 .sum();
 
         // Un chunk peut dépasser si un seul hunk est plus gros que la limite
         boolean isValidChunk =
             chunkLineCount <= maxLinesPerChunk
-                || chunk.files.stream().flatMap(f -> f.hunks.stream()).count() == 1;
+                || chunk.files.stream().flatMap(f -> f.diffHunkBlocks.stream()).count() == 1;
 
         assertTrue(
             isValidChunk, "Chunk a " + chunkLineCount + " lignes, limite: " + maxLinesPerChunk);
       }
-    }
-
-    private static Stream<Arguments> provideSplittingTestCases() {
-      return Stream.of(
-          Arguments.of(1, 10, 20, 1), // Un fichier, 10 lignes, limite 20 → 1 chunk
-          Arguments.of(3, 10, 25, 2), // 3 fichiers, 30 lignes total, limite 25 → 2 chunks
-          Arguments.of(2, 50, 30, 2), // 2 fichiers, chacun dépasse la limite → 2 chunks
-          Arguments.of(5, 5, 10, 3) // 5 fichiers, 25 lignes, limite 10 → 3 chunks
-          );
     }
 
     @Test
@@ -223,7 +225,7 @@ class DiffAnalysisBundleTest {
       DiffAnalysisBundle bundle = aDiffAnalysisBundle().withEmptyDiff().build();
 
       // When
-      List<UnifiedDiff> chunks = bundle.splitByMaxLines(10);
+      List<GitDiffDocument> chunks = bundle.splitByMaxLines(10);
 
       // Then
       assertTrue(chunks.isEmpty());
@@ -251,13 +253,22 @@ class DiffAnalysisBundleTest {
   @DisplayName("Métadonnées et Statistiques")
   class MetadataTests {
 
+    private static Stream<Arguments> provideTotalLineCountTestCases() {
+      return Stream.of(
+          Arguments.of(0, 0, 0, 0), // Diff vide
+          Arguments.of(1, 1, 10, 10), // 1 fichier, 1 hunk, 10 lignes
+          Arguments.of(2, 2, 5, 20), // 2 fichiers, 2 hunks chacun, 5 lignes par hunk
+          Arguments.of(3, 1, 15, 45) // 3 fichiers, 1 hunk chacun, 15 lignes par hunk
+          );
+    }
+
     @ParameterizedTest
     @DisplayName("Calcul du nombre total de lignes")
     @MethodSource("provideTotalLineCountTestCases")
     void shouldCalculateTotalLineCount(
         int fileCount, int hunksPerFile, int linesPerHunk, int expectedTotal) {
       // Given
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       for (int i = 0; i < fileCount; i++) {
         diff.files.add(createTestFileDiff("file" + i + ".java", hunksPerFile, linesPerHunk));
       }
@@ -266,15 +277,6 @@ class DiffAnalysisBundleTest {
 
       // When & Then
       assertEquals(expectedTotal, bundle.getTotalLineCount());
-    }
-
-    private static Stream<Arguments> provideTotalLineCountTestCases() {
-      return Stream.of(
-          Arguments.of(0, 0, 0, 0), // Diff vide
-          Arguments.of(1, 1, 10, 10), // 1 fichier, 1 hunk, 10 lignes
-          Arguments.of(2, 2, 5, 20), // 2 fichiers, 2 hunks chacun, 5 lignes par hunk
-          Arguments.of(3, 1, 15, 45) // 3 fichiers, 1 hunk chacun, 15 lignes par hunk
-          );
     }
 
     @Test
@@ -326,7 +328,7 @@ class DiffAnalysisBundleTest {
     @DisplayName("Workflow complet : création, division et analyse")
     void shouldHandleCompleteWorkflow() {
       // Given - Un diff complexe avec plusieurs fichiers
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       diff.files.add(createTestFileDiff("src/main/java/Service.java", 2, 15));
       diff.files.add(createTestFileDiff("src/test/java/ServiceTest.java", 1, 20));
       diff.files.add(createTestFileDiff("README.md", 1, 5));
@@ -335,7 +337,7 @@ class DiffAnalysisBundleTest {
 
       // When
       DiffAnalysisBundle bundle = new DiffAnalysisBundle(diff, rawText);
-      List<UnifiedDiff> chunks = bundle.splitByMaxLines(25);
+      List<GitDiffDocument> chunks = bundle.splitByMaxLines(25);
 
       // Then
       assertEquals(3, bundle.getModifiedFileCount());
@@ -348,7 +350,7 @@ class DiffAnalysisBundleTest {
       int totalHunksInChunks =
           chunks.stream()
               .flatMap(chunk -> chunk.files.stream())
-              .mapToInt(file -> file.hunks.size())
+              .mapToInt(file -> file.diffHunkBlocks.size())
               .sum();
 
       assertEquals(4, totalHunksInChunks); // 2 + 1 + 1 hunks originaux
@@ -358,7 +360,7 @@ class DiffAnalysisBundleTest {
     @DisplayName("Performance avec un gros diff")
     void shouldHandleLargeDiff() {
       // Given - Simuler un gros diff
-      UnifiedDiff largeDiff = new UnifiedDiff();
+      GitDiffDocument largeDiff = new GitDiffDocument();
       for (int i = 0; i < 100; i++) {
         largeDiff.files.add(createTestFileDiff("file" + i + ".java", 5, 20));
       }
@@ -367,7 +369,7 @@ class DiffAnalysisBundleTest {
 
       // When - Mesurer le temps d'exécution
       long startTime = System.currentTimeMillis();
-      List<UnifiedDiff> chunks = bundle.splitByMaxLines(500);
+      List<GitDiffDocument> chunks = bundle.splitByMaxLines(500);
       long endTime = System.currentTimeMillis();
 
       // Then
@@ -413,7 +415,7 @@ class DiffAnalysisBundleTest {
     @DisplayName("Génération du diff unifié")
     void shouldGenerateUnifiedDiffString() {
       // Given
-      UnifiedDiff diff = new UnifiedDiff();
+      GitDiffDocument diff = new GitDiffDocument();
       diff.files.add(createTestFileDiff("test.java", 1, 3));
 
       DiffAnalysisBundle bundle = aDiffAnalysisBundle().withStructuredDiff(diff).build();

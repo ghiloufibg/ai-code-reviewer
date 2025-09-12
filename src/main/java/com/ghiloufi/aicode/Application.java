@@ -7,9 +7,9 @@ import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.ReviewResult;
 import com.ghiloufi.aicode.github.GithubClient;
 import com.ghiloufi.aicode.llm.LlmClient;
+import com.ghiloufi.aicode.llm.LlmReviewValidator;
 import com.ghiloufi.aicode.llm.PromptBuilder;
 import com.ghiloufi.aicode.sast.StaticAnalysisRunner;
-import com.ghiloufi.aicode.util.JsonValidator;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -57,7 +57,7 @@ public class Application implements CommandLineRunner {
             : diff.collectFromGitHub(gh, pr);
     var staticReports = sast.runAndCollect();
     var chunks = bundle.splitByMaxLines(maxLines);
-    JsonValidator validator = new JsonValidator();
+    LlmReviewValidator validator = new LlmReviewValidator();
     List<ReviewResult> results = new ArrayList<>();
     int idx = 0;
     for (var chunk : chunks) {

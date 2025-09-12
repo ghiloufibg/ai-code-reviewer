@@ -28,6 +28,83 @@ class ReviewResultMergerTest {
     aggregator = new ReviewResultMerger();
   }
 
+  /** Crée un ReviewResult avec un résumé seulement. */
+  private ReviewResult createReviewResult(String summary) {
+    ReviewResult result = new ReviewResult();
+    result.summary = summary;
+    return result;
+  }
+
+  /** Crée un ReviewResult avec résumé, une issue et une note. */
+  private ReviewResult createReviewResult(
+      String summary, ReviewResult.Issue issue, ReviewResult.Note note) {
+    ReviewResult result = createReviewResult(summary);
+    if (issue != null) result.issues.add(issue);
+    if (note != null) result.non_blocking_notes.add(note);
+    return result;
+  }
+
+  /** Crée un ReviewResult avec résumé et une issue. */
+  private ReviewResult createReviewResult(String summary, ReviewResult.Issue issue) {
+    return createReviewResult(summary, issue, null);
+  }
+
+  // ===== MÉTHODES UTILITAIRES =====
+
+  /** Crée un ReviewResult avec résumé, deux issues et une note. */
+  private ReviewResult createReviewResult(
+      String summary,
+      ReviewResult.Issue issue1,
+      ReviewResult.Issue issue2,
+      ReviewResult.Note note) {
+    ReviewResult result = createReviewResult(summary);
+    if (issue1 != null) result.issues.add(issue1);
+    if (issue2 != null) result.issues.add(issue2);
+    if (note != null) result.non_blocking_notes.add(note);
+    return result;
+  }
+
+  /** Crée un ReviewResult avec plusieurs issues et notes. */
+  private ReviewResult createReviewResultWithMultipleItems(
+      String summary, List<String> issueTitles, List<String> noteTexts) {
+    ReviewResult result = createReviewResult(summary);
+
+    for (int i = 0; i < issueTitles.size(); i++) {
+      result.issues.add(createIssue("file.java", i + 1, "INFO", issueTitles.get(i)));
+    }
+
+    for (int i = 0; i < noteTexts.size(); i++) {
+      result.non_blocking_notes.add(createNote("file.java", i + 1, noteTexts.get(i)));
+    }
+
+    return result;
+  }
+
+  /** Crée une Issue de test. */
+  private ReviewResult.Issue createIssue(String file, int line, String severity, String title) {
+    ReviewResult.Issue issue = new ReviewResult.Issue();
+    issue.file = file;
+    issue.start_line = line;
+    issue.end_line = line;
+    issue.severity = severity;
+    issue.title = title;
+    issue.rule_id = "TEST_RULE_" + line;
+    issue.rationale = "Rationale for " + title;
+    issue.suggestion = "Suggestion for " + title;
+    issue.references = Arrays.asList("https://example.com/rule/" + line);
+    issue.hunk_index = 0;
+    return issue;
+  }
+
+  /** Crée une Note de test. */
+  private ReviewResult.Note createNote(String file, int line, String noteText) {
+    ReviewResult.Note note = new ReviewResult.Note();
+    note.file = file;
+    note.line = line;
+    note.note = noteText;
+    return note;
+  }
+
   @Nested
   @DisplayName("Tests de la méthode merge")
   class MergeTests {
@@ -345,82 +422,5 @@ class ReviewResultMergerTest {
       assertEquals(4, merged.getTotalItemCount()); // Utilise la méthode de ReviewResult
       assertTrue(merged.hasContent()); // Utilise la méthode de ReviewResult
     }
-  }
-
-  // ===== MÉTHODES UTILITAIRES =====
-
-  /** Crée un ReviewResult avec un résumé seulement. */
-  private ReviewResult createReviewResult(String summary) {
-    ReviewResult result = new ReviewResult();
-    result.summary = summary;
-    return result;
-  }
-
-  /** Crée un ReviewResult avec résumé, une issue et une note. */
-  private ReviewResult createReviewResult(
-      String summary, ReviewResult.Issue issue, ReviewResult.Note note) {
-    ReviewResult result = createReviewResult(summary);
-    if (issue != null) result.issues.add(issue);
-    if (note != null) result.non_blocking_notes.add(note);
-    return result;
-  }
-
-  /** Crée un ReviewResult avec résumé et une issue. */
-  private ReviewResult createReviewResult(String summary, ReviewResult.Issue issue) {
-    return createReviewResult(summary, issue, null);
-  }
-
-  /** Crée un ReviewResult avec résumé, deux issues et une note. */
-  private ReviewResult createReviewResult(
-      String summary,
-      ReviewResult.Issue issue1,
-      ReviewResult.Issue issue2,
-      ReviewResult.Note note) {
-    ReviewResult result = createReviewResult(summary);
-    if (issue1 != null) result.issues.add(issue1);
-    if (issue2 != null) result.issues.add(issue2);
-    if (note != null) result.non_blocking_notes.add(note);
-    return result;
-  }
-
-  /** Crée un ReviewResult avec plusieurs issues et notes. */
-  private ReviewResult createReviewResultWithMultipleItems(
-      String summary, List<String> issueTitles, List<String> noteTexts) {
-    ReviewResult result = createReviewResult(summary);
-
-    for (int i = 0; i < issueTitles.size(); i++) {
-      result.issues.add(createIssue("file.java", i + 1, "INFO", issueTitles.get(i)));
-    }
-
-    for (int i = 0; i < noteTexts.size(); i++) {
-      result.non_blocking_notes.add(createNote("file.java", i + 1, noteTexts.get(i)));
-    }
-
-    return result;
-  }
-
-  /** Crée une Issue de test. */
-  private ReviewResult.Issue createIssue(String file, int line, String severity, String title) {
-    ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = file;
-    issue.start_line = line;
-    issue.end_line = line;
-    issue.severity = severity;
-    issue.title = title;
-    issue.rule_id = "TEST_RULE_" + line;
-    issue.rationale = "Rationale for " + title;
-    issue.suggestion = "Suggestion for " + title;
-    issue.references = Arrays.asList("https://example.com/rule/" + line);
-    issue.hunk_index = 0;
-    return issue;
-  }
-
-  /** Crée une Note de test. */
-  private ReviewResult.Note createNote(String file, int line, String noteText) {
-    ReviewResult.Note note = new ReviewResult.Note();
-    note.file = file;
-    note.line = line;
-    note.note = noteText;
-    return note;
   }
 }

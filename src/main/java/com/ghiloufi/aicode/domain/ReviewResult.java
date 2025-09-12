@@ -21,17 +21,14 @@ import java.util.*;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ReviewResult {
 
-  /** Résumé textuel de l'analyse effectuée */
-  public String summary;
-
-  /** Liste des issues détectées lors de l'analyse */
-  public List<Issue> issues = new ArrayList<>();
-
-  /** Liste des notes informatives non-bloquantes */
-  public List<Note> non_blocking_notes = new ArrayList<>();
-
   /** Instance réutilisable d'ObjectMapper pour optimiser les performances */
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  /** Résumé textuel de l'analyse effectuée */
+  public String summary;
+  /** Liste des issues détectées lors de l'analyse */
+  public List<Issue> issues = new ArrayList<>();
+  /** Liste des notes informatives non-bloquantes */
+  public List<Note> non_blocking_notes = new ArrayList<>();
 
   /**
    * Crée une instance de ReviewResult à partir d'une chaîne JSON.
@@ -121,6 +118,30 @@ public class ReviewResult {
   }
 
   /**
+   * Calcule le nombre total d'éléments dans ce résultat d'analyse.
+   *
+   * @return La somme du nombre d'issues et de notes
+   */
+  public int getTotalItemCount() {
+    int issuesCount = issues != null ? issues.size() : 0;
+    int notesCount = non_blocking_notes != null ? non_blocking_notes.size() : 0;
+    return issuesCount + notesCount;
+  }
+
+  /**
+   * Vérifie si ce résultat contient des éléments significatifs.
+   *
+   * @return true si le résultat contient au moins une issue, une note ou un résumé
+   */
+  public boolean hasContent() {
+    boolean hasIssues = issues != null && !issues.isEmpty();
+    boolean hasNotes = non_blocking_notes != null && !non_blocking_notes.isEmpty();
+    boolean hasSummary = summary != null && !summary.trim().isEmpty();
+
+    return hasIssues || hasNotes || hasSummary;
+  }
+
+  /**
    * Représente une issue détectée lors de l'analyse de code.
    *
    * <p>Une issue contient des informations sur la localisation du problème, sa gravité, et des
@@ -200,29 +221,5 @@ public class ReviewResult {
     public boolean hasContent() {
       return note != null && !note.trim().isEmpty();
     }
-  }
-
-  /**
-   * Calcule le nombre total d'éléments dans ce résultat d'analyse.
-   *
-   * @return La somme du nombre d'issues et de notes
-   */
-  public int getTotalItemCount() {
-    int issuesCount = issues != null ? issues.size() : 0;
-    int notesCount = non_blocking_notes != null ? non_blocking_notes.size() : 0;
-    return issuesCount + notesCount;
-  }
-
-  /**
-   * Vérifie si ce résultat contient des éléments significatifs.
-   *
-   * @return true si le résultat contient au moins une issue, une note ou un résumé
-   */
-  public boolean hasContent() {
-    boolean hasIssues = issues != null && !issues.isEmpty();
-    boolean hasNotes = non_blocking_notes != null && !non_blocking_notes.isEmpty();
-    boolean hasSummary = summary != null && !summary.trim().isEmpty();
-
-    return hasIssues || hasNotes || hasSummary;
   }
 }

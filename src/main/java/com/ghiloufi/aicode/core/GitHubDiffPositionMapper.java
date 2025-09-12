@@ -1,8 +1,8 @@
 package com.ghiloufi.aicode.core;
 
-import com.ghiloufi.aicode.domain.FileDiff;
-import com.ghiloufi.aicode.domain.Hunk;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.DiffHunkBlock;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
+import com.ghiloufi.aicode.domain.GitFileModification;
 
 /**
  * Maps line numbers from unified diff files to GitHub API positions for inline PR comments.
@@ -10,15 +10,15 @@ import com.ghiloufi.aicode.domain.UnifiedDiff;
  */
 public class GitHubDiffPositionMapper {
 
-  private final UnifiedDiff unifiedDiff;
+  private final GitDiffDocument gitDiffDocument;
 
   /**
    * Creates a new mapper for the given unified diff.
    *
-   * @param unifiedDiff the unified diff to map positions for
+   * @param gitDiffDocument the unified diff to map positions for
    */
-  public GitHubDiffPositionMapper(UnifiedDiff unifiedDiff) {
-    this.unifiedDiff = unifiedDiff;
+  public GitHubDiffPositionMapper(GitDiffDocument gitDiffDocument) {
+    this.gitDiffDocument = gitDiffDocument;
   }
 
   /**
@@ -32,7 +32,7 @@ public class GitHubDiffPositionMapper {
   public int positionFor(String path, int newLine) {
     int currentPosition = 0;
 
-    for (FileDiff file : unifiedDiff.files) {
+    for (GitFileModification file : gitDiffDocument.files) {
       String filePath = getEffectiveFilePath(file);
 
       if (!filePath.equals(path)) {
@@ -53,7 +53,7 @@ public class GitHubDiffPositionMapper {
    * @param file the file diff to get the path from
    * @return the effective file path for comparison
    */
-  private String getEffectiveFilePath(FileDiff file) {
+  private String getEffectiveFilePath(GitFileModification file) {
     return file.newPath != null ? file.newPath : file.oldPath;
   }
 
@@ -65,11 +65,11 @@ public class GitHubDiffPositionMapper {
    * @param currentPosition the current position counter
    * @return the updated position after skipping this file
    */
-  private int skipFilePositions(FileDiff file, int currentPosition) {
+  private int skipFilePositions(GitFileModification file, int currentPosition) {
     int position = currentPosition;
 
-    for (Hunk hunk : file.hunks) {
-      position += 1 + hunk.lines.size();
+    for (DiffHunkBlock diffHunkBlock : file.diffHunkBlocks) {
+      position += 1 + diffHunkBlock.lines.size();
     }
 
     return position;
@@ -84,18 +84,19 @@ public class GitHubDiffPositionMapper {
    * @param startPosition the starting position counter
    * @return the GitHub API position if found, -1 if not found
    */
-  private int findLinePositionInFile(FileDiff file, int targetNewLine, int startPosition) {
+  private int findLinePositionInFile(
+      GitFileModification file, int targetNewLine, int startPosition) {
     int currentPosition = startPosition;
 
-    for (Hunk hunk : file.hunks) {
+    for (DiffHunkBlock diffHunkBlock : file.diffHunkBlocks) {
       currentPosition++;
 
-      Integer foundPosition = searchLineInHunk(hunk, targetNewLine, currentPosition);
+      Integer foundPosition = searchLineInHunk(diffHunkBlock, targetNewLine, currentPosition);
       if (foundPosition != null) {
         return foundPosition;
       }
 
-      currentPosition += hunk.lines.size();
+      currentPosition += diffHunkBlock.lines.size();
     }
 
     return -1;
@@ -105,16 +106,17 @@ public class GitHubDiffPositionMapper {
    * Searches for the target line within a specific hunk. Tracks line numbers in the new file
    * version and returns position when found.
    *
-   * @param hunk the hunk to search in
+   * @param diffHunkBlock the hunk to search in
    * @param targetNewLine the target line number in the new version
    * @param hunkStartPosition the position at the start of this hunk's content
    * @return the position if found, null if not found in this hunk
    */
-  private Integer searchLineInHunk(Hunk hunk, int targetNewLine, int hunkStartPosition) {
-    int currentNewLine = hunk.newStart - 1;
+  private Integer searchLineInHunk(
+      DiffHunkBlock diffHunkBlock, int targetNewLine, int hunkStartPosition) {
+    int currentNewLine = diffHunkBlock.newStart - 1;
     int currentPosition = hunkStartPosition;
 
-    for (String line : hunk.lines) {
+    for (String line : diffHunkBlock.lines) {
       currentPosition++;
 
       if (isNewOrContextLine(line)) {

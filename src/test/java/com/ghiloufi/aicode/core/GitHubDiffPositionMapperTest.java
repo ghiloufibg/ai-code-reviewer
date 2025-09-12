@@ -2,9 +2,9 @@ package com.ghiloufi.aicode.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.ghiloufi.aicode.domain.FileDiff;
-import com.ghiloufi.aicode.domain.Hunk;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.DiffHunkBlock;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
+import com.ghiloufi.aicode.domain.GitFileModification;
 import java.util.ArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,31 +21,32 @@ public class GitHubDiffPositionMapperTest {
     parser = new UnifiedDiffParser();
   }
 
-  private UnifiedDiff createTestDiff() {
-    UnifiedDiff diff = new UnifiedDiff();
+  private GitDiffDocument createTestDiff() {
+    GitDiffDocument diff = new GitDiffDocument();
     diff.files = new ArrayList<>();
     return diff;
   }
 
-  private FileDiff createFileDiff(String oldPath, String newPath) {
-    FileDiff file = new FileDiff();
+  private GitFileModification createFileDiff(String oldPath, String newPath) {
+    GitFileModification file = new GitFileModification();
     file.oldPath = oldPath;
     file.newPath = newPath;
-    file.hunks = new ArrayList<>();
+    file.diffHunkBlocks = new ArrayList<>();
     return file;
   }
 
-  private Hunk createHunk(int oldStart, int oldCount, int newStart, int newCount, String... lines) {
-    Hunk hunk = new Hunk();
-    hunk.oldStart = oldStart;
-    hunk.oldCount = oldCount;
-    hunk.newStart = newStart;
-    hunk.newCount = newCount;
-    hunk.lines = new ArrayList<>();
+  private DiffHunkBlock createHunk(
+      int oldStart, int oldCount, int newStart, int newCount, String... lines) {
+    DiffHunkBlock diffHunkBlock = new DiffHunkBlock();
+    diffHunkBlock.oldStart = oldStart;
+    diffHunkBlock.oldCount = oldCount;
+    diffHunkBlock.newStart = newStart;
+    diffHunkBlock.newCount = newCount;
+    diffHunkBlock.lines = new ArrayList<>();
     for (String line : lines) {
-      hunk.lines.add(line);
+      diffHunkBlock.lines.add(line);
     }
-    return hunk;
+    return diffHunkBlock;
   }
 
   @Nested
@@ -65,7 +66,7 @@ public class GitHubDiffPositionMapperTest {
                  line 2
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Position counting: hunk header (1) + line 1 (2) + added line (3)
@@ -86,7 +87,7 @@ public class GitHubDiffPositionMapperTest {
                  line 3
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Position for line 1 (context): hunk header (1) + line 1 (2)
@@ -111,7 +112,7 @@ public class GitHubDiffPositionMapperTest {
                  line 2
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Line 1: hunk header (1) + line 1 (2)
@@ -143,7 +144,7 @@ public class GitHubDiffPositionMapperTest {
                 +added line
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Position in file2.txt
@@ -170,7 +171,7 @@ public class GitHubDiffPositionMapperTest {
                  unchanged
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Position in file1.txt: hunk header (1) + added line (2)
@@ -201,7 +202,7 @@ public class GitHubDiffPositionMapperTest {
                 +target added
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Skip1: 4 positions (1 hunk header + 3 lines)
@@ -232,7 +233,7 @@ public class GitHubDiffPositionMapperTest {
                  line 6
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // First hunk: 4 positions (header + 3 lines)
@@ -261,7 +262,7 @@ public class GitHubDiffPositionMapperTest {
                      return a*b
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // First hunk positions 1-4
@@ -278,9 +279,9 @@ public class GitHubDiffPositionMapperTest {
     @Test
     @DisplayName("Should use newPath when both paths exist")
     void should_use_new_path_when_both_exist() {
-      UnifiedDiff diff = createTestDiff();
-      FileDiff file = createFileDiff("old/path.txt", "new/path.txt");
-      file.hunks.add(createHunk(1, 1, 1, 2, " line 1", "+line 2"));
+      GitDiffDocument diff = createTestDiff();
+      GitFileModification file = createFileDiff("old/path.txt", "new/path.txt");
+      file.diffHunkBlocks.add(createHunk(1, 1, 1, 2, " line 1", "+line 2"));
       diff.files.add(file);
 
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(diff);
@@ -294,9 +295,9 @@ public class GitHubDiffPositionMapperTest {
     @Test
     @DisplayName("Should fallback to oldPath when newPath is null")
     void should_fallback_to_old_path_when_new_path_null() {
-      UnifiedDiff diff = createTestDiff();
-      FileDiff file = createFileDiff("deleted/file.txt", null);
-      file.hunks.add(createHunk(1, 2, 0, 0, "-line 1", "-line 2"));
+      GitDiffDocument diff = createTestDiff();
+      GitFileModification file = createFileDiff("deleted/file.txt", null);
+      file.diffHunkBlocks.add(createHunk(1, 2, 0, 0, "-line 1", "-line 2"));
       diff.files.add(file);
 
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(diff);
@@ -318,7 +319,7 @@ public class GitHubDiffPositionMapperTest {
                 +line 3
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       assertEquals(2, mapper.positionFor("new_file.txt", 1)); // First line
@@ -343,7 +344,7 @@ public class GitHubDiffPositionMapperTest {
                 +line 2
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       assertEquals(-1, mapper.positionFor("non_existent.txt", 1));
@@ -361,7 +362,7 @@ public class GitHubDiffPositionMapperTest {
                  line 2
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       assertEquals(-1, mapper.positionFor("file.txt", 99)); // Line doesn't exist
@@ -370,7 +371,7 @@ public class GitHubDiffPositionMapperTest {
     @Test
     @DisplayName("Should handle empty diff")
     void should_handle_empty_diff() {
-      UnifiedDiff emptyDiff = createTestDiff();
+      GitDiffDocument emptyDiff = createTestDiff();
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(emptyDiff);
 
       assertEquals(-1, mapper.positionFor("any_file.txt", 1));
@@ -379,8 +380,8 @@ public class GitHubDiffPositionMapperTest {
     @Test
     @DisplayName("Should handle file with no hunks")
     void should_handle_file_with_no_hunks() {
-      UnifiedDiff diff = createTestDiff();
-      FileDiff file = createFileDiff("a/file.txt", "b/file.txt");
+      GitDiffDocument diff = createTestDiff();
+      GitFileModification file = createFileDiff("a/file.txt", "b/file.txt");
       // No hunks added
       diff.files.add(file);
 
@@ -402,7 +403,7 @@ public class GitHubDiffPositionMapperTest {
                 -deleted line 2
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Only the remaining line exists in the new file
@@ -432,7 +433,7 @@ public class GitHubDiffPositionMapperTest {
                  context line 7
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Line tracking in new file:
@@ -465,7 +466,7 @@ public class GitHubDiffPositionMapperTest {
                  line 18
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       assertEquals(2, mapper.positionFor("file.txt", 15)); // First line
@@ -504,7 +505,7 @@ public class GitHubDiffPositionMapperTest {
                  }
                 """;
 
-      UnifiedDiff parsedDiff = parser.parse(diff);
+      GitDiffDocument parsedDiff = parser.parse(diff);
       GitHubDiffPositionMapper mapper = new GitHubDiffPositionMapper(parsedDiff);
 
       // Position counting:

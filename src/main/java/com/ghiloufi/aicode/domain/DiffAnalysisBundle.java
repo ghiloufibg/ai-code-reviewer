@@ -12,7 +12,7 @@ import java.util.Objects;
  * <p>Cette classe encapsule à la fois :
  *
  * <ul>
- *   <li>La version structurée du diff ({@link UnifiedDiff}) pour l'analyse programmatique
+ *   <li>La version structurée du diff ({@link GitDiffDocument}) pour l'analyse programmatique
  *   <li>La version textuelle brute du diff Git pour l'affichage ou l'archivage
  * </ul>
  *
@@ -24,10 +24,10 @@ import java.util.Objects;
  * @author Ghiloufi
  * @version 1.0
  * @since 1.0
- * @see UnifiedDiff
- * @see FileDiff
+ * @see GitDiffDocument
+ * @see GitFileModification
  */
-public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText) {
+public record DiffAnalysisBundle(GitDiffDocument structuredDiff, String rawDiffText) {
 
   /** Nombre maximum de lignes par défaut pour les chunks lors de la division */
   private static final int DEFAULT_MAX_LINES_PER_CHUNK = 1000;
@@ -95,7 +95,7 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
    * @throws IllegalArgumentException si maxLinesPerChunk est inférieur ou égal à 0
    * @see #splitByMaxLines()
    */
-  public List<UnifiedDiff> splitByMaxLines(int maxLinesPerChunk) {
+  public List<GitDiffDocument> splitByMaxLines(int maxLinesPerChunk) {
     validateMaxLines(maxLinesPerChunk);
     return performSplitByMaxLines(maxLinesPerChunk);
   }
@@ -108,7 +108,7 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
    * @return Liste des diffs divisés avec la taille par défaut
    * @see #splitByMaxLines(int)
    */
-  public List<UnifiedDiff> splitByMaxLines() {
+  public List<GitDiffDocument> splitByMaxLines() {
     return splitByMaxLines(DEFAULT_MAX_LINES_PER_CHUNK);
   }
 
@@ -134,24 +134,24 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
    * @param maxLinesPerChunk Limite de lignes par chunk
    * @return Liste des chunks créés
    */
-  private List<UnifiedDiff> performSplitByMaxLines(int maxLinesPerChunk) {
-    List<UnifiedDiff> chunks = new ArrayList<>();
+  private List<GitDiffDocument> performSplitByMaxLines(int maxLinesPerChunk) {
+    List<GitDiffDocument> chunks = new ArrayList<>();
 
     if (structuredDiff.files.isEmpty()) {
       return chunks;
     }
 
-    UnifiedDiff currentChunk = new UnifiedDiff();
+    GitDiffDocument currentChunk = new GitDiffDocument();
     int currentLineCount = 0;
 
     for (var fileDiff : structuredDiff.files) {
-      for (var hunk : fileDiff.hunks) {
+      for (var hunk : fileDiff.diffHunkBlocks) {
         int hunkLineCount = hunk.lines.size();
 
         // Si ajouter ce hunk dépasse la limite ET qu'on a déjà du contenu
         if (shouldStartNewChunk(currentLineCount, hunkLineCount, maxLinesPerChunk)) {
           chunks.add(currentChunk);
-          currentChunk = new UnifiedDiff();
+          currentChunk = new GitDiffDocument();
           currentLineCount = 0;
         }
 
@@ -190,7 +190,7 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
    */
   public int getTotalLineCount() {
     return structuredDiff.files.stream()
-        .flatMap(file -> file.hunks.stream())
+        .flatMap(file -> file.diffHunkBlocks.stream())
         .mapToInt(hunk -> hunk.lines.size())
         .sum();
   }
@@ -211,7 +211,7 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
    */
   public boolean hasModifications() {
     return !structuredDiff.files.isEmpty()
-        && structuredDiff.files.stream().anyMatch(file -> !file.hunks.isEmpty());
+        && structuredDiff.files.stream().anyMatch(file -> !file.diffHunkBlocks.isEmpty());
   }
 
   /**
@@ -232,11 +232,11 @@ public record DiffAnalysisBundle(UnifiedDiff structuredDiff, String rawDiffText)
   /**
    * Retourne la représentation unifiée du diff structuré.
    *
-   * <p>Délègue à la méthode {@link UnifiedDiff#toUnifiedString()} pour générer le format textuel
-   * standard.
+   * <p>Délègue à la méthode {@link GitDiffDocument#toUnifiedString()} pour générer le format
+   * textuel standard.
    *
    * @return Le diff au format unifié Git
-   * @see UnifiedDiff#toUnifiedString()
+   * @see GitDiffDocument#toUnifiedString()
    */
   public String getUnifiedDiffString() {
     return structuredDiff.toUnifiedString();

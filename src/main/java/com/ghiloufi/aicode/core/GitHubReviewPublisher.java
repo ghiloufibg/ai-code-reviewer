@@ -1,8 +1,8 @@
 package com.ghiloufi.aicode.core;
 
 import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
 import com.ghiloufi.aicode.domain.ReviewResult;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +57,17 @@ public class GitHubReviewPublisher {
       throw new IllegalArgumentException("GithubClient ne peut pas être null");
     }
     this.githubClient = githubClient;
+  }
+
+  /**
+   * Normalise une chaîne de caractères en retournant une valeur par défaut si elle est null.
+   *
+   * @param value la valeur à normaliser
+   * @param defaultValue la valeur par défaut si la valeur est null
+   * @return la valeur normalisée
+   */
+  private static String normalizeString(String value, String defaultValue) {
+    return (value == null) ? defaultValue : value;
   }
 
   /**
@@ -328,23 +339,12 @@ public class GitHubReviewPublisher {
   }
 
   /**
-   * Normalise une chaîne de caractères en retournant une valeur par défaut si elle est null.
-   *
-   * @param value la valeur à normaliser
-   * @param defaultValue la valeur par défaut si la valeur est null
-   * @return la valeur normalisée
-   */
-  private static String normalizeString(String value, String defaultValue) {
-    return (value == null) ? defaultValue : value;
-  }
-
-  /**
    * Créer le position mapper.
    *
    * @param diff la valeur du unified diff
    * @return le position mapper
    */
-  protected GitHubDiffPositionMapper createPositionMapper(UnifiedDiff diff) {
+  protected GitHubDiffPositionMapper createPositionMapper(GitDiffDocument diff) {
     return new GitHubDiffPositionMapper(diff);
   }
 }

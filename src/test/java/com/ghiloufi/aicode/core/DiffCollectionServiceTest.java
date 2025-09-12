@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
 import com.ghiloufi.aicode.github.GithubClient;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,15 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("DiffCollectionService Tests")
 public class DiffCollectionServiceTest {
 
-  @Mock private GithubClient mockGithubClient;
-
-  @Mock private Process mockProcess;
-
-  @Mock private ProcessBuilder mockProcessBuilder;
-
-  private DiffCollectionService diffCollectionService;
   private final int contextLines = 3;
-
   // Sample diff content for testing
   private final String sampleDiff =
       """
@@ -40,6 +32,10 @@ public class DiffCollectionServiceTest {
         +new line
          line 3
         """;
+  @Mock private GithubClient mockGithubClient;
+  @Mock private Process mockProcess;
+  @Mock private ProcessBuilder mockProcessBuilder;
+  private DiffCollectionService diffCollectionService;
 
   @BeforeEach
   void setUp() {
@@ -437,7 +433,7 @@ public class DiffCollectionServiceTest {
       assertEquals(sampleDiff, result.rawDiffText());
 
       // Verify parsing worked correctly
-      UnifiedDiff parsed = result.structuredDiff();
+      GitDiffDocument parsed = result.structuredDiff();
       assertEquals(1, parsed.files.size());
       assertEquals("file.txt", parsed.files.get(0).oldPath);
       assertEquals("file.txt", parsed.files.get(0).newPath);
@@ -495,7 +491,7 @@ public class DiffCollectionServiceTest {
       assertEquals(realWorldDiff, result.rawDiffText());
       assertEquals(1, result.structuredDiff().files.size());
       assertEquals("src/main/java/Service.java", result.structuredDiff().files.get(0).newPath);
-      assertEquals(1, result.structuredDiff().files.get(0).hunks.size());
+      assertEquals(1, result.structuredDiff().files.get(0).diffHunkBlocks.size());
     }
 
     @Test

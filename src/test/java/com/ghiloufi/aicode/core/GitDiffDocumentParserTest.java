@@ -2,16 +2,16 @@ package com.ghiloufi.aicode.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.ghiloufi.aicode.domain.FileDiff;
-import com.ghiloufi.aicode.domain.Hunk;
-import com.ghiloufi.aicode.domain.UnifiedDiff;
+import com.ghiloufi.aicode.domain.DiffHunkBlock;
+import com.ghiloufi.aicode.domain.GitDiffDocument;
+import com.ghiloufi.aicode.domain.GitFileModification;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("UnifiedDiffParser Tests")
-public class UnifiedDiffParserTest {
+public class GitDiffDocumentParserTest {
 
   private UnifiedDiffParser parser;
 
@@ -37,20 +37,20 @@ public class UnifiedDiffParserTest {
                 +    print("Hello, world!")
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("script.py", file.oldPath);
       assertEquals("script.py", file.newPath);
-      assertEquals(1, file.hunks.size());
+      assertEquals(1, file.diffHunkBlocks.size());
 
-      Hunk hunk = file.hunks.get(0);
-      assertEquals(1, hunk.oldStart);
-      assertEquals(3, hunk.oldCount);
-      assertEquals(1, hunk.newStart);
-      assertEquals(3, hunk.newCount);
-      assertEquals(3, hunk.lines.size());
+      DiffHunkBlock diffHunkBlock = file.diffHunkBlocks.get(0);
+      assertEquals(1, diffHunkBlock.oldStart);
+      assertEquals(3, diffHunkBlock.oldCount);
+      assertEquals(1, diffHunkBlock.newStart);
+      assertEquals(3, diffHunkBlock.newCount);
+      assertEquals(3, diffHunkBlock.lines.size());
     }
 
     @Test
@@ -71,7 +71,7 @@ public class UnifiedDiffParserTest {
                 +added line
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(2, result.files.size());
       assertEquals("file1.txt", result.files.get(0).oldPath);
@@ -98,10 +98,10 @@ public class UnifiedDiffParserTest {
                      return a*b
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      assertEquals(2, result.files.get(0).hunks.size());
+      assertEquals(2, result.files.get(0).diffHunkBlocks.size());
     }
   }
 
@@ -121,9 +121,9 @@ public class UnifiedDiffParserTest {
                 +new content
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("src/main/java/MyClass.java", file.oldPath);
       assertEquals("src/main/java/MyClass.java", file.newPath);
     }
@@ -140,9 +140,9 @@ public class UnifiedDiffParserTest {
                 +new content
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("MyClass.java", file.oldPath);
       assertEquals("MyClass.java", file.newPath);
     }
@@ -160,9 +160,9 @@ public class UnifiedDiffParserTest {
                 +of content
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("/dev/null", file.oldPath);
       assertEquals("new_file.txt", file.newPath);
     }
@@ -180,9 +180,9 @@ public class UnifiedDiffParserTest {
                 -goodbye file
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("deleted_file.txt", file.oldPath);
       assertEquals("/dev/null", file.newPath);
     }
@@ -190,7 +190,7 @@ public class UnifiedDiffParserTest {
 
   @Nested
   @DisplayName("Hunk Header Parsing Tests")
-  class HunkHeaderParsingTests {
+  class DiffHunkBlockHeaderParsingTests {
 
     @Test
     @DisplayName("Should parse hunk header with single line counts")
@@ -204,13 +204,13 @@ public class UnifiedDiffParserTest {
                 +new line
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(5, hunk.oldStart);
-      assertEquals(1, hunk.oldCount);
-      assertEquals(5, hunk.newStart);
-      assertEquals(1, hunk.newCount);
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(5, diffHunkBlock.oldStart);
+      assertEquals(1, diffHunkBlock.oldCount);
+      assertEquals(5, diffHunkBlock.newStart);
+      assertEquals(1, diffHunkBlock.newCount);
     }
 
     @Test
@@ -230,13 +230,13 @@ public class UnifiedDiffParserTest {
                  context line
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(10, hunk.oldStart);
-      assertEquals(5, hunk.oldCount);
-      assertEquals(12, hunk.newStart);
-      assertEquals(7, hunk.newCount);
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(10, diffHunkBlock.oldStart);
+      assertEquals(5, diffHunkBlock.oldCount);
+      assertEquals(12, diffHunkBlock.newStart);
+      assertEquals(7, diffHunkBlock.newCount);
     }
 
     @Test
@@ -251,13 +251,13 @@ public class UnifiedDiffParserTest {
                 +new line 2
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(0, hunk.oldStart);
-      assertEquals(0, hunk.oldCount);
-      assertEquals(1, hunk.newStart);
-      assertEquals(2, hunk.newCount);
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(0, diffHunkBlock.oldStart);
+      assertEquals(0, diffHunkBlock.oldCount);
+      assertEquals(1, diffHunkBlock.newStart);
+      assertEquals(2, diffHunkBlock.newCount);
     }
   }
 
@@ -278,13 +278,13 @@ public class UnifiedDiffParserTest {
                 +added line 2
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(3, hunk.lines.size());
-      assertEquals(" existing line", hunk.lines.get(0));
-      assertEquals("+added line 1", hunk.lines.get(1));
-      assertEquals("+added line 2", hunk.lines.get(2));
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(3, diffHunkBlock.lines.size());
+      assertEquals(" existing line", diffHunkBlock.lines.get(0));
+      assertEquals("+added line 1", diffHunkBlock.lines.get(1));
+      assertEquals("+added line 2", diffHunkBlock.lines.get(2));
     }
 
     @Test
@@ -300,13 +300,13 @@ public class UnifiedDiffParserTest {
                 -deleted line 2
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(3, hunk.lines.size());
-      assertEquals(" existing line", hunk.lines.get(0));
-      assertEquals("-deleted line 1", hunk.lines.get(1));
-      assertEquals("-deleted line 2", hunk.lines.get(2));
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(3, diffHunkBlock.lines.size());
+      assertEquals(" existing line", diffHunkBlock.lines.get(0));
+      assertEquals("-deleted line 1", diffHunkBlock.lines.get(1));
+      assertEquals("-deleted line 2", diffHunkBlock.lines.get(2));
     }
 
     @Test
@@ -324,15 +324,15 @@ public class UnifiedDiffParserTest {
                  context line 3
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(5, hunk.lines.size());
-      assertEquals(" context line 1", hunk.lines.get(0));
-      assertEquals(" context line 2", hunk.lines.get(1));
-      assertEquals("-old line", hunk.lines.get(2));
-      assertEquals("+new line", hunk.lines.get(3));
-      assertEquals(" context line 3", hunk.lines.get(4));
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(5, diffHunkBlock.lines.size());
+      assertEquals(" context line 1", diffHunkBlock.lines.get(0));
+      assertEquals(" context line 2", diffHunkBlock.lines.get(1));
+      assertEquals("-old line", diffHunkBlock.lines.get(2));
+      assertEquals("+new line", diffHunkBlock.lines.get(3));
+      assertEquals(" context line 3", diffHunkBlock.lines.get(4));
     }
 
     @Test
@@ -347,12 +347,12 @@ public class UnifiedDiffParserTest {
                 \\ No newline at end of file
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(2, hunk.lines.size());
-      assertEquals(" line without newline", hunk.lines.get(0));
-      assertEquals("\\ No newline at end of file", hunk.lines.get(1));
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(2, diffHunkBlock.lines.size());
+      assertEquals(" line without newline", diffHunkBlock.lines.get(0));
+      assertEquals("\\ No newline at end of file", diffHunkBlock.lines.get(1));
     }
   }
 
@@ -365,7 +365,7 @@ public class UnifiedDiffParserTest {
     void should_handle_empty_diff() {
       String diff = "";
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(0, result.files.size());
     }
@@ -379,10 +379,10 @@ public class UnifiedDiffParserTest {
                 +++ b/file.txt
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      assertEquals(0, result.files.get(0).hunks.size());
+      assertEquals(0, result.files.get(0).diffHunkBlocks.size());
     }
 
     @Test
@@ -395,13 +395,13 @@ public class UnifiedDiffParserTest {
                 +added line
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertNull(file.oldPath);
       assertNull(file.newPath);
-      assertEquals(1, file.hunks.size());
+      assertEquals(1, file.diffHunkBlocks.size());
     }
 
     @Test
@@ -414,10 +414,10 @@ public class UnifiedDiffParserTest {
                 +new content
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertNull(file.oldPath);
       assertEquals("file.txt", file.newPath);
     }
@@ -436,11 +436,11 @@ public class UnifiedDiffParserTest {
                 +new line
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      assertEquals(1, result.files.get(0).hunks.size());
-      assertEquals(2, result.files.get(0).hunks.get(0).lines.size());
+      assertEquals(1, result.files.get(0).diffHunkBlocks.size());
+      assertEquals(2, result.files.get(0).diffHunkBlocks.get(0).lines.size());
     }
 
     @Test
@@ -458,13 +458,13 @@ public class UnifiedDiffParserTest {
                  context
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
-      Hunk hunk = result.files.get(0).hunks.get(0);
-      assertEquals(99999, hunk.oldStart);
-      assertEquals(5, hunk.oldCount);
-      assertEquals(100001, hunk.newStart);
-      assertEquals(3, hunk.newCount);
+      DiffHunkBlock diffHunkBlock = result.files.get(0).diffHunkBlocks.get(0);
+      assertEquals(99999, diffHunkBlock.oldStart);
+      assertEquals(5, diffHunkBlock.oldCount);
+      assertEquals(100001, diffHunkBlock.newStart);
+      assertEquals(3, diffHunkBlock.newCount);
     }
   }
 
@@ -519,31 +519,31 @@ public class UnifiedDiffParserTest {
                 +    print("Goodbye!")
                 """;
 
-      UnifiedDiff result = parser.parse(diff);
+      GitDiffDocument result = parser.parse(diff);
 
       assertEquals(1, result.files.size());
-      FileDiff file = result.files.get(0);
+      GitFileModification file = result.files.get(0);
       assertEquals("script.py", file.oldPath);
       assertEquals("script.py", file.newPath);
-      assertEquals(3, file.hunks.size());
+      assertEquals(3, file.diffHunkBlocks.size());
 
-      Hunk firstHunk = file.hunks.get(0);
-      assertEquals(1, firstHunk.oldStart);
-      assertEquals(3, firstHunk.oldCount);
-      assertEquals(1, firstHunk.newStart);
-      assertEquals(3, firstHunk.newCount);
+      DiffHunkBlock firstDiffHunkBlock = file.diffHunkBlocks.get(0);
+      assertEquals(1, firstDiffHunkBlock.oldStart);
+      assertEquals(3, firstDiffHunkBlock.oldCount);
+      assertEquals(1, firstDiffHunkBlock.newStart);
+      assertEquals(3, firstDiffHunkBlock.newCount);
 
-      Hunk secondHunk = file.hunks.get(1);
-      assertEquals(4, secondHunk.oldStart);
-      assertEquals(5, secondHunk.oldCount);
-      assertEquals(4, secondHunk.newStart);
-      assertEquals(6, secondHunk.newCount);
+      DiffHunkBlock secondDiffHunkBlock = file.diffHunkBlocks.get(1);
+      assertEquals(4, secondDiffHunkBlock.oldStart);
+      assertEquals(5, secondDiffHunkBlock.oldCount);
+      assertEquals(4, secondDiffHunkBlock.newStart);
+      assertEquals(6, secondDiffHunkBlock.newCount);
 
-      Hunk thirdHunk = file.hunks.get(2);
-      assertEquals(10, thirdHunk.oldStart);
-      assertEquals(4, thirdHunk.oldCount);
-      assertEquals(11, thirdHunk.newStart);
-      assertEquals(4, thirdHunk.newCount);
+      DiffHunkBlock thirdDiffHunkBlock = file.diffHunkBlocks.get(2);
+      assertEquals(10, thirdDiffHunkBlock.oldStart);
+      assertEquals(4, thirdDiffHunkBlock.oldCount);
+      assertEquals(11, thirdDiffHunkBlock.newStart);
+      assertEquals(4, thirdDiffHunkBlock.newCount);
     }
   }
 }
