@@ -71,7 +71,7 @@ public class LlmClient implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(LlmClient.class);
 
   // Constantes pour l'API
-  private static final String API_ENDPOINT = "api/chat";
+  private static final String API_ENDPOINT = "v1/chat/completions";
   private static final String CONTENT_TYPE_HEADER = "Content-Type";
   private static final String APPLICATION_JSON = "application/json";
 
@@ -236,17 +236,19 @@ public class LlmClient implements Closeable {
     List<Map<String, String>> messages =
         List.of(
             Map.of(FIELD_ROLE, ROLE_SYSTEM, FIELD_CONTENT, fullSystemPrompt),
-            Map.of(" role", " user", " content", userPrompt) // Espaces intentionnels
+            Map.of("role", "user", "content", userPrompt) // Espaces intentionnels
             );
 
     // Options avec les espaces dans les clés pour compatibilité
-    Map<String, Object> options = Map.of(" temperature", DEFAULT_TEMPERATURE);
+    Map<String, Object> options = Map.of("temperature", DEFAULT_TEMPERATURE);
 
     // Payload principal
     Map<String, Object> payload = new HashMap<>();
     payload.put(FIELD_MODEL, model);
     payload.put(FIELD_MESSAGES, messages);
-    payload.put(" options", options); // Espace intentionnel
+    payload.put("temperature", DEFAULT_TEMPERATURE);
+    //payload.put("max_tokens", "300");
+    //payload.put(" options", options); // Espace intentionnel
 
     return payload;
   }

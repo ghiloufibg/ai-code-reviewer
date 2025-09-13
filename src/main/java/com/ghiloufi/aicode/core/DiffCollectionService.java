@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core;
 import com.ghiloufi.aicode.domain.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.GitDiffDocument;
 import com.ghiloufi.aicode.github.GithubClient;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -17,15 +18,17 @@ public class DiffCollectionService {
 
   private final int contextLines;
   private final UnifiedDiffParser diffParser;
+  private final String repository;
 
   /**
    * Creates a new diff collection service with specified context lines.
    *
    * @param contextLines number of context lines to include around changes in diffs
    */
-  public DiffCollectionService(int contextLines) {
+  public DiffCollectionService(int contextLines, String repository) {
     this.contextLines = contextLines;
     this.diffParser = new UnifiedDiffParser();
+    this.repository = repository;
   }
 
   /**
@@ -100,6 +103,7 @@ public class DiffCollectionService {
    */
   private Process createGitDiffProcess(String baseCommit, String headCommit) throws IOException {
     return new ProcessBuilder("git", "diff", "--unified=" + contextLines, baseCommit, headCommit)
+        .directory(new File(this.repository))
         .redirectErrorStream(true)
         .start();
   }
