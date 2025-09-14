@@ -43,7 +43,7 @@ All core services now have reactive variants:
 ```java
 // DiffCollectionService
 Mono<DiffAnalysisBundle> diffBundle = diffCollectionService
-    .collectFromGitHubReactive(githubClient, prNumber);
+                .collectFromGitHubReactive(githubClient, prNumber);
 
 // ReviewResultMerger
 Mono<ReviewResult> merged = resultMerger.mergeReactive(reviewParts);
