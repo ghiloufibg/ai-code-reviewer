@@ -1,40 +1,30 @@
 package com.ghiloufi.aicode.llm;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpStatus;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /**
- * Client pour interagir avec un modèle de langage (LLM) via API HTTP.
+ * Client réactif pour interagir avec un modèle de langage (LLM) via API HTTP.
  *
- * <p>Cette classe fournit une interface pour envoyer des requêtes à un LLM et recevoir des réponses
- * formatées en JSON. Elle est principalement utilisée pour effectuer des revues de code
- * automatisées dans le contexte du plugin AI Code Reviewer.
+ * <p>Cette classe fournit une interface réactive pour envoyer des requêtes à un LLM et recevoir
+ * des réponses formatées en JSON avec support du streaming. Elle est principalement utilisée pour
+ * effectuer des revues de code automatisées dans le contexte du plugin AI Code Reviewer.
  *
- * <p><strong>Architecture :</strong> Le client communique avec une API REST compatible avec le
- * format de chat standard (système/utilisateur). L'API doit accepter des messages avec des rôles et
- * retourner une réponse JSON.
+ * <p><strong>Architecture :</strong> Le client utilise WebClient de Spring WebFlux pour des communications
+ * non-bloquantes. Il supporte le streaming des réponses LLM pour améliorer les performances.
  *
  * <p><strong>Configuration :</strong>
  *
@@ -44,33 +34,14 @@ import org.springframework.stereotype.Service;
  *   <li>Timeout : Durée maximale d'attente pour une réponse
  * </ul>
  *
- * <p><strong>Format de réponse attendu :</strong> Le LLM doit retourner une réponse JSON contenant
- * soit un champ "message.content", soit un champ "content" direct.
+ * <p><strong>Format de réponse attendu :</strong> Le LLM doit retourner une réponse JSON ou un stream
+ * de chunks JSON pour les réponses streamées.
  *
- * <p><strong>Exemple d'utilisation :</strong>
- *
- * <pre>{@code
- * LlmClient client = new LlmClient(
- *     "http://localhost:11434",
- *     "codellama:13b",
- *     Duration.ofSeconds(30)
- * );
- *
- * String systemPrompt = "You are a code reviewer. Analyze the following code.";
- * String userPrompt = "Review this Java method: public void process() {...}";
- *
- * String review = client.review(systemPrompt, userPrompt);
- * System.out.println("Review: " + review);
- *
- * // N'oubliez pas de fermer le client
- * client.close();
- * }</pre>
- *
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Service
-public class LlmClient implements Closeable {
+public class LlmClient {
 
   private static final Logger logger = LoggerFactory.getLogger(LlmClient.class);
 
@@ -82,7 +53,6 @@ public class LlmClient implements Closeable {
   // Constantes pour le payload JSON
   private static final String FIELD_MODEL = "model";
   private static final String FIELD_MESSAGES = "messages";
-  private static final String FIELD_OPTIONS = "options";
   private static final String FIELD_TEMPERATURE = "temperature";
   private static final String FIELD_ROLE = "role";
   private static final String FIELD_CONTENT = "content";
@@ -100,21 +70,20 @@ public class LlmClient implements Closeable {
   private final String baseUrl;
   private final String model;
   private final Duration timeout;
-  private final CloseableHttpClient httpClient;
+  private final WebClient webClient;
   private final ObjectMapper objectMapper;
 
   /**
-   * Construit un nouveau client LLM.
+   * Construit un nouveau client LLM réactif.
    *
    * <p>Le client est configuré avec une URL de base pour l'API, le nom du modèle à utiliser, et un
-   * timeout pour les requêtes.
+   * timeout pour les requêtes. Utilise WebClient pour les communications non-bloquantes.
    *
    * @param baseUrl L'URL de base de l'API LLM (ex: "http://localhost:11434")
    * @param model Le nom ou ID du modèle LLM à utiliser (ex: "codellama:13b")
    * @param timeoutSeconds La durée maximale d'attente pour une réponse en secondes
    * @throws IllegalArgumentException si un paramètre est null ou invalide
    */
-  @Autowired
   public LlmClient(@Value("${app.llm.baseUrl:http://localhost:1234}") String baseUrl,
                    @Value("${app.llm.model:deepseek-coder-6.7b-instruct}") String model,
                    @Value("${app.llm.timeoutSeconds:45}") int timeoutSeconds) {
@@ -125,10 +94,13 @@ public class LlmClient implements Closeable {
     this.model = model;
     this.timeout = timeout;
     this.objectMapper = new ObjectMapper();
-    this.httpClient = createConfiguredHttpClient(timeout);
+    this.webClient = WebClient.builder()
+        .baseUrl(this.baseUrl)
+        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+        .build();
 
     logger.info(
-        "LlmClient initialisé - URL: {}, Modèle: {}, Timeout: {}s",
+        "LlmClient réactif initialisé - URL: {}, Modèle: {}, Timeout: {}s",
         this.baseUrl,
         this.model,
         timeout.getSeconds());
@@ -136,200 +108,203 @@ public class LlmClient implements Closeable {
 
   /**
    * Effectue une revue en envoyant des prompts système et utilisateur au LLM.
-   *
-   * <p>Cette méthode envoie une requête au LLM avec un prompt système qui définit le contexte et un
-   * prompt utilisateur qui contient le contenu à analyser. Le LLM est configuré pour retourner une
-   * réponse JSON avec une température basse (0.1) pour des résultats déterministes.
-   *
-   * <p><strong>Format de la requête :</strong>
-   *
-   * <pre>{@code
-   * {
-   *   "model": "codellama:13b",
-   *   "messages": [
-   *     {"role": "system", "content": "...instructions + JSON schema..."},
-   *     {"role": "user", "content": "...code à analyser..."}
-   *   ],
-   *   "options": {
-   *     "temperature": 0.1
-   *   }
-   * }
-   * }</pre>
-   *
-   * <p><strong>Traitement de la réponse :</strong>
-   *
-   * <ol>
-   *   <li>Si la réponse contient "message.content", cette valeur est extraite
-   *   <li>Sinon, si elle contient "content", cette valeur est extraite
-   *   <li>Sinon, le corps brut de la réponse est retourné
-   * </ol>
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param systemPrompt Le prompt système définissant le contexte et les instructions
    * @param userPrompt Le prompt utilisateur contenant le contenu à analyser
    * @return La réponse du LLM, extraite selon le format de réponse
    * @throws LlmClientException si la requête échoue ou si les paramètres sont invalides
-   * @throws IllegalArgumentException si un prompt est null ou vide
    */
   public String review(String systemPrompt, String userPrompt) {
-    validatePrompts(systemPrompt, userPrompt);
+    return reviewReactive(systemPrompt, userPrompt).block();
+  }
 
-    String url = buildApiUrl();
-    logger.debug("Envoi de la requête de review au LLM - URL: {}", url);
+  /**
+   * Effectue une revue réactive en envoyant des prompts système et utilisateur au LLM.
+   *
+   * <p>Cette méthode envoie une requête au LLM avec un prompt système qui définit le contexte et un
+   * prompt utilisateur qui contient le contenu à analyser. Le LLM est configuré pour retourner une
+   * réponse JSON avec une température basse (0.1) pour des résultats déterministes.
+   *
+   * @param systemPrompt Le prompt système définissant le contexte et les instructions
+   * @param userPrompt Le prompt utilisateur contenant le contenu à analyser
+   * @return Un Mono contenant la réponse du LLM
+   */
+  public Mono<String> reviewReactive(String systemPrompt, String userPrompt) {
+    return Mono.fromCallable(() -> {
+      validatePrompts(systemPrompt, userPrompt);
+      return buildReviewPayload(systemPrompt, userPrompt);
+    })
+    .flatMap(payload -> {
+      logger.debug("Envoi de la requête de review au LLM réactif");
 
-    HttpPost request = createPostRequest(url);
+      return webClient.post()
+          .uri(API_ENDPOINT)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(BodyInserters.fromValue(payload))
+          .retrieve()
+          .bodyToMono(String.class)
+          .timeout(timeout)
+          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+          .doOnNext(response -> logger.trace("Réponse brute du LLM: {}", response))
+          .map(this::extractContentFromResponse)
+          .doOnError(error -> logger.error("Erreur lors de la communication avec le LLM", error))
+          .onErrorMap(throwable -> new LlmClientException("Erreur lors de la communication avec le LLM", throwable));
+    });
+  }
 
-    try {
+  /**
+   * Effectue une revue avec streaming des réponses.
+   *
+   * @param systemPrompt Le prompt système
+   * @param userPrompt Le prompt utilisateur
+   * @return Un Flux de chunks de réponse
+   */
+  public Flux<String> reviewStream(String systemPrompt, String userPrompt) {
+    return Mono.fromCallable(() -> {
+      validatePrompts(systemPrompt, userPrompt);
       Map<String, Object> payload = buildReviewPayload(systemPrompt, userPrompt);
-      setJsonEntity(request, payload);
+      payload.put("stream", true);
+      return payload;
+    })
+    .flatMapMany(payload -> {
+      logger.debug("Envoi de la requête de review streamée au LLM");
 
-      return executeRequestAndExtractResponse(request);
-
-    } catch (IOException e) {
-      String errorMessage = "Erreur lors de la communication avec le LLM";
-      logger.error(errorMessage, e);
-      throw new LlmClientException(errorMessage, e);
-    } catch (Exception e) {
-      String errorMessage = "Erreur inattendue lors de la review";
-      logger.error(errorMessage, e);
-      throw new LlmClientException(errorMessage, e);
-    }
+      return webClient.post()
+          .uri(API_ENDPOINT)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(BodyInserters.fromValue(payload))
+          .retrieve()
+          .bodyToFlux(String.class)
+          .timeout(timeout)
+          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+          .filter(chunk -> !chunk.trim().isEmpty())
+          .map(this::extractContentFromStreamChunk)
+          .filter(content -> content != null && !content.isEmpty())
+          .doOnError(error -> logger.error("Erreur lors du streaming LLM", error))
+          .onErrorResume(throwable -> {
+            logger.error("Erreur fatale lors du streaming, tentative de récupération", throwable);
+            return Flux.error(new LlmClientException("Erreur lors du streaming LLM", throwable));
+          });
+    });
   }
 
-  /** Construit l'URL complète de l'API. */
-  private String buildApiUrl() {
-    return baseUrl + API_ENDPOINT;
-  }
 
   /** Normalise l'URL de base en s'assurant qu'elle se termine par '/'. */
   private String normalizeBaseUrl(String url) {
     return url.endsWith("/") ? url : url + "/";
   }
 
-  /** Crée un client HTTP configuré avec le timeout spécifié. */
-  private CloseableHttpClient createConfiguredHttpClient(Duration timeout) {
-    RequestConfig requestConfig =
-        RequestConfig.custom()
-            .setConnectionRequestTimeout(Timeout.of(timeout.toMillis(), TimeUnit.MILLISECONDS))
-            .setResponseTimeout(Timeout.of(timeout.toMillis(), TimeUnit.MILLISECONDS))
-            .build();
 
-    return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
-  }
 
-  /** Crée une requête POST configurée. */
-  private HttpPost createPostRequest(String url) {
-    HttpPost request = new HttpPost(url);
-    request.addHeader(CONTENT_TYPE_HEADER, APPLICATION_JSON);
-    return request;
-  }
-
-  /** Configure l'entité JSON de la requête. */
-  private void setJsonEntity(HttpPost request, Map<String, Object> payload) throws IOException {
-    String jsonPayload = objectMapper.writeValueAsString(payload);
-    logger.trace("Payload JSON: {}", jsonPayload);
-    request.setEntity(new StringEntity(jsonPayload, ContentType.APPLICATION_JSON));
-  }
 
   /**
    * Construit le payload pour la requête de review.
    *
-   * <p>Note: Les espaces dans les clés sont intentionnels pour maintenir la compatibilité avec
-   * l'implémentation existante.
+   * @param systemPrompt Le prompt système
+   * @param userPrompt Le prompt utilisateur
+   * @return Le payload JSON pour la requête
    */
   private Map<String, Object> buildReviewPayload(String systemPrompt, String userPrompt) {
-    // Construction du message système avec l'instruction JSON
-    String fullSystemPrompt = systemPrompt + JSON_INSTRUCTION;
+    try {
+      String fullSystemPrompt = systemPrompt + JSON_INSTRUCTION;
 
-    // Messages avec les espaces dans les clés pour compatibilité
-    List<Map<String, String>> messages =
-        List.of(
-            Map.of(FIELD_ROLE, ROLE_SYSTEM, FIELD_CONTENT, fullSystemPrompt),
-            Map.of("role", "user", "content", userPrompt) // Espaces intentionnels
-            );
+      List<Map<String, String>> messages = List.of(
+          Map.of(FIELD_ROLE, ROLE_SYSTEM, FIELD_CONTENT, fullSystemPrompt),
+          Map.of(FIELD_ROLE, ROLE_USER, FIELD_CONTENT, userPrompt)
+      );
 
-    // Options avec les espaces dans les clés pour compatibilité
-    Map<String, Object> options = Map.of("temperature", DEFAULT_TEMPERATURE);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put(FIELD_MODEL, model);
+      payload.put(FIELD_MESSAGES, messages);
+      payload.put(FIELD_TEMPERATURE, DEFAULT_TEMPERATURE);
 
-    // Payload principal
-    Map<String, Object> payload = new HashMap<>();
-    payload.put(FIELD_MODEL, model);
-    payload.put(FIELD_MESSAGES, messages);
-    payload.put("temperature", DEFAULT_TEMPERATURE);
-    //payload.put("max_tokens", "300");
-    //payload.put(" options", options); // Espace intentionnel
-
-    return payload;
-  }
-
-  /** Exécute la requête et extrait la réponse selon le format. */
-  private String executeRequestAndExtractResponse(HttpPost request)
-      throws IOException, ParseException {
-    try (CloseableHttpResponse response = httpClient.execute(request)) {
-      validateHttpResponse(response);
-
-      String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-      logger.trace("Réponse brute du LLM: {}", responseBody);
-
-      return extractContentFromResponse(responseBody);
+      logger.trace("Payload construit: {}", objectMapper.writeValueAsString(payload));
+      return payload;
+    } catch (JsonProcessingException e) {
+      logger.error("Erreur lors de la construction du payload", e);
+      throw new LlmClientException("Erreur lors de la construction du payload", e);
     }
   }
 
-  /** Valide le code de statut HTTP de la réponse. */
-  private void validateHttpResponse(CloseableHttpResponse response) {
-    int statusCode = response.getCode();
-    if (statusCode < HttpStatus.SC_OK || statusCode >= HttpStatus.SC_MULTIPLE_CHOICES) {
-      String errorMessage =
-          String.format("Le LLM a retourné un code d'erreur HTTP: %d", statusCode);
-      logger.error(errorMessage);
-      throw new LlmClientException(errorMessage);
-    }
-  }
 
   /**
    * Extrait le contenu de la réponse JSON selon le format.
    *
-   * <p>Maintient la compatibilité avec les espaces dans les noms de champs.
+   * @param responseBody Le corps de la réponse brute
+   * @return Le contenu extrait
    */
-  private String extractContentFromResponse(String responseBody) throws IOException {
-    JsonNode rootNode = objectMapper.readTree(responseBody);
+  private String extractContentFromResponse(String responseBody) {
+    try {
+      JsonNode rootNode = objectMapper.readTree(responseBody);
 
-    // Vérifier d'abord avec les espaces (compatibilité)
-    if (rootNode.has(" message")) {
-      JsonNode messageNode = rootNode.get(" message");
-      if (messageNode.has(" content")) {
-        String content = messageNode.get(" content").asText();
-        logger.debug("Contenu extrait du champ ' message. content'");
+      // Format standard OpenAI
+      if (rootNode.has("choices") && rootNode.get("choices").isArray() && !rootNode.get("choices").isEmpty()) {
+        JsonNode firstChoice = rootNode.get("choices").get(0);
+        if (firstChoice.has(FIELD_MESSAGE) && firstChoice.get(FIELD_MESSAGE).has(FIELD_CONTENT)) {
+          String content = firstChoice.get(FIELD_MESSAGE).get(FIELD_CONTENT).asText();
+          logger.debug("Contenu extrait du format OpenAI");
+          return content;
+        }
+      }
+
+      // Format direct message.content
+      if (rootNode.has(FIELD_MESSAGE)) {
+        JsonNode messageNode = rootNode.get(FIELD_MESSAGE);
+        if (messageNode.has(FIELD_CONTENT)) {
+          String content = messageNode.get(FIELD_CONTENT).asText();
+          logger.debug("Contenu extrait du champ 'message.content'");
+          return content;
+        }
+      }
+
+      // Format direct content
+      if (rootNode.has(FIELD_CONTENT)) {
+        String content = rootNode.get(FIELD_CONTENT).asText();
+        logger.debug("Contenu extrait du champ 'content'");
         return content;
       }
-    }
 
-    // Ensuite sans espaces (cas normal)
-    if (rootNode.has(FIELD_MESSAGE)) {
-      JsonNode messageNode = rootNode.get(FIELD_MESSAGE);
-      if (messageNode.has(FIELD_CONTENT)) {
-        String content = messageNode.get(FIELD_CONTENT).asText();
-        logger.debug("Contenu extrait du champ 'message.content'");
-        return content;
+      // Si aucun champ standard n'est trouvé, retourner le corps brut
+      logger.warn("Format de réponse non reconnu, retour du corps brut");
+      return responseBody;
+    } catch (JsonProcessingException e) {
+      logger.error("Erreur lors du parsing JSON, retour du corps brut", e);
+      return responseBody;
+    }
+  }
+
+  /**
+   * Extrait le contenu d'un chunk de streaming.
+   *
+   * @param chunk Le chunk de réponse
+   * @return Le contenu extrait ou null si pas de contenu
+   */
+  private String extractContentFromStreamChunk(String chunk) {
+    try {
+      // Les chunks de streaming sont souvent préfixés par "data: "
+      String jsonPart = chunk.startsWith("data: ") ? chunk.substring(6).trim() : chunk.trim();
+
+      // Ignorer les chunks de fin
+      if ("[DONE]".equals(jsonPart) || jsonPart.isEmpty()) {
+        return null;
       }
-    }
 
-    // Vérifier le champ content avec espace
-    if (rootNode.has(" content")) {
-      String content = rootNode.get(" content").asText();
-      logger.debug("Contenu extrait du champ ' content'");
-      return content;
-    }
+      JsonNode chunkNode = objectMapper.readTree(jsonPart);
 
-    // Vérifier le champ content sans espace
-    if (rootNode.has(FIELD_CONTENT)) {
-      String content = rootNode.get(FIELD_CONTENT).asText();
-      logger.debug("Contenu extrait du champ 'content'");
-      return content;
-    }
+      // Format OpenAI streaming
+      if (chunkNode.has("choices") && chunkNode.get("choices").isArray() && !chunkNode.get("choices").isEmpty()) {
+        JsonNode firstChoice = chunkNode.get("choices").get(0);
+        if (firstChoice.has("delta") && firstChoice.get("delta").has(FIELD_CONTENT)) {
+          return firstChoice.get("delta").get(FIELD_CONTENT).asText();
+        }
+      }
 
-    // Si aucun champ standard n'est trouvé, retourner le corps brut
-    logger.warn("Format de réponse non reconnu, retour du corps brut");
-    return responseBody;
+      return null;
+    } catch (JsonProcessingException e) {
+      logger.trace("Chunk non-JSON ignoré: {}", chunk);
+      return null;
+    }
   }
 
   /** Valide les paramètres du constructeur. */
@@ -358,21 +333,6 @@ public class LlmClient implements Closeable {
     }
   }
 
-  /**
-   * Ferme les ressources du client.
-   *
-   * <p>Cette méthode doit être appelée lorsque le client n'est plus nécessaire pour libérer les
-   * ressources système (connexions HTTP, threads, etc.).
-   *
-   * @throws IOException si une erreur survient lors de la fermeture
-   */
-  @Override
-  public void close() throws IOException {
-    if (httpClient != null) {
-      httpClient.close();
-      logger.info("LlmClient fermé pour le modèle: {}", model);
-    }
-  }
 
   /**
    * Retourne l'URL de base configurée.

@@ -9,6 +9,8 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Service responsible for collecting unified diffs from various sources and converting them into
@@ -40,6 +42,7 @@ public class DiffCollectionService {
 
   /**
    * Collects diff from a GitHub Pull Request and converts it to a DiffBundle.
+   * Synchronous version for backward compatibility.
    *
    * @param githubClient the GitHub client to use for API calls
    * @param pullRequestNumber the Pull Request number to fetch diff from
@@ -47,12 +50,28 @@ public class DiffCollectionService {
    * @throws RuntimeException if GitHub API call fails
    */
   public DiffAnalysisBundle collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
-    String rawDiff = fetchDiffFromGitHub(githubClient, pullRequestNumber);
-    return createDiffBundle(rawDiff);
+    return collectFromGitHubReactive(githubClient, pullRequestNumber).block();
+  }
+
+  /**
+   * Collects diff from a GitHub Pull Request and converts it to a DiffBundle reactively.
+   *
+   * @param githubClient the GitHub client to use for API calls
+   * @param pullRequestNumber the Pull Request number to fetch diff from
+   * @return Mono<DiffBundle> containing both raw and parsed diff data
+   */
+  public Mono<DiffAnalysisBundle> collectFromGitHubReactive(GithubClient githubClient, int pullRequestNumber) {
+    return Mono.fromCallable(() -> fetchDiffFromGitHub(githubClient, pullRequestNumber))
+        .subscribeOn(Schedulers.boundedElastic())
+        .map(this::createDiffBundle)
+        .doOnError(error -> {
+          throw new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, error);
+        });
   }
 
   /**
    * Collects diff from local Git repository between two commits/branches.
+   * Synchronous version for backward compatibility.
    *
    * @param baseCommit the base commit or branch to compare from
    * @param headCommit the head commit or branch to compare to
@@ -60,8 +79,23 @@ public class DiffCollectionService {
    * @throws RuntimeException if git command execution fails
    */
   public DiffAnalysisBundle collectFromLocalGit(String baseCommit, String headCommit) {
-    String rawDiff = executeGitDiffCommand(baseCommit, headCommit);
-    return createDiffBundle(rawDiff);
+    return collectFromLocalGitReactive(baseCommit, headCommit).block();
+  }
+
+  /**
+   * Collects diff from local Git repository between two commits/branches reactively.
+   *
+   * @param baseCommit the base commit or branch to compare from
+   * @param headCommit the head commit or branch to compare to
+   * @return Mono<DiffBundle> containing both raw and parsed diff data
+   */
+  public Mono<DiffAnalysisBundle> collectFromLocalGitReactive(String baseCommit, String headCommit) {
+    return Mono.fromCallable(() -> executeGitDiffCommand(baseCommit, headCommit))
+        .subscribeOn(Schedulers.boundedElastic())
+        .map(this::createDiffBundle)
+        .doOnError(error -> {
+          throw new RuntimeException("Git diff command failed for " + baseCommit + ".." + headCommit, error);
+        });
   }
 
   /**

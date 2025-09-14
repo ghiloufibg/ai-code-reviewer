@@ -4,6 +4,8 @@ import com.ghiloufi.aicode.domain.ReviewResult;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Agrégateur responsable de la fusion de plusieurs résultats d'analyse de code en un seul résultat
@@ -24,6 +26,17 @@ public class ReviewResultMerger {
 
   /**
    * Fusionne une liste de résultats d'analyse en un seul résultat consolidé.
+   * Version synchrone pour compatibilité ascendante.
+   *
+   * @param reviewParts Liste des résultats d'analyse à fusionner
+   * @return Un nouveau {@link ReviewResult} contenant tous les éléments fusionnés
+   */
+  public ReviewResult merge(List<ReviewResult> reviewParts) {
+    return mergeReactive(reviewParts).block();
+  }
+
+  /**
+   * Fusionne une liste de résultats d'analyse en un seul résultat consolidé de manière réactive.
    *
    * <p>Cette méthode effectue les opérations suivantes :
    *
@@ -33,29 +46,39 @@ public class ReviewResultMerger {
    *   <li>Combine toutes les notes non-bloquantes
    * </ul>
    *
-   * @param reviewParts Liste des résultats d'analyse à fusionner. Ne doit pas être null, mais peut
-   *     être vide.
-   * @return Un nouveau {@link ReviewResult} contenant tous les éléments fusionnés. Retourne un
-   *     résultat vide si la liste d'entrée est vide.
-   * @throws IllegalArgumentException si reviewParts est null
-   * @see ReviewResult
+   * @param reviewParts Liste des résultats d'analyse à fusionner
+   * @return Un Mono<ReviewResult> contenant tous les éléments fusionnés
    */
-  public ReviewResult merge(List<ReviewResult> reviewParts) {
-    validateInput(reviewParts);
+  public Mono<ReviewResult> mergeReactive(List<ReviewResult> reviewParts) {
+    return Mono.fromCallable(() -> {
+      validateInput(reviewParts);
 
-    if (reviewParts.isEmpty()) {
-      return createEmptyResult();
-    }
+      if (reviewParts.isEmpty()) {
+        return createEmptyResult();
+      }
 
-    ReviewResult consolidatedResult = new ReviewResult();
+      ReviewResult consolidatedResult = new ReviewResult();
 
-    String mergedSummary = mergeSummaries(reviewParts);
-    consolidatedResult.summary = mergedSummary;
+      String mergedSummary = mergeSummaries(reviewParts);
+      consolidatedResult.summary = mergedSummary;
 
-    mergeIssues(reviewParts, consolidatedResult);
-    mergeNonBlockingNotes(reviewParts, consolidatedResult);
+      mergeIssues(reviewParts, consolidatedResult);
+      mergeNonBlockingNotes(reviewParts, consolidatedResult);
 
-    return consolidatedResult;
+      return consolidatedResult;
+    });
+  }
+
+  /**
+   * Fusionne un flux de résultats d'analyse en un seul résultat consolidé.
+   *
+   * @param reviewPartsFlux Flux des résultats d'analyse à fusionner
+   * @return Un Mono<ReviewResult> contenant tous les éléments fusionnés
+   */
+  public Mono<ReviewResult> mergeFlux(Flux<ReviewResult> reviewPartsFlux) {
+    return reviewPartsFlux
+        .collectList()
+        .flatMap(this::mergeReactive);
   }
 
   /**

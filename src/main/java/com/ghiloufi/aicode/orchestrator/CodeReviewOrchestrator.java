@@ -24,6 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Orchestrateur central pour la revue de code automatisée.
@@ -79,56 +82,69 @@ public class CodeReviewOrchestrator {
 
   /**
    * Exécute le processus complet de revue de code.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param config Configuration de l'application
    * @throws Exception Si une erreur survient pendant l'exécution
    */
   public void executeCodeReview(ApplicationConfig config) throws Exception {
-    logger.info("Démarrage d'AI Code Reviewer");
+    executeCodeReviewReactive(config).block();
+  }
 
-    try {
-      // Collecter le diff
-      DiffAnalysisBundle diffBundle = collectDiff(config);
-      logger.info(
-          "Diff collecté: {} fichiers, {} lignes totales",
-          diffBundle.getModifiedFileCount(),
-          diffBundle.getTotalLineCount());
+  /**
+   * Exécute le processus complet de revue de code de manière réactive.
+   *
+   * @param config Configuration de l'application
+   * @return Mono<Void> qui se complète quand l'analyse est terminée
+   */
+  public Mono<Void> executeCodeReviewReactive(ApplicationConfig config) {
+    logger.info("Démarrage d'AI Code Reviewer réactif");
 
-      // Effectuer l'analyse
-      ReviewResult reviewResult = performAnalysis(config, diffBundle);
-
-      // Sauvegarder et publier les résultats
-      saveArtifacts(diffBundle, reviewResult, config);
-      publishResults(config, reviewResult, diffBundle);
-
-      logger.info("Analyse terminée avec succès");
-
-    } catch (Exception e) {
-      logger.error("Erreur lors de l'exécution de l'analyse", e);
-      throw e;
-    }
+    return collectDiffReactive(config)
+        .doOnNext(diffBundle -> logger.info(
+            "Diff collecté: {} fichiers, {} lignes totales",
+            diffBundle.getModifiedFileCount(),
+            diffBundle.getTotalLineCount()))
+        .flatMap(diffBundle -> performAnalysisReactive(config, diffBundle)
+            .flatMap(reviewResult -> saveArtifactsReactive(diffBundle, reviewResult, config)
+                .then(publishResultsReactive(config, reviewResult, diffBundle))))
+        .doOnSuccess(unused -> logger.info("Analyse terminée avec succès"))
+        .doOnError(error -> logger.error("Erreur lors de l'exécution de l'analyse", error))
+        .then();
   }
 
   /**
    * Collecte le diff selon le mode configuré.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param config Configuration de l'application
    * @return Bundle contenant le diff et métadonnées
    */
   private DiffAnalysisBundle collectDiff(ApplicationConfig config) throws IOException {
+    return collectDiffReactive(config).block();
+  }
+
+  /**
+   * Collecte le diff selon le mode configuré de manière réactive.
+   *
+   * @param config Configuration de l'application
+   * @return Mono<DiffAnalysisBundle> contenant le diff et métadonnées
+   */
+  private Mono<DiffAnalysisBundle> collectDiffReactive(ApplicationConfig config) {
     logger.info("Collecte du diff en mode: {}", config.mode);
 
     if (MODE_LOCAL.equals(config.mode)) {
       logger.info("Analyse locale de {} à {}", config.fromCommit, config.toCommit);
-      return diffCollectionService.collectFromLocalGit(config.fromCommit, config.toCommit);
+      return diffCollectionService.collectFromLocalGitReactive(config.fromCommit, config.toCommit);
     } else {
       logger.info("Analyse de la PR #{} sur {}", config.pullRequestNumber, config.repository);
-      return diffCollectionService.collectFromGitHub(githubClient, config.pullRequestNumber);
+      return diffCollectionService.collectFromGitHubReactive(githubClient, config.pullRequestNumber);
     }
   }
 
   /**
    * Effectue l'analyse complète du diff.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param config Configuration
    * @param diffBundle Bundle de diff
@@ -136,34 +152,47 @@ public class CodeReviewOrchestrator {
    */
   private ReviewResult performAnalysis(ApplicationConfig config, DiffAnalysisBundle diffBundle)
       throws Exception {
+    return performAnalysisReactive(config, diffBundle).block();
+  }
 
+  /**
+   * Effectue l'analyse complète du diff de manière réactive.
+   *
+   * @param config Configuration
+   * @param diffBundle Bundle de diff
+   * @return Mono<ReviewResult> contenant le résultat de la revue fusionné
+   */
+  private Mono<ReviewResult> performAnalysisReactive(ApplicationConfig config, DiffAnalysisBundle diffBundle) {
     logger.info("Début de l'analyse avec le modèle: {}", config.model);
 
-    // Collecter les rapports d'analyse statique
-    Map<String, Object> staticReports = staticAnalysisRunner.runAndCollect();
-    logger.debug("Analyse statique collectée: {} outils", staticReports.size());
+    return Mono.fromCallable(() -> staticAnalysisRunner.runAndCollect())
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnNext(staticReports -> logger.debug("Analyse statique collectée: {} outils", staticReports.size()))
+        .flatMap(staticReports -> {
+          List<GitDiffDocument> chunks = diffBundle.splitByMaxLines(config.maxLinesPerChunk);
+          logger.info("Diff découpé en {} chunk(s)", chunks.size());
 
-    // Découper le diff en chunks
-    List<GitDiffDocument> chunks = diffBundle.splitByMaxLines(config.maxLinesPerChunk);
-    logger.info("Diff découpé en {} chunk(s)", chunks.size());
-
-    // Analyser chaque chunk
-    List<ReviewResult> chunkResults = new ArrayList<>();
-    for (int i = 0; i < chunks.size(); i++) {
-      logger.info("Analyse du chunk {}/{}", i + 1, chunks.size());
-      ReviewResult result = analyzeChunk(config, chunks.get(i), staticReports, diffBundle);
-      chunkResults.add(result);
-    }
-
-    // Fusionner les résultats
-    ReviewResult mergedResult = resultMerger.merge(chunkResults);
-    logger.info("Résultats fusionnés: {} issues trouvées", mergedResult.getTotalItemCount());
-
-    return mergedResult;
+          return Flux.fromIterable(chunks)
+              .index()
+              .flatMap(indexedChunk -> {
+                long index = indexedChunk.getT1();
+                GitDiffDocument chunk = indexedChunk.getT2();
+                logger.info("Analyse du chunk {}/{}", index + 1, chunks.size());
+                return analyzeChunkReactive(config, chunk, staticReports, diffBundle);
+              })
+              .collectList()
+              .flatMap(chunkResults -> {
+                logger.info("Fusion des résultats de {} chunks", chunkResults.size());
+                return resultMerger.mergeReactive(chunkResults);
+              })
+              .doOnNext(mergedResult -> logger.info(
+                  "Résultats fusionnés: {} issues trouvées", mergedResult.getTotalItemCount()));
+        });
   }
 
   /**
    * Analyse un chunk de diff avec le LLM.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param config Configuration
    * @param chunk Chunk à analyser
@@ -177,10 +206,25 @@ public class CodeReviewOrchestrator {
       Map<String, Object> staticReports,
       DiffAnalysisBundle fullBundle)
       throws IOException {
+    return analyzeChunkReactive(config, chunk, staticReports, fullBundle).block();
+  }
 
-    // Construire le prompt
-    String userPrompt =
-        promptBuilder.buildUserMessage(
+  /**
+   * Analyse un chunk de diff avec le LLM de manière réactive.
+   *
+   * @param config Configuration
+   * @param chunk Chunk à analyser
+   * @param staticReports Rapports d'analyse statique
+   * @param fullBundle Bundle complet pour contexte
+   * @return Mono<ReviewResult> contenant le résultat de l'analyse du chunk
+   */
+  private Mono<ReviewResult> analyzeChunkReactive(
+      ApplicationConfig config,
+      GitDiffDocument chunk,
+      Map<String, Object> staticReports,
+      DiffAnalysisBundle fullBundle) {
+
+    return Mono.fromCallable(() -> promptBuilder.buildUserMessage(
             config.repository,
             config.defaultBranch,
             config.javaVersion,
@@ -188,47 +232,96 @@ public class CodeReviewOrchestrator {
             chunk.toUnifiedString(),
             staticReports,
             fullBundle.getProjectConfiguration(),
-            fullBundle.getTestStatus());
+            fullBundle.getTestStatus()))
+        .doOnNext(userPrompt -> logger.trace("Prompt construit, taille: {} caractères", userPrompt.length()))
+        .flatMap(userPrompt -> llmClient.reviewReactive(PromptBuilder.SYSTEM_PROMPT, userPrompt)
+            .map(this::processLlmResponse)
+            .flatMap(llmResponse -> validateAndRetryIfNeeded(userPrompt, llmResponse)))
+        .map(this::parseReviewResult);
+  }
 
-    logger.trace("Prompt construit, taille: {} caractères", userPrompt.length());
+  /**
+   * Analyse un chunk avec streaming du LLM pour une réponse plus rapide.
+   *
+   * @param config Configuration
+   * @param chunk Chunk à analyser
+   * @param staticReports Rapports d'analyse statique
+   * @param fullBundle Bundle complet pour contexte
+   * @return Mono<ReviewResult> avec streaming interne
+   */
+  public Mono<ReviewResult> analyzeChunkWithStreaming(
+      ApplicationConfig config,
+      GitDiffDocument chunk,
+      Map<String, Object> staticReports,
+      DiffAnalysisBundle fullBundle) {
 
-    // Envoyer au LLM
-    String llmResponse = llmClient.review(PromptBuilder.SYSTEM_PROMPT, userPrompt);
+    return Mono.fromCallable(() -> promptBuilder.buildUserMessage(
+            config.repository,
+            config.defaultBranch,
+            config.javaVersion,
+            config.buildSystem,
+            chunk.toUnifiedString(),
+            staticReports,
+            fullBundle.getProjectConfiguration(),
+            fullBundle.getTestStatus()))
+        .flatMap(userPrompt -> {
+          logger.debug("Démarrage de l'analyse chunk avec streaming");
 
-    ObjectMapper mapper = new ObjectMapper();
-    JsonNode rootNode = mapper.readTree(llmResponse);
-    JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
-    llmResponse = contentNode.asText();
+          return llmClient.reviewStream(PromptBuilder.SYSTEM_PROMPT, userPrompt)
+              .reduce(new StringBuilder(), (sb, streamChunk) -> sb.append(streamChunk))
+              .map(StringBuilder::toString)
+              .map(this::processLlmResponse)
+              .flatMap(llmResponse -> validateAndRetryIfNeeded(userPrompt, llmResponse))
+              .map(this::parseReviewResult)
+              .doOnNext(result -> logger.debug("Analyse chunk terminée avec streaming"));
+        });
+  }
 
-    // Trim whitespace
-    llmResponse = extractJson(llmResponse);
-    llmResponse = cleanToValidJsonChars(llmResponse);
+  private String processLlmResponse(String llmResponse) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode rootNode = mapper.readTree(llmResponse);
 
-    // Valider et retry si nécessaire
+      // Format OpenAI avec choices
+      if (rootNode.has("choices") && rootNode.get("choices").isArray() && !rootNode.get("choices").isEmpty()) {
+        JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
+        llmResponse = contentNode.asText();
+      }
+
+      // Nettoyer la réponse
+      llmResponse = extractJson(llmResponse);
+      llmResponse = cleanToValidJsonChars(llmResponse);
+
+      return llmResponse;
+    } catch (Exception e) {
+      logger.warn("Erreur lors du traitement de la réponse LLM, utilisation brute", e);
+      return llmResponse;
+    }
+  }
+
+  private Mono<String> validateAndRetryIfNeeded(String userPrompt, String llmResponse) {
     if (!reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
       logger.warn("Réponse LLM invalide, nouvelle tentative avec instruction stricte");
 
-      String strictPrompt =
-          userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON complying with the schema above.";
+      String strictPrompt = userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON complying with the schema above.";
 
-      llmResponse = llmClient.review(PromptBuilder.SYSTEM_PROMPT, strictPrompt);
-
-      if (!reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
-        logger.error("Réponse LLM toujours invalide après retry");
-        throw new RuntimeException("Impossible d'obtenir une réponse valide du LLM");
-      }
+      return llmClient.reviewReactive(PromptBuilder.SYSTEM_PROMPT, strictPrompt)
+          .map(this::processLlmResponse)
+          .filter(response -> reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, response))
+          .switchIfEmpty(Mono.error(new RuntimeException("Impossible d'obtenir une réponse valide du LLM")));
     }
 
+    return Mono.just(llmResponse);
+  }
+
+  private ReviewResult parseReviewResult(String llmResponse) {
     return ReviewResult.fromJson(llmResponse);
   }
 
   private String cleanToValidJsonChars(String raw) {
     if (raw == null) return null;
 
-    // Supprimer tout caractère de contrôle sauf tabulation, retour chariot et saut de ligne
     String cleaned = raw.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "");
-
-    // Supprimer les séquences parasites connues (exemple : <｜begin▁of▁sentence｜>)
     cleaned = cleaned.replaceAll("<\\|.*?\\|>", "");
 
     return cleaned.trim();
@@ -240,11 +333,12 @@ public class CodeReviewOrchestrator {
     if (start != -1 && end != -1 && end > start) {
       return input.substring(start, end + 1).trim();
     }
-    return null;
+    return input;
   }
 
   /**
    * Sauvegarde les artifacts de l'analyse.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param diffBundle Bundle de diff
    * @param reviewResult Résultat de la revue
@@ -253,36 +347,59 @@ public class CodeReviewOrchestrator {
   private void saveArtifacts(
       DiffAnalysisBundle diffBundle, ReviewResult reviewResult, ApplicationConfig config)
       throws IOException {
+    saveArtifactsReactive(diffBundle, reviewResult, config).block();
+  }
 
-    Path outputDir = Path.of(OUTPUT_DIR);
-    Files.createDirectories(outputDir);
+  /**
+   * Sauvegarde les artifacts de l'analyse de manière réactive.
+   *
+   * @param diffBundle Bundle de diff
+   * @param reviewResult Résultat de la revue
+   * @param config Configuration pour les chemins
+   * @return Mono<Void> qui se complète quand la sauvegarde est terminée
+   */
+  private Mono<Void> saveArtifactsReactive(
+      DiffAnalysisBundle diffBundle, ReviewResult reviewResult, ApplicationConfig config) {
 
-    // Sauvegarder le résultat de la revue
-    Path reviewPath = outputDir.resolve(REVIEW_FILE);
-    Files.writeString(reviewPath, reviewResult.toJson());
-    logger.info("Résultat sauvegardé dans: {}", reviewPath);
+    return Mono.fromCallable(() -> {
+      try {
+        Path outputDir = Path.of(OUTPUT_DIR);
+        Files.createDirectories(outputDir);
 
-    // Sauvegarder le diff
-    Path diffPath = outputDir.resolve(DIFF_FILE);
-    Files.writeString(diffPath, diffBundle.getUnifiedDiffString());
-    logger.info("Diff sauvegardé dans: {}", diffPath);
+        // Sauvegarder le résultat de la revue
+        Path reviewPath = outputDir.resolve(REVIEW_FILE);
+        Files.writeString(reviewPath, reviewResult.toJson());
+        logger.info("Résultat sauvegardé dans: {}", reviewPath);
 
-    // Sauvegarder un résumé du prompt (pas le prompt complet pour économiser l'espace)
-    Path promptPath = outputDir.resolve(PROMPT_FILE);
-    String promptSummary =
-        String.format(
+        // Sauvegarder le diff
+        Path diffPath = outputDir.resolve(DIFF_FILE);
+        Files.writeString(diffPath, diffBundle.getUnifiedDiffString());
+        logger.info("Diff sauvegardé dans: {}", diffPath);
+
+        // Sauvegarder un résumé du prompt
+        Path promptPath = outputDir.resolve(PROMPT_FILE);
+        String promptSummary = String.format(
             "Mode: %s\nRepository: %s\nModel: %s\nChunks: %d\nTimestamp: %s",
             config.mode,
             config.repository,
             config.model,
             diffBundle.splitByMaxLines(config.maxLinesPerChunk).size(),
             new Date());
-    Files.writeString(promptPath, promptSummary);
-    logger.debug("Résumé du prompt sauvegardé");
+        Files.writeString(promptPath, promptSummary);
+        logger.debug("Résumé du prompt sauvegardé");
+
+        return null;
+      } catch (IOException e) {
+        throw new RuntimeException("Erreur lors de la sauvegarde des artifacts", e);
+      }
+    })
+    .subscribeOn(Schedulers.boundedElastic())
+    .then();
   }
 
   /**
    * Publie les résultats selon le mode configuré.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param config Configuration
    * @param reviewResult Résultat à publier
@@ -291,22 +408,46 @@ public class CodeReviewOrchestrator {
   private void publishResults(
       ApplicationConfig config, ReviewResult reviewResult, DiffAnalysisBundle diffBundle)
       throws Exception {
+    publishResultsReactive(config, reviewResult, diffBundle).block();
+  }
+
+  /**
+   * Publie les résultats selon le mode configuré de manière réactive.
+   *
+   * @param config Configuration
+   * @param reviewResult Résultat à publier
+   * @param diffBundle Bundle pour contexte
+   * @return Mono<Void> qui se complète quand la publication est terminée
+   */
+  private Mono<Void> publishResultsReactive(
+      ApplicationConfig config, ReviewResult reviewResult, DiffAnalysisBundle diffBundle) {
 
     if (MODE_GITHUB.equals(config.mode)
         && config.pullRequestNumber > 0
         && reviewPublisher != null) {
       logger.info("Publication des résultats sur GitHub PR #{}", config.pullRequestNumber);
-      reviewPublisher.publish(config.pullRequestNumber, reviewResult, diffBundle);
-      logger.info("Résultats publiés avec succès sur GitHub");
+      return Mono.fromCallable(() -> {
+        try {
+          reviewPublisher.publish(config.pullRequestNumber, reviewResult, diffBundle);
+          logger.info("Résultats publiés avec succès sur GitHub");
+          return null;
+        } catch (Exception e) {
+          throw new RuntimeException("Erreur lors de la publication sur GitHub", e);
+        }
+      })
+      .subscribeOn(Schedulers.boundedElastic())
+      .then();
     } else {
-      // Mode local ou pas de PR : afficher en console
-      System.out.println("\n" + "=".repeat(80));
-      System.out.println("RÉSULTAT DE LA REVUE DE CODE");
-      System.out.println("=".repeat(80));
-      System.out.println(reviewResult.toPrettyJson());
-      System.out.println("=".repeat(80));
+      return Mono.fromRunnable(() -> {
+        // Mode local ou pas de PR : afficher en console
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("RÉSULTAT DE LA REVUE DE CODE");
+        System.out.println("=".repeat(80));
+        System.out.println(reviewResult.toPrettyJson());
+        System.out.println("=".repeat(80));
 
-      logger.info("Résultats affichés en console");
+        logger.info("Résultats affichés en console");
+      });
     }
   }
 
