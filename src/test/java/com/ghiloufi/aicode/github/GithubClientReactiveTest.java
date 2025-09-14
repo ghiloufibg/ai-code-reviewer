@@ -131,29 +131,29 @@ class GithubClientReactiveTest {
     }
 
     @Test
-    @DisplayName("fetchPrUnifiedDiffReactive should return Mono")
+    @DisplayName("fetchPrUnifiedDiff should return Mono")
     void testFetchPrUnifiedDiffReactive() {
       // This will fail with network error since we're not mocking, but it verifies the reactive chain
-      StepVerifier.create(client.fetchPrUnifiedDiffReactive(1, 3))
+      StepVerifier.create(client.fetchPrUnifiedDiff(1, 3))
           .expectErrorMatches(throwable ->
               throwable instanceof GithubClient.GithubClientException)
           .verify();
     }
 
     @Test
-    @DisplayName("postIssueCommentReactive should return Mono")
+    @DisplayName("postIssueComment should return Mono")
     void testPostIssueCommentReactive() {
-      StepVerifier.create(client.postIssueCommentReactive(1, "test comment"))
+      StepVerifier.create(client.postIssueComment(1, "test comment"))
           .expectErrorMatches(throwable ->
               throwable instanceof GithubClient.GithubClientException)
           .verify();
     }
 
     @Test
-    @DisplayName("createReviewReactive should return Mono")
+    @DisplayName("createReview should return Mono")
     void testCreateReviewReactive() {
       var comment = new GithubClient.ReviewComment("file.txt", 1, "test comment");
-      StepVerifier.create(client.createReviewReactive(1, List.of(comment)))
+      StepVerifier.create(client.createReview(1, List.of(comment)))
           .expectErrorMatches(throwable ->
               throwable instanceof GithubClient.GithubClientException)
           .verify();

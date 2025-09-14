@@ -137,7 +137,7 @@ public class Application implements CommandLineRunner {
       logConfiguration(config);
 
       // Déléguer l'exécution à l'orchestrateur (réactif)
-      orchestrator.executeCodeReviewReactive(config).block();
+      orchestrator.executeCodeReview(config).block();
 
     } catch (Exception e) {
       logger.error("Erreur lors de l'exécution de l'analyse", e);

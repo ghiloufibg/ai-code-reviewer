@@ -137,16 +137,6 @@ public class StaticAnalysisRunner {
         maxContentLength);
   }
 
-  /**
-   * Exécute la collecte des résultats d'analyse statique.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @return Une Map contenant les résultats de chaque outil d'analyse
-   * @throws StaticAnalysisException si une erreur critique survient lors de la collecte
-   */
-  public Map<String, Object> runAndCollect() {
-    return runAndCollectReactive().block();
-  }
 
   /**
    * Exécute la collecte des résultats d'analyse statique de manière réactive.
@@ -156,7 +146,7 @@ public class StaticAnalysisRunner {
    *
    * @return Mono<Map<String, Object>> contenant les résultats de chaque outil d'analyse
    */
-  public Mono<Map<String, Object>> runAndCollectReactive() {
+  public Mono<Map<String, Object>> runAndCollect() {
     logger.debug(
         "Début de la collecte réactive des résultats d'analyse statique depuis: {}", targetDirectory);
 

@@ -51,16 +51,16 @@ class DiffCollectionServiceReactiveTest {
   class GitHubCollectionTests {
 
     @Test
-    @DisplayName("collectFromGitHubReactive should work with valid PR")
+    @DisplayName("collectFromGitHub should work with valid PR")
     void testCollectFromGitHubReactive() {
       // Arrange
-      when(mockGithubClient.fetchPrUnifiedDiffReactive(anyInt(), anyInt()))
+      when(mockGithubClient.fetchPrUnifiedDiff(anyInt(), anyInt()))
           .thenReturn(Mono.just(SAMPLE_DIFF));
       when(mockUnifiedDiffParser.parse(SAMPLE_DIFF))
           .thenReturn(mockGitDiffDocument);
 
       // Act & Assert
-      StepVerifier.create(diffCollectionService.collectFromGitHubReactive(mockGithubClient, 123))
+      StepVerifier.create(diffCollectionService.collectFromGitHub(mockGithubClient, 123))
           .expectNextMatches(bundle -> {
             assertNotNull(bundle);
             assertEquals(SAMPLE_DIFF, bundle.getUnifiedDiffString());
@@ -68,25 +68,25 @@ class DiffCollectionServiceReactiveTest {
           })
           .verifyComplete();
 
-      verify(mockGithubClient).fetchPrUnifiedDiffReactive(123, CONTEXT_LINES);
+      verify(mockGithubClient).fetchPrUnifiedDiff(123, CONTEXT_LINES);
       verify(mockUnifiedDiffParser).parse(SAMPLE_DIFF);
     }
 
     @Test
-    @DisplayName("collectFromGitHubReactive should handle GitHub client errors")
+    @DisplayName("collectFromGitHub should handle GitHub client errors")
     void testCollectFromGitHubReactiveWithError() {
       // Arrange
-      when(mockGithubClient.fetchPrUnifiedDiffReactive(anyInt(), anyInt()))
+      when(mockGithubClient.fetchPrUnifiedDiff(anyInt(), anyInt()))
           .thenReturn(Mono.error(new RuntimeException("GitHub API error")));
 
       // Act & Assert
-      StepVerifier.create(diffCollectionService.collectFromGitHubReactive(mockGithubClient, 123))
+      StepVerifier.create(diffCollectionService.collectFromGitHub(mockGithubClient, 123))
           .expectErrorMatches(throwable ->
               throwable instanceof RuntimeException &&
               throwable.getMessage().contains("Failed to fetch diff from GitHub PR #123"))
           .verify();
 
-      verify(mockGithubClient).fetchPrUnifiedDiffReactive(123, CONTEXT_LINES);
+      verify(mockGithubClient).fetchPrUnifiedDiff(123, CONTEXT_LINES);
       verifyNoInteractions(mockUnifiedDiffParser);
     }
 
@@ -94,18 +94,18 @@ class DiffCollectionServiceReactiveTest {
     @DisplayName("collectFromGitHub should use reactive implementation")
     void testCollectFromGitHubUsesReactive() {
       // Arrange
-      when(mockGithubClient.fetchPrUnifiedDiffReactive(anyInt(), anyInt()))
+      when(mockGithubClient.fetchPrUnifiedDiff(anyInt(), anyInt()))
           .thenReturn(Mono.just(SAMPLE_DIFF));
       when(mockUnifiedDiffParser.parse(SAMPLE_DIFF))
           .thenReturn(mockGitDiffDocument);
 
       // Act
-      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123);
+      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123).block();
 
       // Assert
       assertNotNull(result);
       assertEquals(SAMPLE_DIFF, result.getUnifiedDiffString());
-      verify(mockGithubClient).fetchPrUnifiedDiffReactive(123, CONTEXT_LINES);
+      verify(mockGithubClient).fetchPrUnifiedDiff(123, CONTEXT_LINES);
     }
   }
 
@@ -114,11 +114,11 @@ class DiffCollectionServiceReactiveTest {
   class LocalGitCollectionTests {
 
     @Test
-    @DisplayName("collectFromLocalGitReactive should handle process execution")
+    @DisplayName("collectFromLocalGit should handle process execution")
     void testCollectFromLocalGitReactive() {
       // This test would require significant mocking of process execution
       // For now, we'll just verify the method exists and can be called
-      StepVerifier.create(diffCollectionService.collectFromLocalGitReactive("HEAD~1", "HEAD"))
+      StepVerifier.create(diffCollectionService.collectFromLocalGit("HEAD~1", "HEAD"))
           .expectErrorMatches(throwable ->
               throwable instanceof RuntimeException)
           .verify();
@@ -128,9 +128,11 @@ class DiffCollectionServiceReactiveTest {
     @DisplayName("collectFromLocalGit should use reactive implementation")
     void testCollectFromLocalGitUsesReactive() {
       // Since this involves file system and process operations,
-      // we'll test that it doesn't crash immediately
-      assertThrows(RuntimeException.class, () ->
-          diffCollectionService.collectFromLocalGit("HEAD~1", "HEAD"));
+      // we'll test that it doesn't crash immediately using reactive stream
+      StepVerifier.create(diffCollectionService.collectFromLocalGit("HEAD~1", "HEAD"))
+          .expectErrorMatches(throwable ->
+              throwable instanceof RuntimeException)
+          .verify();
     }
   }
 

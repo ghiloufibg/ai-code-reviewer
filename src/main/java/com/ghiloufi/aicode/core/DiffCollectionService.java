@@ -40,18 +40,6 @@ public class DiffCollectionService {
     this.repository = repository;
   }
 
-  /**
-   * Collects diff from a GitHub Pull Request and converts it to a DiffBundle.
-   * Synchronous version for backward compatibility.
-   *
-   * @param githubClient the GitHub client to use for API calls
-   * @param pullRequestNumber the Pull Request number to fetch diff from
-   * @return DiffBundle containing both raw and parsed diff data
-   * @throws RuntimeException if GitHub API call fails
-   */
-  public DiffAnalysisBundle collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
-    return collectFromGitHubReactive(githubClient, pullRequestNumber).block();
-  }
 
   /**
    * Collects diff from a GitHub Pull Request and converts it to a DiffBundle reactively.
@@ -60,24 +48,12 @@ public class DiffCollectionService {
    * @param pullRequestNumber the Pull Request number to fetch diff from
    * @return Mono<DiffBundle> containing both raw and parsed diff data
    */
-  public Mono<DiffAnalysisBundle> collectFromGitHubReactive(GithubClient githubClient, int pullRequestNumber) {
-    return githubClient.fetchPrUnifiedDiffReactive(pullRequestNumber, contextLines)
+  public Mono<DiffAnalysisBundle> collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
+    return githubClient.fetchPrUnifiedDiff(pullRequestNumber, contextLines)
         .map(this::createDiffBundle)
         .onErrorMap(error -> new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, error));
   }
 
-  /**
-   * Collects diff from local Git repository between two commits/branches.
-   * Synchronous version for backward compatibility.
-   *
-   * @param baseCommit the base commit or branch to compare from
-   * @param headCommit the head commit or branch to compare to
-   * @return DiffBundle containing both raw and parsed diff data
-   * @throws RuntimeException if git command execution fails
-   */
-  public DiffAnalysisBundle collectFromLocalGit(String baseCommit, String headCommit) {
-    return collectFromLocalGitReactive(baseCommit, headCommit).block();
-  }
 
   /**
    * Collects diff from local Git repository between two commits/branches reactively.
@@ -86,7 +62,7 @@ public class DiffCollectionService {
    * @param headCommit the head commit or branch to compare to
    * @return Mono<DiffBundle> containing both raw and parsed diff data
    */
-  public Mono<DiffAnalysisBundle> collectFromLocalGitReactive(String baseCommit, String headCommit) {
+  public Mono<DiffAnalysisBundle> collectFromLocalGit(String baseCommit, String headCommit) {
     return Mono.fromCallable(() -> executeGitDiffCommand(baseCommit, headCommit))
         .subscribeOn(Schedulers.boundedElastic())
         .map(this::createDiffBundle)
@@ -95,21 +71,6 @@ public class DiffCollectionService {
         });
   }
 
-  /**
-   * Fetches unified diff from GitHub API for the specified Pull Request.
-   *
-   * @param githubClient the GitHub client to use for API calls
-   * @param pullRequestNumber the Pull Request number
-   * @return raw unified diff as string
-   * @throws RuntimeException if GitHub API call fails
-   */
-  private String fetchDiffFromGitHub(GithubClient githubClient, int pullRequestNumber) {
-    try {
-      return githubClient.fetchPrUnifiedDiff(pullRequestNumber, contextLines);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, e);
-    }
-  }
 
   /**
    * Executes git diff command locally to generate unified diff.

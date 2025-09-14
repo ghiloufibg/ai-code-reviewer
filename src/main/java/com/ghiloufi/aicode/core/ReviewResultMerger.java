@@ -24,16 +24,6 @@ public class ReviewResultMerger {
   /** Séparateur utilisé pour joindre les résumés multiples */
   private static final String SUMMARY_SEPARATOR = " ";
 
-  /**
-   * Fusionne une liste de résultats d'analyse en un seul résultat consolidé.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param reviewParts Liste des résultats d'analyse à fusionner
-   * @return Un nouveau {@link ReviewResult} contenant tous les éléments fusionnés
-   */
-  public ReviewResult merge(List<ReviewResult> reviewParts) {
-    return mergeReactive(reviewParts).block();
-  }
 
   /**
    * Fusionne une liste de résultats d'analyse en un seul résultat consolidé de manière réactive.
@@ -49,7 +39,7 @@ public class ReviewResultMerger {
    * @param reviewParts Liste des résultats d'analyse à fusionner
    * @return Un Mono<ReviewResult> contenant tous les éléments fusionnés
    */
-  public Mono<ReviewResult> mergeReactive(List<ReviewResult> reviewParts) {
+  public Mono<ReviewResult> merge(List<ReviewResult> reviewParts) {
     return Mono.fromCallable(() -> {
       validateInput(reviewParts);
 
@@ -78,7 +68,7 @@ public class ReviewResultMerger {
   public Mono<ReviewResult> mergeFlux(Flux<ReviewResult> reviewPartsFlux) {
     return reviewPartsFlux
         .collectList()
-        .flatMap(this::mergeReactive);
+        .flatMap(this::merge);
   }
 
   /**

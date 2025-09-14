@@ -80,16 +80,6 @@ public class CodeReviewOrchestrator {
     this.reviewPublisher = reviewPublisher;
   }
 
-  /**
-   * Exécute le processus complet de revue de code.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param config Configuration de l'application
-   * @throws Exception Si une erreur survient pendant l'exécution
-   */
-  public void executeCodeReview(ApplicationConfig config) throws Exception {
-    executeCodeReviewReactive(config).block();
-  }
 
   /**
    * Exécute le processus complet de revue de code de manière réactive.
@@ -97,32 +87,22 @@ public class CodeReviewOrchestrator {
    * @param config Configuration de l'application
    * @return Mono<Void> qui se complète quand l'analyse est terminée
    */
-  public Mono<Void> executeCodeReviewReactive(ApplicationConfig config) {
+  public Mono<Void> executeCodeReview(ApplicationConfig config) {
     logger.info("Démarrage d'AI Code Reviewer réactif");
 
-    return collectDiffReactive(config)
+    return collectDiff(config)
         .doOnNext(diffBundle -> logger.info(
             "Diff collecté: {} fichiers, {} lignes totales",
             diffBundle.getModifiedFileCount(),
             diffBundle.getTotalLineCount()))
-        .flatMap(diffBundle -> performAnalysisReactive(config, diffBundle)
-            .flatMap(reviewResult -> saveArtifactsReactive(diffBundle, reviewResult, config)
-                .then(publishResultsReactive(config, reviewResult, diffBundle))))
+        .flatMap(diffBundle -> performAnalysis(config, diffBundle)
+            .flatMap(reviewResult -> saveArtifacts(diffBundle, reviewResult, config)
+                .then(publishResults(config, reviewResult, diffBundle))))
         .doOnSuccess(unused -> logger.info("Analyse terminée avec succès"))
         .doOnError(error -> logger.error("Erreur lors de l'exécution de l'analyse", error))
         .then();
   }
 
-  /**
-   * Collecte le diff selon le mode configuré.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param config Configuration de l'application
-   * @return Bundle contenant le diff et métadonnées
-   */
-  private DiffAnalysisBundle collectDiff(ApplicationConfig config) throws IOException {
-    return collectDiffReactive(config).block();
-  }
 
   /**
    * Collecte le diff selon le mode configuré de manière réactive.
@@ -130,30 +110,18 @@ public class CodeReviewOrchestrator {
    * @param config Configuration de l'application
    * @return Mono<DiffAnalysisBundle> contenant le diff et métadonnées
    */
-  private Mono<DiffAnalysisBundle> collectDiffReactive(ApplicationConfig config) {
+  private Mono<DiffAnalysisBundle> collectDiff(ApplicationConfig config) {
     logger.info("Collecte du diff en mode: {}", config.mode);
 
     if (MODE_LOCAL.equals(config.mode)) {
       logger.info("Analyse locale de {} à {}", config.fromCommit, config.toCommit);
-      return diffCollectionService.collectFromLocalGitReactive(config.fromCommit, config.toCommit);
+      return diffCollectionService.collectFromLocalGit(config.fromCommit, config.toCommit);
     } else {
       logger.info("Analyse de la PR #{} sur {}", config.pullRequestNumber, config.repository);
-      return diffCollectionService.collectFromGitHubReactive(githubClient, config.pullRequestNumber);
+      return diffCollectionService.collectFromGitHub(githubClient, config.pullRequestNumber);
     }
   }
 
-  /**
-   * Effectue l'analyse complète du diff.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param config Configuration
-   * @param diffBundle Bundle de diff
-   * @return Résultat de la revue fusionné
-   */
-  private ReviewResult performAnalysis(ApplicationConfig config, DiffAnalysisBundle diffBundle)
-      throws Exception {
-    return performAnalysisReactive(config, diffBundle).block();
-  }
 
   /**
    * Effectue l'analyse complète du diff de manière réactive.
@@ -162,10 +130,10 @@ public class CodeReviewOrchestrator {
    * @param diffBundle Bundle de diff
    * @return Mono<ReviewResult> contenant le résultat de la revue fusionné
    */
-  private Mono<ReviewResult> performAnalysisReactive(ApplicationConfig config, DiffAnalysisBundle diffBundle) {
+  private Mono<ReviewResult> performAnalysis(ApplicationConfig config, DiffAnalysisBundle diffBundle) {
     logger.info("Début de l'analyse avec le modèle: {}", config.model);
 
-    return staticAnalysisRunner.runAndCollectReactive()
+    return staticAnalysisRunner.runAndCollect()
         .doOnNext(staticReports -> logger.debug("Analyse statique collectée: {} outils", staticReports.size()))
         .flatMap(staticReports -> {
           List<GitDiffDocument> chunks = diffBundle.splitByMaxLines(config.maxLinesPerChunk);
@@ -177,36 +145,18 @@ public class CodeReviewOrchestrator {
                 long index = indexedChunk.getT1();
                 GitDiffDocument chunk = indexedChunk.getT2();
                 logger.info("Analyse du chunk {}/{}", index + 1, chunks.size());
-                return analyzeChunkReactive(config, chunk, staticReports, diffBundle);
+                return analyzeChunk(config, chunk, staticReports, diffBundle);
               })
               .collectList()
               .flatMap(chunkResults -> {
                 logger.info("Fusion des résultats de {} chunks", chunkResults.size());
-                return resultMerger.mergeReactive(chunkResults);
+                return resultMerger.merge(chunkResults);
               })
               .doOnNext(mergedResult -> logger.info(
                   "Résultats fusionnés: {} issues trouvées", mergedResult.getTotalItemCount()));
         });
   }
 
-  /**
-   * Analyse un chunk de diff avec le LLM.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param config Configuration
-   * @param chunk Chunk à analyser
-   * @param staticReports Rapports d'analyse statique
-   * @param fullBundle Bundle complet pour contexte
-   * @return Résultat de l'analyse du chunk
-   */
-  private ReviewResult analyzeChunk(
-      ApplicationConfig config,
-      GitDiffDocument chunk,
-      Map<String, Object> staticReports,
-      DiffAnalysisBundle fullBundle)
-      throws IOException {
-    return analyzeChunkReactive(config, chunk, staticReports, fullBundle).block();
-  }
 
   /**
    * Analyse un chunk de diff avec le LLM de manière réactive.
@@ -217,7 +167,7 @@ public class CodeReviewOrchestrator {
    * @param fullBundle Bundle complet pour contexte
    * @return Mono<ReviewResult> contenant le résultat de l'analyse du chunk
    */
-  private Mono<ReviewResult> analyzeChunkReactive(
+  private Mono<ReviewResult> analyzeChunk(
       ApplicationConfig config,
       GitDiffDocument chunk,
       Map<String, Object> staticReports,
@@ -233,7 +183,7 @@ public class CodeReviewOrchestrator {
             fullBundle.getProjectConfiguration(),
             fullBundle.getTestStatus()))
         .doOnNext(userPrompt -> logger.trace("Prompt construit, taille: {} caractères", userPrompt.length()))
-        .flatMap(userPrompt -> llmClient.reviewReactive(PromptBuilder.SYSTEM_PROMPT, userPrompt)
+        .flatMap(userPrompt -> llmClient.review(PromptBuilder.SYSTEM_PROMPT, userPrompt)
             .map(this::processLlmResponse)
             .flatMap(llmResponse -> validateAndRetryIfNeeded(userPrompt, llmResponse)))
         .map(this::parseReviewResult);
@@ -304,7 +254,7 @@ public class CodeReviewOrchestrator {
 
       String strictPrompt = userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON complying with the schema above.";
 
-      return llmClient.reviewReactive(PromptBuilder.SYSTEM_PROMPT, strictPrompt)
+      return llmClient.review(PromptBuilder.SYSTEM_PROMPT, strictPrompt)
           .map(this::processLlmResponse)
           .filter(response -> reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, response))
           .switchIfEmpty(Mono.error(new RuntimeException("Impossible d'obtenir une réponse valide du LLM")));
@@ -335,19 +285,6 @@ public class CodeReviewOrchestrator {
     return input;
   }
 
-  /**
-   * Sauvegarde les artifacts de l'analyse.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param diffBundle Bundle de diff
-   * @param reviewResult Résultat de la revue
-   * @param config Configuration pour les chemins
-   */
-  private void saveArtifacts(
-      DiffAnalysisBundle diffBundle, ReviewResult reviewResult, ApplicationConfig config)
-      throws IOException {
-    saveArtifactsReactive(diffBundle, reviewResult, config).block();
-  }
 
   /**
    * Sauvegarde les artifacts de l'analyse de manière réactive.
@@ -357,7 +294,7 @@ public class CodeReviewOrchestrator {
    * @param config Configuration pour les chemins
    * @return Mono<Void> qui se complète quand la sauvegarde est terminée
    */
-  private Mono<Void> saveArtifactsReactive(
+  private Mono<Void> saveArtifacts(
       DiffAnalysisBundle diffBundle, ReviewResult reviewResult, ApplicationConfig config) {
 
     return Mono.fromCallable(() -> {
@@ -396,19 +333,6 @@ public class CodeReviewOrchestrator {
     .then();
   }
 
-  /**
-   * Publie les résultats selon le mode configuré.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param config Configuration
-   * @param reviewResult Résultat à publier
-   * @param diffBundle Bundle pour contexte
-   */
-  private void publishResults(
-      ApplicationConfig config, ReviewResult reviewResult, DiffAnalysisBundle diffBundle)
-      throws Exception {
-    publishResultsReactive(config, reviewResult, diffBundle).block();
-  }
 
   /**
    * Publie les résultats selon le mode configuré de manière réactive.
@@ -418,7 +342,7 @@ public class CodeReviewOrchestrator {
    * @param diffBundle Bundle pour contexte
    * @return Mono<Void> qui se complète quand la publication est terminée
    */
-  private Mono<Void> publishResultsReactive(
+  private Mono<Void> publishResults(
       ApplicationConfig config, ReviewResult reviewResult, DiffAnalysisBundle diffBundle) {
 
     if (MODE_GITHUB.equals(config.mode)

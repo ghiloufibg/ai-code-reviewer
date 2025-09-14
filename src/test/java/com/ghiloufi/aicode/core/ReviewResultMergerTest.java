@@ -130,7 +130,7 @@ class ReviewResultMergerTest {
       List<ReviewResult> emptyList = new ArrayList<>();
 
       // When
-      ReviewResult result = aggregator.merge(emptyList);
+      ReviewResult result = aggregator.merge(emptyList).block();
 
       // Then
       assertNotNull(result);
@@ -151,7 +151,7 @@ class ReviewResultMergerTest {
       List<ReviewResult> singleList = Arrays.asList(singleResult);
 
       // When
-      ReviewResult result = aggregator.merge(singleList);
+      ReviewResult result = aggregator.merge(singleList).block();
 
       // Then
       assertEquals("Analyse terminée", result.summary);
@@ -180,7 +180,7 @@ class ReviewResultMergerTest {
       List<ReviewResult> results = Arrays.asList(result1, result2);
 
       // When
-      ReviewResult merged = aggregator.merge(results);
+      ReviewResult merged = aggregator.merge(results).block();
 
       // Then
       assertEquals("Première analyse Seconde analyse", merged.summary);
@@ -207,7 +207,7 @@ class ReviewResultMergerTest {
       List<ReviewResult> results = Arrays.asList(result1, result2, result3, result4, result5);
 
       // When
-      ReviewResult merged = aggregator.merge(results);
+      ReviewResult merged = aggregator.merge(results).block();
 
       // Then
       assertEquals("Résumé valide Autre résumé", merged.summary);
@@ -231,7 +231,7 @@ class ReviewResultMergerTest {
       List<ReviewResult> results = Arrays.asList(resultWithNullLists, normalResult);
 
       // When
-      ReviewResult merged = aggregator.merge(results);
+      ReviewResult merged = aggregator.merge(results).block();
 
       // Then
       assertEquals("Test Normal", merged.summary);
@@ -248,7 +248,7 @@ class ReviewResultMergerTest {
           Arrays.asList(validResult, null, createReviewResult("Autre valide"), null);
 
       // When
-      ReviewResult merged = aggregator.merge(resultsWithNull);
+      ReviewResult merged = aggregator.merge(resultsWithNull).block();
 
       // Then
       assertEquals("Valide Autre valide", merged.summary);
@@ -269,7 +269,7 @@ class ReviewResultMergerTest {
 
       // When
       long startTime = System.currentTimeMillis();
-      ReviewResult merged = aggregator.merge(manyResults);
+      ReviewResult merged = aggregator.merge(manyResults).block();
       long endTime = System.currentTimeMillis();
 
       // Then
@@ -379,7 +379,7 @@ class ReviewResultMergerTest {
                   Arrays.asList("Note C", "Note D")));
 
       // When
-      ReviewResult merged = aggregator.merge(results);
+      ReviewResult merged = aggregator.merge(results).block();
 
       // Then
       assertEquals("Premier Second", merged.summary);
@@ -413,7 +413,7 @@ class ReviewResultMergerTest {
                   "Analyse 3", createIssue("file3.java", 30, "ERROR", "Note informative")));
 
       // When
-      ReviewResult merged = aggregator.merge(results);
+      ReviewResult merged = aggregator.merge(results).block();
       String stats = aggregator.getStatistics(merged);
 
       // Then

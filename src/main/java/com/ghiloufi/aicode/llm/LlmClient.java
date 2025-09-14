@@ -106,18 +106,6 @@ public class LlmClient {
         timeout.getSeconds());
   }
 
-  /**
-   * Effectue une revue en envoyant des prompts système et utilisateur au LLM.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param systemPrompt Le prompt système définissant le contexte et les instructions
-   * @param userPrompt Le prompt utilisateur contenant le contenu à analyser
-   * @return La réponse du LLM, extraite selon le format de réponse
-   * @throws LlmClientException si la requête échoue ou si les paramètres sont invalides
-   */
-  public String review(String systemPrompt, String userPrompt) {
-    return reviewReactive(systemPrompt, userPrompt).block();
-  }
 
   /**
    * Effectue une revue réactive en envoyant des prompts système et utilisateur au LLM.
@@ -130,7 +118,7 @@ public class LlmClient {
    * @param userPrompt Le prompt utilisateur contenant le contenu à analyser
    * @return Un Mono contenant la réponse du LLM
    */
-  public Mono<String> reviewReactive(String systemPrompt, String userPrompt) {
+  public Mono<String> review(String systemPrompt, String userPrompt) {
     return Mono.fromCallable(() -> {
       validatePrompts(systemPrompt, userPrompt);
       return buildReviewPayload(systemPrompt, userPrompt);

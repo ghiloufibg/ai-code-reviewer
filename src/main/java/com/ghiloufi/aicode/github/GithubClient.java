@@ -118,18 +118,6 @@ public class GithubClient {
     logger.info("GithubClient réactif initialisé pour le repository: {}", repository);
   }
 
-  /**
-   * Récupère le diff unifié d'une Pull Request.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param pullRequestNumber Le numéro de la Pull Request
-   * @param contextLines Le nombre de lignes de contexte
-   * @return Le diff unifié sous forme de chaîne de caractères
-   * @throws GithubClientException si la requête échoue
-   */
-  public String fetchPrUnifiedDiff(int pullRequestNumber, int contextLines) {
-    return fetchPrUnifiedDiffReactive(pullRequestNumber, contextLines).block();
-  }
 
   /**
    * Récupère le diff unifié d'une Pull Request de manière réactive.
@@ -138,7 +126,7 @@ public class GithubClient {
    * @param contextLines Le nombre de lignes de contexte
    * @return Mono<String> contenant le diff unifié
    */
-  public Mono<String> fetchPrUnifiedDiffReactive(int pullRequestNumber, int contextLines) {
+  public Mono<String> fetchPrUnifiedDiff(int pullRequestNumber, int contextLines) {
     return Mono.fromCallable(() -> {
       validatePullRequestNumber(pullRequestNumber);
       return pullRequestNumber;
@@ -162,17 +150,6 @@ public class GithubClient {
     });
   }
 
-  /**
-   * Poste un commentaire sur une issue ou Pull Request.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param issueNumber Le numéro de l'issue ou de la Pull Request
-   * @param commentBody Le contenu du commentaire
-   * @throws GithubClientException si la requête échoue
-   */
-  public void postIssueComment(int issueNumber, String commentBody) {
-    postIssueCommentReactive(issueNumber, commentBody).block();
-  }
 
   /**
    * Poste un commentaire sur une issue ou Pull Request de manière réactive.
@@ -181,7 +158,7 @@ public class GithubClient {
    * @param commentBody Le contenu du commentaire
    * @return Mono<Void> qui se complète quand le commentaire est posté
    */
-  public Mono<Void> postIssueCommentReactive(int issueNumber, String commentBody) {
+  public Mono<Void> postIssueComment(int issueNumber, String commentBody) {
     return Mono.fromCallable(() -> {
       validatePullRequestNumber(issueNumber);
       validateCommentBody(commentBody);
@@ -206,17 +183,6 @@ public class GithubClient {
     });
   }
 
-  /**
-   * Crée une review sur une Pull Request avec des commentaires positionnés.
-   * Version synchrone pour compatibilité ascendante.
-   *
-   * @param pullRequestNumber Le numéro de la Pull Request
-   * @param comments Liste des commentaires à inclure dans la review
-   * @throws GithubClientException si la requête échoue
-   */
-  public void createReview(int pullRequestNumber, List<ReviewComment> comments) {
-    createReviewReactive(pullRequestNumber, comments).block();
-  }
 
   /**
    * Crée une review sur une Pull Request avec des commentaires positionnés de manière réactive.
@@ -225,7 +191,7 @@ public class GithubClient {
    * @param comments Liste des commentaires à inclure dans la review
    * @return Mono<Void> qui se complète quand la review est créée
    */
-  public Mono<Void> createReviewReactive(int pullRequestNumber, List<ReviewComment> comments) {
+  public Mono<Void> createReview(int pullRequestNumber, List<ReviewComment> comments) {
     return Mono.fromCallable(() -> {
       validatePullRequestNumber(pullRequestNumber);
       validateReviewComments(comments);
