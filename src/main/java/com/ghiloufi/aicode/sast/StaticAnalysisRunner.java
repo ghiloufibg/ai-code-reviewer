@@ -8,6 +8,9 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Collecteur de résultats d'analyse statique pour le plugin AI Code Reviewer.
@@ -136,73 +139,68 @@ public class StaticAnalysisRunner {
 
   /**
    * Exécute la collecte des résultats d'analyse statique.
-   *
-   * <p>Cette méthode parcourt le répertoire cible et collecte les résultats de tous les outils
-   * d'analyse statique configurés. Les résultats sont retournés dans une Map avec les clés
-   * suivantes :
-   *
-   * <ul>
-   *   <li>"checkstyle" : Résultats Checkstyle (XML tronqué)
-   *   <li>"pmd" : Résultats PMD (XML tronqué)
-   *   <li>"spotbugs" : Résultats SpotBugs (XML tronqué)
-   *   <li>"semgrep" : Résultats Semgrep (objet JSON parsé)
-   * </ul>
-   *
-   * <p><strong>Comportement :</strong>
-   *
-   * <ul>
-   *   <li>Si un fichier n'existe pas, une chaîne vide est retournée
-   *   <li>Les fichiers JSON sont parsés en objets Java
-   *   <li>Les fichiers XML sont tronqués à maxContentLength caractères
-   *   <li>Les erreurs de lecture sont loggées mais n'interrompent pas le processus
-   * </ul>
+   * Version synchrone pour compatibilité ascendante.
    *
    * @return Une Map contenant les résultats de chaque outil d'analyse
    * @throws StaticAnalysisException si une erreur critique survient lors de la collecte
    */
   public Map<String, Object> runAndCollect() {
-    logger.debug(
-        "Début de la collecte des résultats d'analyse statique depuis: {}", targetDirectory);
-
-    try {
-      Map<String, Object> results = new HashMap<>();
-
-      // Collecter les résultats de chaque outil
-      results.put(KEY_CHECKSTYLE, collectToolResult(CHECKSTYLE_FILE, KEY_CHECKSTYLE));
-      results.put(KEY_PMD, collectToolResult(PMD_FILE, KEY_PMD));
-      results.put(KEY_SPOTBUGS, collectToolResult(SPOTBUGS_FILE, KEY_SPOTBUGS));
-      results.put(KEY_SEMGREP, collectToolResult(SEMGREP_FILE, KEY_SEMGREP));
-
-      logCollectionSummary(results);
-
-      return results;
-
-    } catch (Exception e) {
-      String errorMessage = "Erreur inattendue lors de la collecte des résultats d'analyse";
-      logger.error(errorMessage, e);
-      throw new StaticAnalysisException(errorMessage, e);
-    }
+    return runAndCollectReactive().block();
   }
 
   /**
-   * Collecte le résultat d'un outil spécifique.
+   * Exécute la collecte des résultats d'analyse statique de manière réactive.
+   *
+   * <p>Cette méthode parcourt le répertoire cible et collecte les résultats de tous les outils
+   * d'analyse statique configurés de manière non-bloquante.
+   *
+   * @return Mono<Map<String, Object>> contenant les résultats de chaque outil d'analyse
+   */
+  public Mono<Map<String, Object>> runAndCollectReactive() {
+    logger.debug(
+        "Début de la collecte réactive des résultats d'analyse statique depuis: {}", targetDirectory);
+
+    Map<String, String> toolFiles = Map.of(
+        KEY_CHECKSTYLE, CHECKSTYLE_FILE,
+        KEY_PMD, PMD_FILE,
+        KEY_SPOTBUGS, SPOTBUGS_FILE,
+        KEY_SEMGREP, SEMGREP_FILE
+    );
+
+    return Flux.fromIterable(toolFiles.entrySet())
+        .flatMap(entry -> {
+          String toolName = entry.getKey();
+          String fileName = entry.getValue();
+          return collectToolResultReactive(fileName, toolName)
+              .map(result -> Map.entry(toolName, result));
+        })
+        .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+        .doOnNext(this::logCollectionSummary)
+        .onErrorMap(throwable -> new StaticAnalysisException(
+            "Erreur inattendue lors de la collecte des résultats d'analyse", throwable));
+  }
+
+  /**
+   * Collecte le résultat d'un outil spécifique de manière réactive.
    *
    * @param fileName Le nom du fichier de résultat
    * @param toolName Le nom de l'outil (pour le logging)
-   * @return Le contenu du fichier ou une chaîne vide si absent
+   * @return Mono<Object> contenant le contenu du fichier ou une chaîne vide si absent
    */
-  private Object collectToolResult(String fileName, String toolName) {
+  private Mono<Object> collectToolResultReactive(String fileName, String toolName) {
     Path filePath = targetDirectory.resolve(fileName);
-    Object result = readIfExists(filePath);
 
-    if (result instanceof String && ((String) result).isEmpty()) {
-      logger.trace("Pas de résultats {} trouvés à: {}", toolName, filePath);
-    } else {
-      logger.trace("Résultats {} collectés depuis: {}", toolName, filePath);
-    }
-
-    return result;
+    return Mono.fromCallable(() -> readIfExists(filePath))
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnNext(result -> {
+          if (result instanceof String && ((String) result).isEmpty()) {
+            logger.trace("Pas de résultats {} trouvés à: {}", toolName, filePath);
+          } else {
+            logger.trace("Résultats {} collectés depuis: {}", toolName, filePath);
+          }
+        });
   }
+
 
   /**
    * Lit le contenu d'un fichier s'il existe.

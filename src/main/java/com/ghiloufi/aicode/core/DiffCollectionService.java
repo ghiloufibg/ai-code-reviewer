@@ -61,12 +61,9 @@ public class DiffCollectionService {
    * @return Mono<DiffBundle> containing both raw and parsed diff data
    */
   public Mono<DiffAnalysisBundle> collectFromGitHubReactive(GithubClient githubClient, int pullRequestNumber) {
-    return Mono.fromCallable(() -> fetchDiffFromGitHub(githubClient, pullRequestNumber))
-        .subscribeOn(Schedulers.boundedElastic())
+    return githubClient.fetchPrUnifiedDiffReactive(pullRequestNumber, contextLines)
         .map(this::createDiffBundle)
-        .doOnError(error -> {
-          throw new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, error);
-        });
+        .onErrorMap(error -> new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, error));
   }
 
   /**

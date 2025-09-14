@@ -165,8 +165,7 @@ public class CodeReviewOrchestrator {
   private Mono<ReviewResult> performAnalysisReactive(ApplicationConfig config, DiffAnalysisBundle diffBundle) {
     logger.info("Début de l'analyse avec le modèle: {}", config.model);
 
-    return Mono.fromCallable(() -> staticAnalysisRunner.runAndCollect())
-        .subscribeOn(Schedulers.boundedElastic())
+    return staticAnalysisRunner.runAndCollectReactive()
         .doOnNext(staticReports -> logger.debug("Analyse statique collectée: {} outils", staticReports.size()))
         .flatMap(staticReports -> {
           List<GitDiffDocument> chunks = diffBundle.splitByMaxLines(config.maxLinesPerChunk);

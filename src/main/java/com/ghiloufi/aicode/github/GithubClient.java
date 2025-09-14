@@ -1,30 +1,26 @@
 package com.ghiloufi.aicode.github;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpStatus;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /**
- * Client pour interagir avec l'API GitHub.
+ * Client réactif pour interagir avec l'API GitHub.
  *
- * <p>Cette classe fournit des méthodes pour effectuer des opérations courantes sur les Pull
+ * <p>Cette classe fournit des méthodes réactives pour effectuer des opérations courantes sur les Pull
  * Requests GitHub, notamment :
  *
  * <ul>
@@ -33,32 +29,28 @@ import org.springframework.stereotype.Service;
  *   <li>Création de reviews avec commentaires positionnés
  * </ul>
  *
+ * <p><strong>Approche réactive :</strong> Utilise Spring WebClient pour des communications non-bloquantes
+ * avec l'API GitHub, améliorant les performances et la scalabilité.
+ *
  * <p><strong>Authentification :</strong> Le client supporte l'authentification via token GitHub
  * (Personal Access Token ou GitHub App Token). Si aucun token n'est fourni, les requêtes seront
  * effectuées de manière anonyme avec les limitations de taux associées.
  *
- * <p><strong>Gestion des erreurs :</strong> Toutes les méthodes lancent des {@link
- * GithubClientException} en cas d'erreur, encapsulant l'exception originale.
- *
- * <p><strong>Exemple d'utilisation :</strong>
+ * <p><strong>Exemple d'utilisation réactive :</strong>
  *
  * <pre>{@code
  * GithubClient client = new GithubClient("owner/repo", "ghp_token123");
  *
- * // Récupérer le diff d'une PR
- * String diff = client.fetchPrUnifiedDiff(42, 3);
+ * // Récupérer le diff d'une PR de manière réactive
+ * client.fetchPrUnifiedDiffReactive(42, 3)
+ *     .subscribe(diff -> processeDiff(diff));
  *
- * // Poster un commentaire
- * client.postIssueComment(42, "LGTM!");
- *
- * // Créer une review avec commentaires
- * List<ReviewComment> comments = List.of(
- *     new ReviewComment("src/Main.java", 10, "Consider using Optional here")
- * );
- * client.createReview(42, comments);
+ * // Poster un commentaire de manière réactive
+ * client.postIssueCommentReactive(42, "LGTM!")
+ *     .subscribe();
  * }</pre>
  *
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @Service
@@ -91,210 +83,203 @@ public class GithubClient {
   private final String repository;
   private final String authToken;
   private final ObjectMapper objectMapper;
-  protected CloseableHttpClient httpClient;
+  private final WebClient webClient;
+  private final Duration timeout;
 
   /**
-   * Construit un nouveau client GitHub.
+   * Construit un nouveau client GitHub réactif.
    *
    * @param repository Le repository GitHub au format "owner/repo" (ex: "microsoft/vscode")
    * @param authToken Le token d'authentification GitHub (peut être null pour les requêtes anonymes)
+   * @param timeoutSeconds Timeout pour les requêtes en secondes
    * @throws IllegalArgumentException si le repository est null ou vide
    */
   @Autowired
   public GithubClient(@Value("${app.repository:}") String repository,
-                     @Value("${GITHUB_TOKEN:}") String authToken) {
+                     @Value("${GITHUB_TOKEN:}") String authToken,
+                     @Value("${app.github.timeoutSeconds:30}") int timeoutSeconds) {
     validateRepository(repository);
 
     this.repository = repository;
     this.authToken = authToken;
+    this.timeout = Duration.ofSeconds(timeoutSeconds);
     this.objectMapper = new ObjectMapper();
-    this.httpClient = HttpClients.createDefault();
 
-    logger.info("GithubClient initialisé pour le repository: {}", repository);
+    WebClient.Builder builder = WebClient.builder()
+        .baseUrl(GITHUB_API_BASE_URL)
+        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024));
+
+    if (authToken != null && !authToken.isBlank()) {
+      builder.defaultHeader(HEADER_AUTHORIZATION, BEARER_PREFIX + authToken);
+    }
+
+    this.webClient = builder.build();
+
+    logger.info("GithubClient réactif initialisé pour le repository: {}", repository);
   }
 
   /**
    * Récupère le diff unifié d'une Pull Request.
-   *
-   * <p>Cette méthode retourne le diff au format unifié Git standard, qui peut être parsé pour
-   * analyser les modifications apportées dans la Pull Request.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param pullRequestNumber Le numéro de la Pull Request
-   * @param contextLines Le nombre de lignes de contexte (non utilisé actuellement mais préservé
-   *     pour compatibilité)
+   * @param contextLines Le nombre de lignes de contexte
    * @return Le diff unifié sous forme de chaîne de caractères
-   * @throws GithubClientException si la requête échoue ou si le numéro de PR est invalide
-   * @throws IllegalArgumentException si pullRequestNumber est négatif ou zéro
+   * @throws GithubClientException si la requête échoue
    */
   public String fetchPrUnifiedDiff(int pullRequestNumber, int contextLines) {
-    validatePullRequestNumber(pullRequestNumber);
+    return fetchPrUnifiedDiffReactive(pullRequestNumber, contextLines).block();
+  }
 
-    String url = buildUrl(ENDPOINT_PULL, pullRequestNumber);
-    logger.debug(
-        "Récupération du diff unifié pour PR #{} avec {} lignes de contexte",
-        pullRequestNumber,
-        contextLines);
+  /**
+   * Récupère le diff unifié d'une Pull Request de manière réactive.
+   *
+   * @param pullRequestNumber Le numéro de la Pull Request
+   * @param contextLines Le nombre de lignes de contexte
+   * @return Mono<String> contenant le diff unifié
+   */
+  public Mono<String> fetchPrUnifiedDiffReactive(int pullRequestNumber, int contextLines) {
+    return Mono.fromCallable(() -> {
+      validatePullRequestNumber(pullRequestNumber);
+      return pullRequestNumber;
+    })
+    .flatMap(prNumber -> {
+      String endpoint = String.format(ENDPOINT_PULL, repository, prNumber);
+      logger.debug(
+          "Récupération du diff unifié pour PR #{} avec {} lignes de contexte",
+          prNumber,
+          contextLines);
 
-    HttpGet request = createGetRequest(url, ACCEPT_DIFF);
-
-    try {
-      return executeRequestAndGetBody(request);
-    } catch (IOException | ParseException e) {
-      String errorMessage =
-          String.format("Erreur lors de la récupération du diff pour la PR #%d", pullRequestNumber);
-      logger.error(errorMessage, e);
-      throw new GithubClientException(errorMessage, e);
-    }
+      return webClient.get()
+          .uri(endpoint)
+          .header(HEADER_ACCEPT, ACCEPT_DIFF)
+          .retrieve()
+          .bodyToMono(String.class)
+          .timeout(timeout)
+          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+          .onErrorMap(throwable -> new GithubClientException(
+              String.format("Erreur lors de la récupération du diff pour la PR #%d", prNumber), throwable));
+    });
   }
 
   /**
    * Poste un commentaire sur une issue ou Pull Request.
-   *
-   * <p>Note : Dans l'API GitHub, les Pull Requests sont considérées comme des issues, donc cette
-   * méthode fonctionne pour les deux.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param issueNumber Le numéro de l'issue ou de la Pull Request
-   * @param commentBody Le contenu du commentaire (peut contenir du Markdown)
+   * @param commentBody Le contenu du commentaire
    * @throws GithubClientException si la requête échoue
-   * @throws IllegalArgumentException si issueNumber est invalide ou si commentBody est null/vide
    */
   public void postIssueComment(int issueNumber, String commentBody) {
-    validatePullRequestNumber(issueNumber);
-    validateCommentBody(commentBody);
+    postIssueCommentReactive(issueNumber, commentBody).block();
+  }
 
-    String url = buildUrl(ENDPOINT_ISSUE_COMMENTS, issueNumber);
-    logger.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
+  /**
+   * Poste un commentaire sur une issue ou Pull Request de manière réactive.
+   *
+   * @param issueNumber Le numéro de l'issue ou de la Pull Request
+   * @param commentBody Le contenu du commentaire
+   * @return Mono<Void> qui se complète quand le commentaire est posté
+   */
+  public Mono<Void> postIssueCommentReactive(int issueNumber, String commentBody) {
+    return Mono.fromCallable(() -> {
+      validatePullRequestNumber(issueNumber);
+      validateCommentBody(commentBody);
+      return Map.of(FIELD_BODY, commentBody);
+    })
+    .flatMap(payload -> {
+      String endpoint = String.format(ENDPOINT_ISSUE_COMMENTS, repository, issueNumber);
+      logger.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
 
-    HttpPost request = createPostRequest(url, ACCEPT_JSON);
-
-    try {
-      Map<String, String> payload = Map.of(FIELD_BODY, commentBody);
-      setJsonEntity(request, payload);
-
-      try (CloseableHttpResponse response = httpClient.execute(request)) {
-        validateResponse(response, "Publication du commentaire");
-        logger.info("Commentaire publié avec succès sur l'issue/PR #{}", issueNumber);
-      }
-    } catch (IOException e) {
-      String errorMessage =
-          String.format(
-              "Erreur lors de la publication du commentaire sur l'issue/PR #%d", issueNumber);
-      logger.error(errorMessage, e);
-      throw new GithubClientException(errorMessage, e);
-    }
+      return webClient.post()
+          .uri(endpoint)
+          .header(HEADER_ACCEPT, ACCEPT_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(BodyInserters.fromValue(payload))
+          .retrieve()
+          .bodyToMono(Void.class)
+          .timeout(timeout)
+          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+          .doOnSuccess(unused -> logger.info("Commentaire publié avec succès sur l'issue/PR #{}", issueNumber))
+          .onErrorMap(throwable -> new GithubClientException(
+              String.format("Erreur lors de la publication du commentaire sur l'issue/PR #%d", issueNumber), throwable));
+    });
   }
 
   /**
    * Crée une review sur une Pull Request avec des commentaires positionnés.
-   *
-   * <p>Cette méthode permet de créer une review complète avec plusieurs commentaires attachés à des
-   * lignes spécifiques du diff.
+   * Version synchrone pour compatibilité ascendante.
    *
    * @param pullRequestNumber Le numéro de la Pull Request
    * @param comments Liste des commentaires à inclure dans la review
    * @throws GithubClientException si la requête échoue
-   * @throws IllegalArgumentException si pullRequestNumber est invalide ou si comments est null/vide
    */
   public void createReview(int pullRequestNumber, List<ReviewComment> comments) {
-    validatePullRequestNumber(pullRequestNumber);
-    validateReviewComments(comments);
-
-    String url = buildUrl(ENDPOINT_PULL_REVIEWS, pullRequestNumber);
-    logger.debug(
-        "Création d'une review sur la PR #{} avec {} commentaire(s)",
-        pullRequestNumber,
-        comments.size());
-
-    HttpPost request = createPostRequest(url, ACCEPT_JSON);
-
-    try {
-      Map<String, Object> payload = buildReviewPayload(comments);
-      setJsonEntity(request, payload);
-
-      try (CloseableHttpResponse response = httpClient.execute(request)) {
-        validateResponse(response, "Création de la review");
-        logger.info(
-            "Review créée avec succès sur la PR #{} avec {} commentaire(s)",
-            pullRequestNumber,
-            comments.size());
-      }
-    } catch (IOException e) {
-      String errorMessage =
-          String.format("Erreur lors de la création de la review sur la PR #%d", pullRequestNumber);
-      logger.error(errorMessage, e);
-      throw new GithubClientException(errorMessage, e);
-    }
+    createReviewReactive(pullRequestNumber, comments).block();
   }
 
-  /** Construit l'URL complète pour un endpoint GitHub. */
-  private String buildUrl(String endpointTemplate, int number) {
-    return GITHUB_API_BASE_URL + String.format(endpointTemplate, repository, number);
+  /**
+   * Crée une review sur une Pull Request avec des commentaires positionnés de manière réactive.
+   *
+   * @param pullRequestNumber Le numéro de la Pull Request
+   * @param comments Liste des commentaires à inclure dans la review
+   * @return Mono<Void> qui se complète quand la review est créée
+   */
+  public Mono<Void> createReviewReactive(int pullRequestNumber, List<ReviewComment> comments) {
+    return Mono.fromCallable(() -> {
+      validatePullRequestNumber(pullRequestNumber);
+      validateReviewComments(comments);
+      return buildReviewPayload(comments);
+    })
+    .flatMap(payload -> {
+      String endpoint = String.format(ENDPOINT_PULL_REVIEWS, repository, pullRequestNumber);
+      logger.debug(
+          "Création d'une review sur la PR #{} avec {} commentaire(s)",
+          pullRequestNumber,
+          comments.size());
+
+      return webClient.post()
+          .uri(endpoint)
+          .header(HEADER_ACCEPT, ACCEPT_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(BodyInserters.fromValue(payload))
+          .retrieve()
+          .bodyToMono(Void.class)
+          .timeout(timeout)
+          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+          .doOnSuccess(unused -> logger.info(
+              "Review créée avec succès sur la PR #{} avec {} commentaire(s)",
+              pullRequestNumber,
+              comments.size()))
+          .onErrorMap(throwable -> new GithubClientException(
+              String.format("Erreur lors de la création de la review sur la PR #%d", pullRequestNumber), throwable));
+    });
   }
 
-  /** Crée une requête GET configurée avec les headers appropriés. */
-  private HttpGet createGetRequest(String url, String acceptHeader) {
-    HttpGet request = new HttpGet(url);
-    request.addHeader(HEADER_ACCEPT, acceptHeader);
-    addAuthorizationHeader(request);
-    return request;
-  }
-
-  /** Crée une requête POST configurée avec les headers appropriés. */
-  private HttpPost createPostRequest(String url, String acceptHeader) {
-    HttpPost request = new HttpPost(url);
-    request.addHeader(HEADER_ACCEPT, acceptHeader);
-    addAuthorizationHeader(request);
-    return request;
-  }
-
-  /** Ajoute le header d'autorisation si un token est disponible. */
-  private void addAuthorizationHeader(org.apache.hc.core5.http.HttpMessage request) {
-    if (authToken != null && !authToken.isBlank()) {
-      request.addHeader(HEADER_AUTHORIZATION, BEARER_PREFIX + authToken);
-    }
-  }
-
-  /** Configure l'entité JSON d'une requête POST. */
-  private void setJsonEntity(HttpPost request, Object payload) throws IOException {
-    String jsonPayload = objectMapper.writeValueAsString(payload);
-    request.setEntity(new StringEntity(jsonPayload, ContentType.APPLICATION_JSON));
-  }
-
-  /** Exécute une requête GET et retourne le corps de la réponse. */
-  private String executeRequestAndGetBody(HttpGet request) throws IOException, ParseException {
-    try (CloseableHttpResponse response = httpClient.execute(request)) {
-      return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-    }
-  }
 
   /** Construit le payload pour une review. */
   private Map<String, Object> buildReviewPayload(List<ReviewComment> comments) {
-    List<Map<String, Object>> commentsList = new ArrayList<>();
+    try {
+      List<Map<String, Object>> commentsList = new ArrayList<>();
 
-    for (ReviewComment comment : comments) {
-      commentsList.add(
-          Map.of(
-              FIELD_PATH, comment.path(),
-              FIELD_POSITION, comment.position(),
-              FIELD_BODY, comment.body()));
-    }
+      for (ReviewComment comment : comments) {
+        commentsList.add(
+            Map.of(
+                FIELD_PATH, comment.path(),
+                FIELD_POSITION, comment.position(),
+                FIELD_BODY, comment.body()));
+      }
 
-    Map<String, Object> payload = new HashMap<>();
-    payload.put(FIELD_EVENT, EVENT_COMMENT);
-    payload.put(FIELD_COMMENTS, commentsList);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put(FIELD_EVENT, EVENT_COMMENT);
+      payload.put(FIELD_COMMENTS, commentsList);
 
-    return payload;
-  }
-
-  /** Valide la réponse HTTP. */
-  private void validateResponse(CloseableHttpResponse response, String operation) {
-    int statusCode = response.getCode();
-    if (statusCode < HttpStatus.SC_OK || statusCode >= HttpStatus.SC_MULTIPLE_CHOICES) {
-      String errorMessage = String.format("%s échouée avec le code HTTP %d", operation, statusCode);
-      logger.error(errorMessage);
-      throw new GithubClientException(errorMessage);
+      return payload;
+    } catch (Exception e) {
+      throw new GithubClientException("Erreur lors de la construction du payload de review", e);
     }
   }
+
 
   /** Valide le format du repository. */
   private void validateRepository(String repo) {
@@ -347,20 +332,6 @@ public class GithubClient {
     }
   }
 
-  /**
-   * Ferme les ressources du client.
-   *
-   * <p>Cette méthode devrait être appelée lorsque le client n'est plus nécessaire pour libérer les
-   * ressources système.
-   *
-   * @throws IOException si une erreur survient lors de la fermeture
-   */
-  public void close() throws IOException {
-    if (httpClient != null) {
-      httpClient.close();
-      logger.info("GithubClient fermé pour le repository: {}", repository);
-    }
-  }
 
   /**
    * Représente un commentaire dans une review de Pull Request.
