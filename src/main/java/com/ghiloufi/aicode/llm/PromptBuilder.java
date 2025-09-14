@@ -123,6 +123,7 @@ public class PromptBuilder {
               - minor: small defect or risky pattern
               - info: suggestion/clarification
             """;
+
   /**
    * Schéma JSON définissant le format de sortie attendu du LLM.
    *
@@ -152,6 +153,7 @@ public class PromptBuilder {
             minor
             info", "rule_id":"JAVA.<CATEGORY>.<CODE>", "title":"string", "rationale":"string", "suggestion":"string", "references":["string"], "hunk_index":"int" } ], "non_blocking_notes":[{"file":"string","line":"int","note":"string"}] }
             """;
+
   private static final Logger logger = LoggerFactory.getLogger(PromptBuilder.class);
   // Sections du template de message utilisateur
   private static final String SECTION_REPO = "[REPO]";

@@ -248,22 +248,6 @@ class GitHubReviewPublisherTest {
     }
 
     @Test
-    @DisplayName("Doit publier seulement le résumé quand le diff est null")
-    @Disabled("A voir si le structuredDiff peut etre null ou pas.")
-    void shouldPublishOnlySummaryWhenDiffIsNull() {
-      // Given
-      ReviewResult reviewResult = createValidReviewResult();
-      DiffAnalysisBundle diffAnalysisBundle = new DiffAnalysisBundle(null, "some diff content");
-
-      // When
-      publisher.publish(TEST_PR_NUMBER, reviewResult, diffAnalysisBundle);
-
-      // Then
-      verify(mockGithubClient).postIssueComment(eq(TEST_PR_NUMBER), any());
-      verify(mockGithubClient, never()).createReview(anyInt(), any());
-    }
-
-    @Test
     @DisplayName("Doit ignorer les issues null dans la liste")
     void shouldIgnoreNullIssuesInList() {
       // Given

@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.http.client.HttpClientAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.client.RestClientAutoConfiguration;
 
 /**
  * Application principale du plugin AI Code Reviewer.
@@ -88,22 +86,13 @@ import org.springframework.boot.autoconfigure.web.client.RestClientAutoConfigura
  * @version 1.0
  * @since 1.0
  */
-@SpringBootApplication(
-    exclude = {HttpClientAutoConfiguration.class, RestClientAutoConfiguration.class})
+@SpringBootApplication()
 public class Application implements CommandLineRunner {
 
   private static final Logger logger = LoggerFactory.getLogger(Application.class);
-
-  private final CodeReviewOrchestrator orchestrator;
-
-  public Application(CodeReviewOrchestrator orchestrator) {
-    this.orchestrator = orchestrator;
-  }
-
   // Modes d'exécution
   private static final String MODE_LOCAL = "local";
   private static final String MODE_GITHUB = "github";
-
   // Valeurs par défaut
   private static final String DEFAULT_MODEL = "deepseek-coder-6.7b-instruct";
   private static final String DEFAULT_OLLAMA_HOST = "http://localhost:1234";
@@ -113,6 +102,11 @@ public class Application implements CommandLineRunner {
   private static final int DEFAULT_MAX_LINES = 1500;
   private static final int DEFAULT_CONTEXT_LINES = 5;
   private static final int DEFAULT_TIMEOUT_SECONDS = 45;
+  private final CodeReviewOrchestrator orchestrator;
+
+  public Application(CodeReviewOrchestrator orchestrator) {
+    this.orchestrator = orchestrator;
+  }
 
   /**
    * Point d'entrée principal de l'application.
@@ -154,7 +148,8 @@ public class Application implements CommandLineRunner {
   private CodeReviewOrchestrator.ApplicationConfig parseConfiguration(String[] args) {
     Map<String, String> cliArgs = parseCommandLineArgs(args);
 
-    CodeReviewOrchestrator.ApplicationConfig config = new CodeReviewOrchestrator.ApplicationConfig();
+    CodeReviewOrchestrator.ApplicationConfig config =
+        new CodeReviewOrchestrator.ApplicationConfig();
 
     // Mode d'exécution
     config.mode = cliArgs.getOrDefault("--mode", MODE_GITHUB);
@@ -215,7 +210,6 @@ public class Application implements CommandLineRunner {
 
     return result;
   }
-
 
   /**
    * Valide la configuration.
@@ -286,5 +280,4 @@ public class Application implements CommandLineRunner {
     String value = System.getenv(name);
     return (value != null && !value.isBlank()) ? value : defaultValue;
   }
-
 }

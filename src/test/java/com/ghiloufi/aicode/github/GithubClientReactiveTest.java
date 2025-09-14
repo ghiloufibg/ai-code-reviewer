@@ -13,8 +13,8 @@ import reactor.test.StepVerifier;
 /**
  * Tests unitaires pour {@link GithubClient} reactive implementation.
  *
- * <p>Ces tests vérifient les aspects réactifs du client GitHub sans dépendances externes.
- * Les tests d'intégration avec de vraies APIs sont séparés.
+ * <p>Ces tests vérifient les aspects réactifs du client GitHub sans dépendances externes. Les tests
+ * d'intégration avec de vraies APIs sont séparés.
  */
 @DisplayName("GithubClient Reactive")
 class GithubClientReactiveTest {
@@ -50,14 +50,16 @@ class GithubClientReactiveTest {
     @EmptySource
     @DisplayName("Constructor should reject null/empty repository")
     void testConstructorWithInvalidRepository(String repository) {
-      assertThrows(IllegalArgumentException.class,
+      assertThrows(
+          IllegalArgumentException.class,
           () -> new GithubClient(repository, TEST_TOKEN, TEST_TIMEOUT));
     }
 
     @Test
     @DisplayName("Constructor should reject repository without slash")
     void testConstructorWithInvalidRepositoryFormat() {
-      assertThrows(IllegalArgumentException.class,
+      assertThrows(
+          IllegalArgumentException.class,
           () -> new GithubClient("invalidrepo", TEST_TOKEN, TEST_TIMEOUT));
     }
 
@@ -84,38 +86,30 @@ class GithubClientReactiveTest {
     @Test
     @DisplayName("fetchPrUnifiedDiff should validate PR number")
     void testFetchPrUnifiedDiffValidation() {
-      assertThrows(IllegalArgumentException.class,
-          () -> client.fetchPrUnifiedDiff(-1, 3));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.fetchPrUnifiedDiff(0, 3));
+      assertThrows(IllegalArgumentException.class, () -> client.fetchPrUnifiedDiff(-1, 3).block());
+      assertThrows(IllegalArgumentException.class, () -> client.fetchPrUnifiedDiff(0, 3).block());
     }
 
     @Test
     @DisplayName("postIssueComment should validate parameters")
     void testPostIssueCommentValidation() {
-      assertThrows(IllegalArgumentException.class,
-          () -> client.postIssueComment(-1, "comment"));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.postIssueComment(0, "comment"));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.postIssueComment(1, null));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.postIssueComment(1, ""));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.postIssueComment(1, "   "));
+      assertThrows(
+          IllegalArgumentException.class, () -> client.postIssueComment(-1, "comment").block());
+      assertThrows(
+          IllegalArgumentException.class, () -> client.postIssueComment(0, "comment").block());
+      assertThrows(IllegalArgumentException.class, () -> client.postIssueComment(1, null).block());
+      assertThrows(IllegalArgumentException.class, () -> client.postIssueComment(1, "").block());
+      assertThrows(IllegalArgumentException.class, () -> client.postIssueComment(1, "   ").block());
     }
 
     @Test
     @DisplayName("createReview should validate parameters")
     void testCreateReviewValidation() {
-      assertThrows(IllegalArgumentException.class,
-          () -> client.createReview(-1, List.of()));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.createReview(0, List.of()));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.createReview(1, null));
-      assertThrows(IllegalArgumentException.class,
-          () -> client.createReview(1, List.of()));
+      assertThrows(
+          IllegalArgumentException.class, () -> client.createReview(-1, List.of()).block());
+      assertThrows(IllegalArgumentException.class, () -> client.createReview(0, List.of()).block());
+      assertThrows(IllegalArgumentException.class, () -> client.createReview(1, null).block());
+      assertThrows(IllegalArgumentException.class, () -> client.createReview(1, List.of()).block());
     }
   }
 
@@ -133,10 +127,10 @@ class GithubClientReactiveTest {
     @Test
     @DisplayName("fetchPrUnifiedDiff should return Mono")
     void testFetchPrUnifiedDiffReactive() {
-      // This will fail with network error since we're not mocking, but it verifies the reactive chain
+      // This will fail with network error since we're not mocking, but it verifies the reactive
+      // chain
       StepVerifier.create(client.fetchPrUnifiedDiff(1, 3))
-          .expectErrorMatches(throwable ->
-              throwable instanceof GithubClient.GithubClientException)
+          .expectErrorMatches(throwable -> throwable instanceof GithubClient.GithubClientException)
           .verify();
     }
 
@@ -144,8 +138,7 @@ class GithubClientReactiveTest {
     @DisplayName("postIssueComment should return Mono")
     void testPostIssueCommentReactive() {
       StepVerifier.create(client.postIssueComment(1, "test comment"))
-          .expectErrorMatches(throwable ->
-              throwable instanceof GithubClient.GithubClientException)
+          .expectErrorMatches(throwable -> throwable instanceof GithubClient.GithubClientException)
           .verify();
     }
 
@@ -154,8 +147,7 @@ class GithubClientReactiveTest {
     void testCreateReviewReactive() {
       var comment = new GithubClient.ReviewComment("file.txt", 1, "test comment");
       StepVerifier.create(client.createReview(1, List.of(comment)))
-          .expectErrorMatches(throwable ->
-              throwable instanceof GithubClient.GithubClientException)
+          .expectErrorMatches(throwable -> throwable instanceof GithubClient.GithubClientException)
           .verify();
     }
   }
@@ -167,20 +159,20 @@ class GithubClientReactiveTest {
     @Test
     @DisplayName("ReviewComment should validate parameters")
     void testReviewCommentValidation() {
-      assertThrows(NullPointerException.class,
-          () -> new GithubClient.ReviewComment(null, 1, "body"));
-      assertThrows(NullPointerException.class,
-          () -> new GithubClient.ReviewComment("path", 1, null));
-      assertThrows(IllegalArgumentException.class,
-          () -> new GithubClient.ReviewComment("", 1, "body"));
-      assertThrows(IllegalArgumentException.class,
-          () -> new GithubClient.ReviewComment("   ", 1, "body"));
-      assertThrows(IllegalArgumentException.class,
-          () -> new GithubClient.ReviewComment("path", 1, ""));
-      assertThrows(IllegalArgumentException.class,
-          () -> new GithubClient.ReviewComment("path", 1, "   "));
-      assertThrows(IllegalArgumentException.class,
-          () -> new GithubClient.ReviewComment("path", -1, "body"));
+      assertThrows(
+          NullPointerException.class, () -> new GithubClient.ReviewComment(null, 1, "body"));
+      assertThrows(
+          NullPointerException.class, () -> new GithubClient.ReviewComment("path", 1, null));
+      assertThrows(
+          IllegalArgumentException.class, () -> new GithubClient.ReviewComment("", 1, "body"));
+      assertThrows(
+          IllegalArgumentException.class, () -> new GithubClient.ReviewComment("   ", 1, "body"));
+      assertThrows(
+          IllegalArgumentException.class, () -> new GithubClient.ReviewComment("path", 1, ""));
+      assertThrows(
+          IllegalArgumentException.class, () -> new GithubClient.ReviewComment("path", 1, "   "));
+      assertThrows(
+          IllegalArgumentException.class, () -> new GithubClient.ReviewComment("path", -1, "body"));
     }
 
     @Test

@@ -32,14 +32,14 @@ public class DiffCollectionService {
    * @param contextLines number of context lines to include around changes in diffs
    */
   @Autowired
-  public DiffCollectionService(@Value("${app.diff.contextLines:5}") int contextLines,
-                              @Value("${app.repository:}") String repository,
-                              UnifiedDiffParser diffParser) {
+  public DiffCollectionService(
+      @Value("${app.diff.contextLines:5}") int contextLines,
+      @Value("${app.repository:}") String repository,
+      UnifiedDiffParser diffParser) {
     this.contextLines = contextLines;
     this.diffParser = diffParser;
     this.repository = repository;
   }
-
 
   /**
    * Collects diff from a GitHub Pull Request and converts it to a DiffBundle reactively.
@@ -48,12 +48,16 @@ public class DiffCollectionService {
    * @param pullRequestNumber the Pull Request number to fetch diff from
    * @return Mono<DiffBundle> containing both raw and parsed diff data
    */
-  public Mono<DiffAnalysisBundle> collectFromGitHub(GithubClient githubClient, int pullRequestNumber) {
-    return githubClient.fetchPrUnifiedDiff(pullRequestNumber, contextLines)
+  public Mono<DiffAnalysisBundle> collectFromGitHub(
+      GithubClient githubClient, int pullRequestNumber) {
+    return githubClient
+        .fetchPrUnifiedDiff(pullRequestNumber, contextLines)
         .map(this::createDiffBundle)
-        .onErrorMap(error -> new RuntimeException("Failed to fetch diff from GitHub PR #" + pullRequestNumber, error));
+        .onErrorMap(
+            error ->
+                new RuntimeException(
+                    "Failed to fetch diff from GitHub PR #" + pullRequestNumber, error));
   }
-
 
   /**
    * Collects diff from local Git repository between two commits/branches reactively.
@@ -66,11 +70,12 @@ public class DiffCollectionService {
     return Mono.fromCallable(() -> executeGitDiffCommand(baseCommit, headCommit))
         .subscribeOn(Schedulers.boundedElastic())
         .map(this::createDiffBundle)
-        .doOnError(error -> {
-          throw new RuntimeException("Git diff command failed for " + baseCommit + ".." + headCommit, error);
-        });
+        .doOnError(
+            error -> {
+              throw new RuntimeException(
+                  "Git diff command failed for " + baseCommit + ".." + headCommit, error);
+            });
   }
-
 
   /**
    * Executes git diff command locally to generate unified diff.

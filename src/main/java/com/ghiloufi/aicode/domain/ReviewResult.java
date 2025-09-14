@@ -23,10 +23,13 @@ public class ReviewResult {
 
   /** Instance réutilisable d'ObjectMapper pour optimiser les performances */
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   /** Résumé textuel de l'analyse effectuée */
   public String summary;
+
   /** Liste des issues détectées lors de l'analyse */
   public List<Issue> issues = new ArrayList<>();
+
   /** Liste des notes informatives non-bloquantes */
   public List<Note> non_blocking_notes = new ArrayList<>();
 

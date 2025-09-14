@@ -19,12 +19,13 @@ import reactor.util.retry.Retry;
 /**
  * Client réactif pour interagir avec un modèle de langage (LLM) via API HTTP.
  *
- * <p>Cette classe fournit une interface réactive pour envoyer des requêtes à un LLM et recevoir
- * des réponses formatées en JSON avec support du streaming. Elle est principalement utilisée pour
+ * <p>Cette classe fournit une interface réactive pour envoyer des requêtes à un LLM et recevoir des
+ * réponses formatées en JSON avec support du streaming. Elle est principalement utilisée pour
  * effectuer des revues de code automatisées dans le contexte du plugin AI Code Reviewer.
  *
- * <p><strong>Architecture :</strong> Le client utilise WebClient de Spring WebFlux pour des communications
- * non-bloquantes. Il supporte le streaming des réponses LLM pour améliorer les performances.
+ * <p><strong>Architecture :</strong> Le client utilise WebClient de Spring WebFlux pour des
+ * communications non-bloquantes. Il supporte le streaming des réponses LLM pour améliorer les
+ * performances.
  *
  * <p><strong>Configuration :</strong>
  *
@@ -34,8 +35,8 @@ import reactor.util.retry.Retry;
  *   <li>Timeout : Durée maximale d'attente pour une réponse
  * </ul>
  *
- * <p><strong>Format de réponse attendu :</strong> Le LLM doit retourner une réponse JSON ou un stream
- * de chunks JSON pour les réponses streamées.
+ * <p><strong>Format de réponse attendu :</strong> Le LLM doit retourner une réponse JSON ou un
+ * stream de chunks JSON pour les réponses streamées.
  *
  * @version 2.0
  * @since 1.0
@@ -84,9 +85,10 @@ public class LlmClient {
    * @param timeoutSeconds La durée maximale d'attente pour une réponse en secondes
    * @throws IllegalArgumentException si un paramètre est null ou invalide
    */
-  public LlmClient(@Value("${app.llm.baseUrl:http://localhost:1234}") String baseUrl,
-                   @Value("${app.llm.model:deepseek-coder-6.7b-instruct}") String model,
-                   @Value("${app.llm.timeoutSeconds:45}") int timeoutSeconds) {
+  public LlmClient(
+      @Value("${app.llm.baseUrl:http://localhost:1234}") String baseUrl,
+      @Value("${app.llm.model:deepseek-coder-6.7b-instruct}") String model,
+      @Value("${app.llm.timeoutSeconds:45}") int timeoutSeconds) {
     Duration timeout = Duration.ofSeconds(timeoutSeconds);
     validateConstructorParameters(baseUrl, model, timeout);
 
@@ -94,10 +96,11 @@ public class LlmClient {
     this.model = model;
     this.timeout = timeout;
     this.objectMapper = new ObjectMapper();
-    this.webClient = WebClient.builder()
-        .baseUrl(this.baseUrl)
-        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
-        .build();
+    this.webClient =
+        WebClient.builder()
+            .baseUrl(this.baseUrl)
+            .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+            .build();
 
     logger.info(
         "LlmClient réactif initialisé - URL: {}, Modèle: {}, Timeout: {}s",
@@ -105,7 +108,6 @@ public class LlmClient {
         this.model,
         timeout.getSeconds());
   }
-
 
   /**
    * Effectue une revue réactive en envoyant des prompts système et utilisateur au LLM.
@@ -119,26 +121,33 @@ public class LlmClient {
    * @return Un Mono contenant la réponse du LLM
    */
   public Mono<String> review(String systemPrompt, String userPrompt) {
-    return Mono.fromCallable(() -> {
-      validatePrompts(systemPrompt, userPrompt);
-      return buildReviewPayload(systemPrompt, userPrompt);
-    })
-    .flatMap(payload -> {
-      logger.debug("Envoi de la requête de review au LLM réactif");
+    return Mono.fromCallable(
+            () -> {
+              validatePrompts(systemPrompt, userPrompt);
+              return buildReviewPayload(systemPrompt, userPrompt);
+            })
+        .flatMap(
+            payload -> {
+              logger.debug("Envoi de la requête de review au LLM réactif");
 
-      return webClient.post()
-          .uri(API_ENDPOINT)
-          .contentType(MediaType.APPLICATION_JSON)
-          .body(BodyInserters.fromValue(payload))
-          .retrieve()
-          .bodyToMono(String.class)
-          .timeout(timeout)
-          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-          .doOnNext(response -> logger.trace("Réponse brute du LLM: {}", response))
-          .map(this::extractContentFromResponse)
-          .doOnError(error -> logger.error("Erreur lors de la communication avec le LLM", error))
-          .onErrorMap(throwable -> new LlmClientException("Erreur lors de la communication avec le LLM", throwable));
-    });
+              return webClient
+                  .post()
+                  .uri(API_ENDPOINT)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .body(BodyInserters.fromValue(payload))
+                  .retrieve()
+                  .bodyToMono(String.class)
+                  .timeout(timeout)
+                  .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                  .doOnNext(response -> logger.trace("Réponse brute du LLM: {}", response))
+                  .map(this::extractContentFromResponse)
+                  .doOnError(
+                      error -> logger.error("Erreur lors de la communication avec le LLM", error))
+                  .onErrorMap(
+                      throwable ->
+                          new LlmClientException(
+                              "Erreur lors de la communication avec le LLM", throwable));
+            });
   }
 
   /**
@@ -149,42 +158,45 @@ public class LlmClient {
    * @return Un Flux de chunks de réponse
    */
   public Flux<String> reviewStream(String systemPrompt, String userPrompt) {
-    return Mono.fromCallable(() -> {
-      validatePrompts(systemPrompt, userPrompt);
-      Map<String, Object> payload = buildReviewPayload(systemPrompt, userPrompt);
-      payload.put("stream", true);
-      return payload;
-    })
-    .flatMapMany(payload -> {
-      logger.debug("Envoi de la requête de review streamée au LLM");
+    return Mono.fromCallable(
+            () -> {
+              validatePrompts(systemPrompt, userPrompt);
+              Map<String, Object> payload = buildReviewPayload(systemPrompt, userPrompt);
+              payload.put("stream", true);
+              return payload;
+            })
+        .flatMapMany(
+            payload -> {
+              logger.debug("Envoi de la requête de review streamée au LLM");
 
-      return webClient.post()
-          .uri(API_ENDPOINT)
-          .contentType(MediaType.APPLICATION_JSON)
-          .body(BodyInserters.fromValue(payload))
-          .retrieve()
-          .bodyToFlux(String.class)
-          .timeout(timeout)
-          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-          .filter(chunk -> !chunk.trim().isEmpty())
-          .map(this::extractContentFromStreamChunk)
-          .filter(content -> content != null && !content.isEmpty())
-          .doOnError(error -> logger.error("Erreur lors du streaming LLM", error))
-          .onErrorResume(throwable -> {
-            logger.error("Erreur fatale lors du streaming, tentative de récupération", throwable);
-            return Flux.error(new LlmClientException("Erreur lors du streaming LLM", throwable));
-          });
-    });
+              return webClient
+                  .post()
+                  .uri(API_ENDPOINT)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .body(BodyInserters.fromValue(payload))
+                  .retrieve()
+                  .bodyToFlux(String.class)
+                  .timeout(timeout)
+                  .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                  .filter(chunk -> !chunk.trim().isEmpty())
+                  .map(this::extractContentFromStreamChunk)
+                  .filter(content -> content != null && !content.isEmpty())
+                  .doOnError(error -> logger.error("Erreur lors du streaming LLM", error))
+                  .onErrorResume(
+                      throwable -> {
+                        logger.error(
+                            "Erreur fatale lors du streaming, tentative de récupération",
+                            throwable);
+                        return Flux.error(
+                            new LlmClientException("Erreur lors du streaming LLM", throwable));
+                      });
+            });
   }
-
 
   /** Normalise l'URL de base en s'assurant qu'elle se termine par '/'. */
   private String normalizeBaseUrl(String url) {
     return url.endsWith("/") ? url : url + "/";
   }
-
-
-
 
   /**
    * Construit le payload pour la requête de review.
@@ -197,10 +209,10 @@ public class LlmClient {
     try {
       String fullSystemPrompt = systemPrompt + JSON_INSTRUCTION;
 
-      List<Map<String, String>> messages = List.of(
-          Map.of(FIELD_ROLE, ROLE_SYSTEM, FIELD_CONTENT, fullSystemPrompt),
-          Map.of(FIELD_ROLE, ROLE_USER, FIELD_CONTENT, userPrompt)
-      );
+      List<Map<String, String>> messages =
+          List.of(
+              Map.of(FIELD_ROLE, ROLE_SYSTEM, FIELD_CONTENT, fullSystemPrompt),
+              Map.of(FIELD_ROLE, ROLE_USER, FIELD_CONTENT, userPrompt));
 
       Map<String, Object> payload = new HashMap<>();
       payload.put(FIELD_MODEL, model);
@@ -215,7 +227,6 @@ public class LlmClient {
     }
   }
 
-
   /**
    * Extrait le contenu de la réponse JSON selon le format.
    *
@@ -227,7 +238,9 @@ public class LlmClient {
       JsonNode rootNode = objectMapper.readTree(responseBody);
 
       // Format standard OpenAI
-      if (rootNode.has("choices") && rootNode.get("choices").isArray() && !rootNode.get("choices").isEmpty()) {
+      if (rootNode.has("choices")
+          && rootNode.get("choices").isArray()
+          && !rootNode.get("choices").isEmpty()) {
         JsonNode firstChoice = rootNode.get("choices").get(0);
         if (firstChoice.has(FIELD_MESSAGE) && firstChoice.get(FIELD_MESSAGE).has(FIELD_CONTENT)) {
           String content = firstChoice.get(FIELD_MESSAGE).get(FIELD_CONTENT).asText();
@@ -281,7 +294,9 @@ public class LlmClient {
       JsonNode chunkNode = objectMapper.readTree(jsonPart);
 
       // Format OpenAI streaming
-      if (chunkNode.has("choices") && chunkNode.get("choices").isArray() && !chunkNode.get("choices").isEmpty()) {
+      if (chunkNode.has("choices")
+          && chunkNode.get("choices").isArray()
+          && !chunkNode.get("choices").isEmpty()) {
         JsonNode firstChoice = chunkNode.get("choices").get(0);
         if (firstChoice.has("delta") && firstChoice.get("delta").has(FIELD_CONTENT)) {
           return firstChoice.get("delta").get(FIELD_CONTENT).asText();
@@ -320,7 +335,6 @@ public class LlmClient {
       throw new IllegalArgumentException("Le prompt utilisateur ne peut pas être null ou vide");
     }
   }
-
 
   /**
    * Retourne l'URL de base configurée.

@@ -42,18 +42,25 @@ public class GitDiffDocument {
 
   /** Préfixe pour les en-têtes de fichiers dans l'ancienne version */
   private static final String OLD_FILE_PREFIX = "--- a/";
+
   /** Préfixe pour les en-têtes de fichiers dans la nouvelle version */
   private static final String NEW_FILE_PREFIX = "+++ b/";
+
   /** Marqueur de début et fin de l'en-tête de hunk */
   private static final String HUNK_MARKER = "@@";
+
   /** Préfixe pour les informations d'ancienne version dans l'en-tête de hunk */
   private static final String OLD_VERSION_PREFIX = " -";
+
   /** Préfixe pour les informations de nouvelle version dans l'en-tête de hunk */
   private static final String NEW_VERSION_PREFIX = " +";
+
   /** Séparateur entre les numéros de ligne et le nombre de lignes */
   private static final String LINE_COUNT_SEPARATOR = ",";
+
   /** Suffixe ajouté après chaque ligne dans la sortie */
   private static final String LINE_SUFFIX = " ";
+
   /**
    * Liste des fichiers modifiés dans ce diff unifié.
    *

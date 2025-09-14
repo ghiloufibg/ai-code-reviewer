@@ -34,7 +34,8 @@ class GitFileModificationTest {
   @BeforeEach
   void setUp() {
     // Hunks de test
-    sampleDiffHunkBlock1 = createHunk(10, 3, 10, 4, Arrays.asList("-old line", "+new line", " context"));
+    sampleDiffHunkBlock1 =
+        createHunk(10, 3, 10, 4, Arrays.asList("-old line", "+new line", " context"));
     sampleDiffHunkBlock2 = createHunk(20, 2, 21, 2, Arrays.asList(" context", "+added line"));
     largeDiffHunkBlock = createLargeHunk(100);
 
@@ -158,7 +159,8 @@ class GitFileModificationTest {
       assertEquals(modifiedFile.oldPath, copy.oldPath);
       assertEquals(modifiedFile.newPath, copy.newPath);
       assertEquals(1, copy.diffHunkBlocks.size());
-      assertSame(sampleDiffHunkBlock1, copy.diffHunkBlocks.get(0)); // Référence partagée (shallow copy)
+      assertSame(
+          sampleDiffHunkBlock1, copy.diffHunkBlocks.get(0)); // Référence partagée (shallow copy)
 
       // Original non modifié
       assertEquals(2, modifiedFile.diffHunkBlocks.size());
@@ -516,7 +518,9 @@ class GitFileModificationTest {
       // Vérifier que les hunks sont différentes instances
       for (int i = 0; i < modifiedFile.diffHunkBlocks.size(); i++) {
         assertNotSame(modifiedFile.diffHunkBlocks.get(i), copy.diffHunkBlocks.get(i));
-        assertEquals(modifiedFile.diffHunkBlocks.get(i).lines.size(), copy.diffHunkBlocks.get(i).lines.size());
+        assertEquals(
+            modifiedFile.diffHunkBlocks.get(i).lines.size(),
+            copy.diffHunkBlocks.get(i).lines.size());
       }
     }
 

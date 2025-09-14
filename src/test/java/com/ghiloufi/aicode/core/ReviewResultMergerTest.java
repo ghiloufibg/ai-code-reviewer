@@ -117,7 +117,7 @@ class ReviewResultMergerTest {
 
       // When & Then
       IllegalArgumentException exception =
-          assertThrows(IllegalArgumentException.class, () -> aggregator.merge(nullList));
+          assertThrows(IllegalArgumentException.class, () -> aggregator.merge(nullList).block());
 
       assertEquals(
           "La liste des résultats d'analyse ne peut pas être null", exception.getMessage());

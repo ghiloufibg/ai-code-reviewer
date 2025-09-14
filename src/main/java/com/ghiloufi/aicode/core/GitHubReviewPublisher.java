@@ -85,9 +85,11 @@ public class GitHubReviewPublisher {
    *
    * @param pullRequestNumber le numéro de la Pull Request cible
    * @param reviewResult le résultat de l'analyse contenant le résumé et les issues
-   * @param diffAnalysisBundle le bundle contenant le diff unifié nécessaire pour le mapping des positions
+   * @param diffAnalysisBundle le bundle contenant le diff unifié nécessaire pour le mapping des
+   *     positions
    */
-  public void publish(int pullRequestNumber, ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
+  public void publish(
+      int pullRequestNumber, ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
     if (reviewResult == null) {
       log.warn("ReviewResult est null, rien à publier.");
       return;
@@ -191,7 +193,8 @@ public class GitHubReviewPublisher {
 
     log.debug("Tentative de publication de {} commentaires inline", reviewResult.issues.size());
 
-    List<GithubClient.ReviewComment> reviewComments = buildInlineComments(reviewResult, diffAnalysisBundle);
+    List<GithubClient.ReviewComment> reviewComments =
+        buildInlineComments(reviewResult, diffAnalysisBundle);
 
     if (!reviewComments.isEmpty()) {
       githubClient.createReview(pullRequestNumber, reviewComments);
@@ -220,7 +223,8 @@ public class GitHubReviewPublisher {
    */
   private List<GithubClient.ReviewComment> buildInlineComments(
       ReviewResult reviewResult, DiffAnalysisBundle diffAnalysisBundle) {
-    GitHubDiffPositionMapper positionMapper = createPositionMapper(diffAnalysisBundle.structuredDiff());
+    GitHubDiffPositionMapper positionMapper =
+        createPositionMapper(diffAnalysisBundle.structuredDiff());
     List<GithubClient.ReviewComment> comments = new ArrayList<>();
 
     for (ReviewResult.Issue issue : reviewResult.issues) {

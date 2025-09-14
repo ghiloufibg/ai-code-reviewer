@@ -24,7 +24,6 @@ public class ReviewResultMerger {
   /** Séparateur utilisé pour joindre les résumés multiples */
   private static final String SUMMARY_SEPARATOR = " ";
 
-
   /**
    * Fusionne une liste de résultats d'analyse en un seul résultat consolidé de manière réactive.
    *
@@ -40,23 +39,24 @@ public class ReviewResultMerger {
    * @return Un Mono<ReviewResult> contenant tous les éléments fusionnés
    */
   public Mono<ReviewResult> merge(List<ReviewResult> reviewParts) {
-    return Mono.fromCallable(() -> {
-      validateInput(reviewParts);
+    return Mono.fromCallable(
+        () -> {
+          validateInput(reviewParts);
 
-      if (reviewParts.isEmpty()) {
-        return createEmptyResult();
-      }
+          if (reviewParts.isEmpty()) {
+            return createEmptyResult();
+          }
 
-      ReviewResult consolidatedResult = new ReviewResult();
+          ReviewResult consolidatedResult = new ReviewResult();
 
-      String mergedSummary = mergeSummaries(reviewParts);
-      consolidatedResult.summary = mergedSummary;
+          String mergedSummary = mergeSummaries(reviewParts);
+          consolidatedResult.summary = mergedSummary;
 
-      mergeIssues(reviewParts, consolidatedResult);
-      mergeNonBlockingNotes(reviewParts, consolidatedResult);
+          mergeIssues(reviewParts, consolidatedResult);
+          mergeNonBlockingNotes(reviewParts, consolidatedResult);
 
-      return consolidatedResult;
-    });
+          return consolidatedResult;
+        });
   }
 
   /**
@@ -66,9 +66,7 @@ public class ReviewResultMerger {
    * @return Un Mono<ReviewResult> contenant tous les éléments fusionnés
    */
   public Mono<ReviewResult> mergeFlux(Flux<ReviewResult> reviewPartsFlux) {
-    return reviewPartsFlux
-        .collectList()
-        .flatMap(this::merge);
+    return reviewPartsFlux.collectList().flatMap(this::merge);
   }
 
   /**

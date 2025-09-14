@@ -1,7 +1,6 @@
 package com.ghiloufi.aicode.core;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
@@ -20,7 +19,8 @@ import reactor.test.StepVerifier;
 class DiffCollectionServiceReactiveTest {
 
   private static final int CONTEXT_LINES = 3;
-  private static final String SAMPLE_DIFF = """
+  private static final String SAMPLE_DIFF =
+      """
       --- a/file.txt
       +++ b/file.txt
       @@ -1,3 +1,3 @@
@@ -30,14 +30,11 @@ class DiffCollectionServiceReactiveTest {
        line 3
       """;
 
-  @Mock
-  private GithubClient mockGithubClient;
+  @Mock private GithubClient mockGithubClient;
 
-  @Mock
-  private UnifiedDiffParser mockUnifiedDiffParser;
+  @Mock private UnifiedDiffParser mockUnifiedDiffParser;
 
-  @Mock
-  private GitDiffDocument mockGitDiffDocument;
+  @Mock private GitDiffDocument mockGitDiffDocument;
 
   private DiffCollectionService diffCollectionService;
 
@@ -56,16 +53,17 @@ class DiffCollectionServiceReactiveTest {
       // Arrange
       when(mockGithubClient.fetchPrUnifiedDiff(anyInt(), anyInt()))
           .thenReturn(Mono.just(SAMPLE_DIFF));
-      when(mockUnifiedDiffParser.parse(SAMPLE_DIFF))
-          .thenReturn(mockGitDiffDocument);
+      when(mockUnifiedDiffParser.parse(SAMPLE_DIFF)).thenReturn(mockGitDiffDocument);
+      when(mockGitDiffDocument.toUnifiedString()).thenReturn(SAMPLE_DIFF);
 
       // Act & Assert
       StepVerifier.create(diffCollectionService.collectFromGitHub(mockGithubClient, 123))
-          .expectNextMatches(bundle -> {
-            assertNotNull(bundle);
-            assertEquals(SAMPLE_DIFF, bundle.getUnifiedDiffString());
-            return true;
-          })
+          .expectNextMatches(
+              bundle -> {
+                assertNotNull(bundle);
+                assertEquals(SAMPLE_DIFF, bundle.getUnifiedDiffString());
+                return true;
+              })
           .verifyComplete();
 
       verify(mockGithubClient).fetchPrUnifiedDiff(123, CONTEXT_LINES);
@@ -81,9 +79,12 @@ class DiffCollectionServiceReactiveTest {
 
       // Act & Assert
       StepVerifier.create(diffCollectionService.collectFromGitHub(mockGithubClient, 123))
-          .expectErrorMatches(throwable ->
-              throwable instanceof RuntimeException &&
-              throwable.getMessage().contains("Failed to fetch diff from GitHub PR #123"))
+          .expectErrorMatches(
+              throwable ->
+                  throwable instanceof RuntimeException
+                      && throwable
+                          .getMessage()
+                          .contains("Failed to fetch diff from GitHub PR #123"))
           .verify();
 
       verify(mockGithubClient).fetchPrUnifiedDiff(123, CONTEXT_LINES);
@@ -96,11 +97,12 @@ class DiffCollectionServiceReactiveTest {
       // Arrange
       when(mockGithubClient.fetchPrUnifiedDiff(anyInt(), anyInt()))
           .thenReturn(Mono.just(SAMPLE_DIFF));
-      when(mockUnifiedDiffParser.parse(SAMPLE_DIFF))
-          .thenReturn(mockGitDiffDocument);
+      when(mockUnifiedDiffParser.parse(SAMPLE_DIFF)).thenReturn(mockGitDiffDocument);
+      when(mockGitDiffDocument.toUnifiedString()).thenReturn(SAMPLE_DIFF);
 
       // Act
-      DiffAnalysisBundle result = diffCollectionService.collectFromGitHub(mockGithubClient, 123).block();
+      DiffAnalysisBundle result =
+          diffCollectionService.collectFromGitHub(mockGithubClient, 123).block();
 
       // Assert
       assertNotNull(result);
@@ -119,8 +121,7 @@ class DiffCollectionServiceReactiveTest {
       // This test would require significant mocking of process execution
       // For now, we'll just verify the method exists and can be called
       StepVerifier.create(diffCollectionService.collectFromLocalGit("HEAD~1", "HEAD"))
-          .expectErrorMatches(throwable ->
-              throwable instanceof RuntimeException)
+          .expectErrorMatches(throwable -> throwable instanceof RuntimeException)
           .verify();
     }
 
@@ -130,8 +131,7 @@ class DiffCollectionServiceReactiveTest {
       // Since this involves file system and process operations,
       // we'll test that it doesn't crash immediately using reactive stream
       StepVerifier.create(diffCollectionService.collectFromLocalGit("HEAD~1", "HEAD"))
-          .expectErrorMatches(throwable ->
-              throwable instanceof RuntimeException)
+          .expectErrorMatches(throwable -> throwable instanceof RuntimeException)
           .verify();
     }
   }
@@ -143,15 +143,13 @@ class DiffCollectionServiceReactiveTest {
     @Test
     @DisplayName("Constructor should accept valid parameters")
     void testValidConstructor() {
-      assertDoesNotThrow(() ->
-          new DiffCollectionService(5, "test-repo", mockUnifiedDiffParser));
+      assertDoesNotThrow(() -> new DiffCollectionService(5, "test-repo", mockUnifiedDiffParser));
     }
 
     @Test
     @DisplayName("Constructor should handle empty repository")
     void testConstructorWithEmptyRepository() {
-      assertDoesNotThrow(() ->
-          new DiffCollectionService(5, "", mockUnifiedDiffParser));
+      assertDoesNotThrow(() -> new DiffCollectionService(5, "", mockUnifiedDiffParser));
     }
   }
 }

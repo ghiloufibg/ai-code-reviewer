@@ -1,6 +1,5 @@
 package com.ghiloufi.aicode.github;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.*;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -20,8 +18,8 @@ import reactor.util.retry.Retry;
 /**
  * Client réactif pour interagir avec l'API GitHub.
  *
- * <p>Cette classe fournit des méthodes réactives pour effectuer des opérations courantes sur les Pull
- * Requests GitHub, notamment :
+ * <p>Cette classe fournit des méthodes réactives pour effectuer des opérations courantes sur les
+ * Pull Requests GitHub, notamment :
  *
  * <ul>
  *   <li>Récupération des diffs unifiés de Pull Requests
@@ -29,8 +27,8 @@ import reactor.util.retry.Retry;
  *   <li>Création de reviews avec commentaires positionnés
  * </ul>
  *
- * <p><strong>Approche réactive :</strong> Utilise Spring WebClient pour des communications non-bloquantes
- * avec l'API GitHub, améliorant les performances et la scalabilité.
+ * <p><strong>Approche réactive :</strong> Utilise Spring WebClient pour des communications
+ * non-bloquantes avec l'API GitHub, améliorant les performances et la scalabilité.
  *
  * <p><strong>Authentification :</strong> Le client supporte l'authentification via token GitHub
  * (Personal Access Token ou GitHub App Token). Si aucun token n'est fourni, les requêtes seront
@@ -95,9 +93,10 @@ public class GithubClient {
    * @throws IllegalArgumentException si le repository est null ou vide
    */
   @Autowired
-  public GithubClient(@Value("${app.repository:}") String repository,
-                     @Value("${GITHUB_TOKEN:}") String authToken,
-                     @Value("${app.github.timeoutSeconds:30}") int timeoutSeconds) {
+  public GithubClient(
+      @Value("${app.repository:}") String repository,
+      @Value("${GITHUB_TOKEN:}") String authToken,
+      @Value("${app.github.timeoutSeconds:30}") int timeoutSeconds) {
     validateRepository(repository);
 
     this.repository = repository;
@@ -105,9 +104,10 @@ public class GithubClient {
     this.timeout = Duration.ofSeconds(timeoutSeconds);
     this.objectMapper = new ObjectMapper();
 
-    WebClient.Builder builder = WebClient.builder()
-        .baseUrl(GITHUB_API_BASE_URL)
-        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024));
+    WebClient.Builder builder =
+        WebClient.builder()
+            .baseUrl(GITHUB_API_BASE_URL)
+            .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024));
 
     if (authToken != null && !authToken.isBlank()) {
       builder.defaultHeader(HEADER_AUTHORIZATION, BEARER_PREFIX + authToken);
@@ -118,7 +118,6 @@ public class GithubClient {
     logger.info("GithubClient réactif initialisé pour le repository: {}", repository);
   }
 
-
   /**
    * Récupère le diff unifié d'une Pull Request de manière réactive.
    *
@@ -127,29 +126,36 @@ public class GithubClient {
    * @return Mono<String> contenant le diff unifié
    */
   public Mono<String> fetchPrUnifiedDiff(int pullRequestNumber, int contextLines) {
-    return Mono.fromCallable(() -> {
-      validatePullRequestNumber(pullRequestNumber);
-      return pullRequestNumber;
-    })
-    .flatMap(prNumber -> {
-      String endpoint = String.format(ENDPOINT_PULL, repository, prNumber);
-      logger.debug(
-          "Récupération du diff unifié pour PR #{} avec {} lignes de contexte",
-          prNumber,
-          contextLines);
+    return Mono.fromCallable(
+            () -> {
+              validatePullRequestNumber(pullRequestNumber);
+              return pullRequestNumber;
+            })
+        .flatMap(
+            prNumber -> {
+              String endpoint = String.format(ENDPOINT_PULL, repository, prNumber);
+              logger.debug(
+                  "Récupération du diff unifié pour PR #{} avec {} lignes de contexte",
+                  prNumber,
+                  contextLines);
 
-      return webClient.get()
-          .uri(endpoint)
-          .header(HEADER_ACCEPT, ACCEPT_DIFF)
-          .retrieve()
-          .bodyToMono(String.class)
-          .timeout(timeout)
-          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-          .onErrorMap(throwable -> new GithubClientException(
-              String.format("Erreur lors de la récupération du diff pour la PR #%d", prNumber), throwable));
-    });
+              return webClient
+                  .get()
+                  .uri(endpoint)
+                  .header(HEADER_ACCEPT, ACCEPT_DIFF)
+                  .retrieve()
+                  .bodyToMono(String.class)
+                  .timeout(timeout)
+                  .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                  .onErrorMap(
+                      throwable ->
+                          new GithubClientException(
+                              String.format(
+                                  "Erreur lors de la récupération du diff pour la PR #%d",
+                                  prNumber),
+                              throwable));
+            });
   }
-
 
   /**
    * Poste un commentaire sur une issue ou Pull Request de manière réactive.
@@ -159,30 +165,40 @@ public class GithubClient {
    * @return Mono<Void> qui se complète quand le commentaire est posté
    */
   public Mono<Void> postIssueComment(int issueNumber, String commentBody) {
-    return Mono.fromCallable(() -> {
-      validatePullRequestNumber(issueNumber);
-      validateCommentBody(commentBody);
-      return Map.of(FIELD_BODY, commentBody);
-    })
-    .flatMap(payload -> {
-      String endpoint = String.format(ENDPOINT_ISSUE_COMMENTS, repository, issueNumber);
-      logger.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
+    return Mono.fromCallable(
+            () -> {
+              validatePullRequestNumber(issueNumber);
+              validateCommentBody(commentBody);
+              return Map.of(FIELD_BODY, commentBody);
+            })
+        .flatMap(
+            payload -> {
+              String endpoint = String.format(ENDPOINT_ISSUE_COMMENTS, repository, issueNumber);
+              logger.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
 
-      return webClient.post()
-          .uri(endpoint)
-          .header(HEADER_ACCEPT, ACCEPT_JSON)
-          .contentType(MediaType.APPLICATION_JSON)
-          .body(BodyInserters.fromValue(payload))
-          .retrieve()
-          .bodyToMono(Void.class)
-          .timeout(timeout)
-          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-          .doOnSuccess(unused -> logger.info("Commentaire publié avec succès sur l'issue/PR #{}", issueNumber))
-          .onErrorMap(throwable -> new GithubClientException(
-              String.format("Erreur lors de la publication du commentaire sur l'issue/PR #%d", issueNumber), throwable));
-    });
+              return webClient
+                  .post()
+                  .uri(endpoint)
+                  .header(HEADER_ACCEPT, ACCEPT_JSON)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .body(BodyInserters.fromValue(payload))
+                  .retrieve()
+                  .bodyToMono(Void.class)
+                  .timeout(timeout)
+                  .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                  .doOnSuccess(
+                      unused ->
+                          logger.info(
+                              "Commentaire publié avec succès sur l'issue/PR #{}", issueNumber))
+                  .onErrorMap(
+                      throwable ->
+                          new GithubClientException(
+                              String.format(
+                                  "Erreur lors de la publication du commentaire sur l'issue/PR #%d",
+                                  issueNumber),
+                              throwable));
+            });
   }
-
 
   /**
    * Crée une review sur une Pull Request avec des commentaires positionnés de manière réactive.
@@ -192,36 +208,45 @@ public class GithubClient {
    * @return Mono<Void> qui se complète quand la review est créée
    */
   public Mono<Void> createReview(int pullRequestNumber, List<ReviewComment> comments) {
-    return Mono.fromCallable(() -> {
-      validatePullRequestNumber(pullRequestNumber);
-      validateReviewComments(comments);
-      return buildReviewPayload(comments);
-    })
-    .flatMap(payload -> {
-      String endpoint = String.format(ENDPOINT_PULL_REVIEWS, repository, pullRequestNumber);
-      logger.debug(
-          "Création d'une review sur la PR #{} avec {} commentaire(s)",
-          pullRequestNumber,
-          comments.size());
+    return Mono.fromCallable(
+            () -> {
+              validatePullRequestNumber(pullRequestNumber);
+              validateReviewComments(comments);
+              return buildReviewPayload(comments);
+            })
+        .flatMap(
+            payload -> {
+              String endpoint = String.format(ENDPOINT_PULL_REVIEWS, repository, pullRequestNumber);
+              logger.debug(
+                  "Création d'une review sur la PR #{} avec {} commentaire(s)",
+                  pullRequestNumber,
+                  comments.size());
 
-      return webClient.post()
-          .uri(endpoint)
-          .header(HEADER_ACCEPT, ACCEPT_JSON)
-          .contentType(MediaType.APPLICATION_JSON)
-          .body(BodyInserters.fromValue(payload))
-          .retrieve()
-          .bodyToMono(Void.class)
-          .timeout(timeout)
-          .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-          .doOnSuccess(unused -> logger.info(
-              "Review créée avec succès sur la PR #{} avec {} commentaire(s)",
-              pullRequestNumber,
-              comments.size()))
-          .onErrorMap(throwable -> new GithubClientException(
-              String.format("Erreur lors de la création de la review sur la PR #%d", pullRequestNumber), throwable));
-    });
+              return webClient
+                  .post()
+                  .uri(endpoint)
+                  .header(HEADER_ACCEPT, ACCEPT_JSON)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .body(BodyInserters.fromValue(payload))
+                  .retrieve()
+                  .bodyToMono(Void.class)
+                  .timeout(timeout)
+                  .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                  .doOnSuccess(
+                      unused ->
+                          logger.info(
+                              "Review créée avec succès sur la PR #{} avec {} commentaire(s)",
+                              pullRequestNumber,
+                              comments.size()))
+                  .onErrorMap(
+                      throwable ->
+                          new GithubClientException(
+                              String.format(
+                                  "Erreur lors de la création de la review sur la PR #%d",
+                                  pullRequestNumber),
+                              throwable));
+            });
   }
-
 
   /** Construit le payload pour une review. */
   private Map<String, Object> buildReviewPayload(List<ReviewComment> comments) {
@@ -245,7 +270,6 @@ public class GithubClient {
       throw new GithubClientException("Erreur lors de la construction du payload de review", e);
     }
   }
-
 
   /** Valide le format du repository. */
   private void validateRepository(String repo) {
@@ -297,7 +321,6 @@ public class GithubClient {
       }
     }
   }
-
 
   /**
    * Représente un commentaire dans une review de Pull Request.

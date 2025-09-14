@@ -137,7 +137,6 @@ public class StaticAnalysisRunner {
         maxContentLength);
   }
 
-
   /**
    * Exécute la collecte des résultats d'analyse statique de manière réactive.
    *
@@ -148,26 +147,30 @@ public class StaticAnalysisRunner {
    */
   public Mono<Map<String, Object>> runAndCollect() {
     logger.debug(
-        "Début de la collecte réactive des résultats d'analyse statique depuis: {}", targetDirectory);
+        "Début de la collecte réactive des résultats d'analyse statique depuis: {}",
+        targetDirectory);
 
-    Map<String, String> toolFiles = Map.of(
-        KEY_CHECKSTYLE, CHECKSTYLE_FILE,
-        KEY_PMD, PMD_FILE,
-        KEY_SPOTBUGS, SPOTBUGS_FILE,
-        KEY_SEMGREP, SEMGREP_FILE
-    );
+    Map<String, String> toolFiles =
+        Map.of(
+            KEY_CHECKSTYLE, CHECKSTYLE_FILE,
+            KEY_PMD, PMD_FILE,
+            KEY_SPOTBUGS, SPOTBUGS_FILE,
+            KEY_SEMGREP, SEMGREP_FILE);
 
     return Flux.fromIterable(toolFiles.entrySet())
-        .flatMap(entry -> {
-          String toolName = entry.getKey();
-          String fileName = entry.getValue();
-          return collectToolResultReactive(fileName, toolName)
-              .map(result -> Map.entry(toolName, result));
-        })
+        .flatMap(
+            entry -> {
+              String toolName = entry.getKey();
+              String fileName = entry.getValue();
+              return collectToolResultReactive(fileName, toolName)
+                  .map(result -> Map.entry(toolName, result));
+            })
         .collectMap(Map.Entry::getKey, Map.Entry::getValue)
         .doOnNext(this::logCollectionSummary)
-        .onErrorMap(throwable -> new StaticAnalysisException(
-            "Erreur inattendue lors de la collecte des résultats d'analyse", throwable));
+        .onErrorMap(
+            throwable ->
+                new StaticAnalysisException(
+                    "Erreur inattendue lors de la collecte des résultats d'analyse", throwable));
   }
 
   /**
@@ -182,15 +185,15 @@ public class StaticAnalysisRunner {
 
     return Mono.fromCallable(() -> readIfExists(filePath))
         .subscribeOn(Schedulers.boundedElastic())
-        .doOnNext(result -> {
-          if (result instanceof String && ((String) result).isEmpty()) {
-            logger.trace("Pas de résultats {} trouvés à: {}", toolName, filePath);
-          } else {
-            logger.trace("Résultats {} collectés depuis: {}", toolName, filePath);
-          }
-        });
+        .doOnNext(
+            result -> {
+              if (result instanceof String && ((String) result).isEmpty()) {
+                logger.trace("Pas de résultats {} trouvés à: {}", toolName, filePath);
+              } else {
+                logger.trace("Résultats {} collectés depuis: {}", toolName, filePath);
+              }
+            });
   }
-
 
   /**
    * Lit le contenu d'un fichier s'il existe.
