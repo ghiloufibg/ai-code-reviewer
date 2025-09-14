@@ -4,11 +4,13 @@ import com.ghiloufi.aicode.domain.DiffHunkBlock;
 import com.ghiloufi.aicode.domain.GitDiffDocument;
 import com.ghiloufi.aicode.domain.GitFileModification;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.stereotype.Component;
 
 /**
  * Parser for unified diff format (git diff output). Converts unified diff strings into structured
  * domain objects.
  */
+@Component
 public class UnifiedDiffParser {
 
   /**

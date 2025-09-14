@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -109,6 +110,34 @@ public class Application implements CommandLineRunner {
 
   private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
+  private final DiffCollectionService diffCollectionService;
+  private final StaticAnalysisRunner staticAnalysisRunner;
+  private final PromptBuilder promptBuilder;
+  private final LlmClient llmClient;
+  private final LlmReviewValidator reviewValidator;
+  private final ReviewResultMerger resultMerger;
+  private final GithubClient githubClient;
+  private final GitHubReviewPublisher reviewPublisher;
+
+  public Application(
+      DiffCollectionService diffCollectionService,
+      StaticAnalysisRunner staticAnalysisRunner,
+      PromptBuilder promptBuilder,
+      LlmClient llmClient,
+      LlmReviewValidator reviewValidator,
+      ReviewResultMerger resultMerger,
+      @Autowired(required = false) GithubClient githubClient,
+      @Autowired(required = false) GitHubReviewPublisher reviewPublisher) {
+    this.diffCollectionService = diffCollectionService;
+    this.staticAnalysisRunner = staticAnalysisRunner;
+    this.promptBuilder = promptBuilder;
+    this.llmClient = llmClient;
+    this.reviewValidator = reviewValidator;
+    this.resultMerger = resultMerger;
+    this.githubClient = githubClient;
+    this.reviewPublisher = reviewPublisher;
+  }
+
   // Modes d'exécution
   private static final String MODE_LOCAL = "local";
   private static final String MODE_GITHUB = "github";
@@ -154,22 +183,19 @@ public class Application implements CommandLineRunner {
       ApplicationConfig config = parseConfiguration(args);
       logConfiguration(config);
 
-      // Initialiser les services
-      ServiceContainer services = initializeServices(config);
-
       // Collecter le diff
-      DiffAnalysisBundle diffBundle = collectDiff(config, services);
+      DiffAnalysisBundle diffBundle = collectDiff(config);
       logger.info(
           "Diff collecté: {} fichiers, {} lignes totales",
           diffBundle.getModifiedFileCount(),
           diffBundle.getTotalLineCount());
 
       // Effectuer l'analyse
-      ReviewResult reviewResult = performAnalysis(config, services, diffBundle);
+      ReviewResult reviewResult = performAnalysis(config, diffBundle);
 
       // Sauvegarder et publier les résultats
       saveArtifacts(diffBundle, reviewResult, config);
-      publishResults(config, services, reviewResult, diffBundle);
+      publishResults(config, reviewResult, diffBundle);
 
       logger.info("Analyse terminée avec succès");
 
@@ -250,57 +276,25 @@ public class Application implements CommandLineRunner {
     return result;
   }
 
-  /**
-   * Initialise tous les services nécessaires.
-   *
-   * @param config Configuration de l'application
-   * @return Container avec tous les services initialisés
-   */
-  private ServiceContainer initializeServices(ApplicationConfig config) {
-    ServiceContainer services = new ServiceContainer();
-
-    // Services GitHub (si nécessaire)
-    if (MODE_GITHUB.equals(config.mode)) {
-      services.githubClient = new GithubClient(config.repository, config.githubToken);
-      services.reviewPublisher = new GitHubReviewPublisher(services.githubClient);
-    }
-
-    // Services de diff et analyse
-    services.diffCollector = new DiffCollectionService(config.contextLines, config.repository);
-    services.staticAnalysisRunner = new StaticAnalysisRunner();
-
-    // Services LLM
-    services.promptBuilder = new PromptBuilder();
-    services.llmClient =
-        new LlmClient(config.ollamaHost, config.model, Duration.ofSeconds(config.timeoutSeconds));
-    services.reviewValidator = new LlmReviewValidator();
-
-    // Service de fusion
-    services.resultMerger = new ReviewResultMerger();
-
-    logger.debug("Services initialisés avec succès");
-    return services;
-  }
 
   /**
    * Collecte le diff selon le mode configuré.
    *
    * @param config Configuration de l'application
-   * @param services Container de services
    * @return Bundle contenant le diff et métadonnées
    */
-  private DiffAnalysisBundle collectDiff(ApplicationConfig config, ServiceContainer services)
+  private DiffAnalysisBundle collectDiff(ApplicationConfig config)
       throws IOException {
 
     logger.info("Collecte du diff en mode: {}", config.mode);
 
     if (MODE_LOCAL.equals(config.mode)) {
       logger.info("Analyse locale de {} à {}", config.fromCommit, config.toCommit);
-      return services.diffCollector.collectFromLocalGit(config.fromCommit, config.toCommit);
+      return diffCollectionService.collectFromLocalGit(config.fromCommit, config.toCommit);
     } else {
       logger.info("Analyse de la PR #{} sur {}", config.pullRequestNumber, config.repository);
-      return services.diffCollector.collectFromGitHub(
-          services.githubClient, config.pullRequestNumber);
+      return diffCollectionService.collectFromGitHub(
+          githubClient, config.pullRequestNumber);
     }
   }
 
@@ -308,18 +302,17 @@ public class Application implements CommandLineRunner {
    * Effectue l'analyse complète du diff.
    *
    * @param config Configuration
-   * @param services Services
    * @param diffBundle Bundle de diff
    * @return Résultat de la revue fusionné
    */
   private ReviewResult performAnalysis(
-      ApplicationConfig config, ServiceContainer services, DiffAnalysisBundle diffBundle)
+      ApplicationConfig config, DiffAnalysisBundle diffBundle)
       throws Exception {
 
     logger.info("Début de l'analyse avec le modèle: {}", config.model);
 
     // Collecter les rapports d'analyse statique
-    Map<String, Object> staticReports = services.staticAnalysisRunner.runAndCollect();
+    Map<String, Object> staticReports = staticAnalysisRunner.runAndCollect();
     logger.debug("Analyse statique collectée: {} outils", staticReports.size());
 
     // Découper le diff en chunks
@@ -331,12 +324,12 @@ public class Application implements CommandLineRunner {
     for (int i = 0; i < chunks.size(); i++) {
       logger.info("Analyse du chunk {}/{}", i + 1, chunks.size());
       ReviewResult result =
-          analyzeChunk(config, services, chunks.get(i), staticReports, diffBundle);
+          analyzeChunk(config, chunks.get(i), staticReports, diffBundle);
       chunkResults.add(result);
     }
 
     // Fusionner les résultats
-    ReviewResult mergedResult = services.resultMerger.merge(chunkResults);
+    ReviewResult mergedResult = resultMerger.merge(chunkResults);
     logger.info("Résultats fusionnés: {} issues trouvées", mergedResult.getTotalItemCount());
 
     return mergedResult;
@@ -346,7 +339,6 @@ public class Application implements CommandLineRunner {
    * Analyse un chunk de diff avec le LLM.
    *
    * @param config Configuration
-   * @param services Services
    * @param chunk Chunk à analyser
    * @param staticReports Rapports d'analyse statique
    * @param fullBundle Bundle complet pour contexte
@@ -354,7 +346,6 @@ public class Application implements CommandLineRunner {
    */
   private ReviewResult analyzeChunk(
       ApplicationConfig config,
-      ServiceContainer services,
       GitDiffDocument chunk,
       Map<String, Object> staticReports,
       DiffAnalysisBundle fullBundle)
@@ -362,7 +353,7 @@ public class Application implements CommandLineRunner {
 
     // Construire le prompt
     String userPrompt =
-        services.promptBuilder.buildUserMessage(
+        promptBuilder.buildUserMessage(
             config.repository,
             config.defaultBranch,
             config.javaVersion,
@@ -375,7 +366,7 @@ public class Application implements CommandLineRunner {
     logger.trace("Prompt construit, taille: {} caractères", userPrompt.length());
 
     // Envoyer au LLM
-    String llmResponse = services.llmClient.review(PromptBuilder.SYSTEM_PROMPT, userPrompt);
+    String llmResponse = llmClient.review(PromptBuilder.SYSTEM_PROMPT, userPrompt);
 
     ObjectMapper mapper = new ObjectMapper();
     JsonNode rootNode = mapper.readTree(llmResponse);
@@ -388,15 +379,15 @@ public class Application implements CommandLineRunner {
     llmResponse = cleanToValidJsonChars(llmResponse);
 
     // Valider et retry si nécessaire
-    if (!services.reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
+    if (!reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
       logger.warn("Réponse LLM invalide, nouvelle tentative avec instruction stricte");
 
       String strictPrompt =
           userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON complying with the schema above.";
 
-      llmResponse = services.llmClient.review(PromptBuilder.SYSTEM_PROMPT, strictPrompt);
+      llmResponse = llmClient.review(PromptBuilder.SYSTEM_PROMPT, strictPrompt);
 
-      if (!services.reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
+      if (!reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
         logger.error("Réponse LLM toujours invalide après retry");
         throw new RuntimeException("Impossible d'obtenir une réponse valide du LLM");
       }
@@ -468,20 +459,18 @@ public class Application implements CommandLineRunner {
    * Publie les résultats selon le mode configuré.
    *
    * @param config Configuration
-   * @param services Services
    * @param reviewResult Résultat à publier
    * @param diffBundle Bundle pour contexte
    */
   private void publishResults(
       ApplicationConfig config,
-      ServiceContainer services,
       ReviewResult reviewResult,
       DiffAnalysisBundle diffBundle)
       throws Exception {
 
-    if (MODE_GITHUB.equals(config.mode) && config.pullRequestNumber > 0) {
+    if (MODE_GITHUB.equals(config.mode) && config.pullRequestNumber > 0 && reviewPublisher != null) {
       logger.info("Publication des résultats sur GitHub PR #{}", config.pullRequestNumber);
-      services.reviewPublisher.publish(config.pullRequestNumber, reviewResult, diffBundle);
+      reviewPublisher.publish(config.pullRequestNumber, reviewResult, diffBundle);
       logger.info("Résultats publiés avec succès sur GitHub");
     } else {
       // Mode local ou pas de PR : afficher en console
@@ -583,15 +572,4 @@ public class Application implements CommandLineRunner {
     String buildSystem;
   }
 
-  /** Container pour tous les services de l'application. */
-  private static class ServiceContainer {
-    GithubClient githubClient;
-    GitHubReviewPublisher reviewPublisher;
-    DiffCollectionService diffCollector;
-    StaticAnalysisRunner staticAnalysisRunner;
-    PromptBuilder promptBuilder;
-    LlmClient llmClient;
-    LlmReviewValidator reviewValidator;
-    ReviewResultMerger resultMerger;
-  }
 }

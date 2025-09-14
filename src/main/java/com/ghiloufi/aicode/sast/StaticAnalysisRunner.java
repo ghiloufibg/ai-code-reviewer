@@ -7,6 +7,7 @@ import java.nio.file.*;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Collecteur de résultats d'analyse statique pour le plugin AI Code Reviewer.
@@ -65,6 +66,7 @@ import org.slf4j.LoggerFactory;
  * @since 1.0
  * @see com.ghiloufi.aicode.llm.PromptBuilder
  */
+@Service
 public class StaticAnalysisRunner {
 
   private static final Logger logger = LoggerFactory.getLogger(StaticAnalysisRunner.class);

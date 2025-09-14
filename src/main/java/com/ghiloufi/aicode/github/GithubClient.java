@@ -16,6 +16,10 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
 
 /**
  * Client pour interagir avec l'API GitHub.
@@ -57,6 +61,8 @@ import org.slf4j.LoggerFactory;
  * @version 1.0
  * @since 1.0
  */
+@Service
+@ConditionalOnProperty(name = "app.mode", havingValue = "github")
 public class GithubClient {
 
   private static final Logger logger = LoggerFactory.getLogger(GithubClient.class);
@@ -94,7 +100,9 @@ public class GithubClient {
    * @param authToken Le token d'authentification GitHub (peut être null pour les requêtes anonymes)
    * @throws IllegalArgumentException si le repository est null ou vide
    */
-  public GithubClient(String repository, String authToken) {
+  @Autowired
+  public GithubClient(@Value("${app.repository:}") String repository,
+                     @Value("${GITHUB_TOKEN:}") String authToken) {
     validateRepository(repository);
 
     this.repository = repository;

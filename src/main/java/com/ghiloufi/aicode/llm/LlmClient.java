@@ -21,6 +21,9 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Client pour interagir avec un modèle de langage (LLM) via API HTTP.
@@ -66,6 +69,7 @@ import org.slf4j.LoggerFactory;
  * @version 1.0
  * @since 1.0
  */
+@Service
 public class LlmClient implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(LlmClient.class);
@@ -107,10 +111,14 @@ public class LlmClient implements Closeable {
    *
    * @param baseUrl L'URL de base de l'API LLM (ex: "http://localhost:11434")
    * @param model Le nom ou ID du modèle LLM à utiliser (ex: "codellama:13b")
-   * @param timeout La durée maximale d'attente pour une réponse
+   * @param timeoutSeconds La durée maximale d'attente pour une réponse en secondes
    * @throws IllegalArgumentException si un paramètre est null ou invalide
    */
-  public LlmClient(String baseUrl, String model, Duration timeout) {
+  @Autowired
+  public LlmClient(@Value("${app.llm.baseUrl:http://localhost:1234}") String baseUrl,
+                   @Value("${app.llm.model:deepseek-coder-6.7b-instruct}") String model,
+                   @Value("${app.llm.timeoutSeconds:45}") int timeoutSeconds) {
+    Duration timeout = Duration.ofSeconds(timeoutSeconds);
     validateConstructorParameters(baseUrl, model, timeout);
 
     this.baseUrl = normalizeBaseUrl(baseUrl);

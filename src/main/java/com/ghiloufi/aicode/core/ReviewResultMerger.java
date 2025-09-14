@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core;
 import com.ghiloufi.aicode.domain.ReviewResult;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
 /**
  * Agrégateur responsable de la fusion de plusieurs résultats d'analyse de code en un seul résultat
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
  * @version 1.0
  * @since 1.0
  */
+@Component
 public class ReviewResultMerger {
 
   /** Séparateur utilisé pour joindre les résumés multiples */

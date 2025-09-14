@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
 
 /**
  * Service responsable de la publication des résultats d'analyse de code sur GitHub.
@@ -25,6 +28,8 @@ import org.slf4j.LoggerFactory;
  * @author Generated AI Code Review
  * @since 1.0
  */
+@Service
+@ConditionalOnProperty(name = "app.mode", havingValue = "github")
 public class GitHubReviewPublisher {
 
   private static final Logger log = LoggerFactory.getLogger(GitHubReviewPublisher.class);
@@ -52,6 +57,7 @@ public class GitHubReviewPublisher {
    * @param githubClient le client GitHub utilisé pour les interactions avec l'API
    * @throws IllegalArgumentException si le client GitHub est null
    */
+  @Autowired
   public GitHubReviewPublisher(GithubClient githubClient) {
     if (githubClient == null) {
       throw new IllegalArgumentException("GithubClient ne peut pas être null");

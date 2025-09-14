@@ -35,11 +35,12 @@ public class DiffCollectionServiceTest {
   @Mock private GithubClient mockGithubClient;
   @Mock private Process mockProcess;
   @Mock private ProcessBuilder mockProcessBuilder;
+  @Mock private UnifiedDiffParser mockUnifiedDiffParser;
   private DiffCollectionService diffCollectionService;
 
   @BeforeEach
   void setUp() {
-    diffCollectionService = new DiffCollectionService(contextLines, "");
+    diffCollectionService = new DiffCollectionService(contextLines, "", mockUnifiedDiffParser);
   }
 
   @Nested
@@ -49,7 +50,7 @@ public class DiffCollectionServiceTest {
     @Test
     @DisplayName("Should create service with specified context lines")
     void should_create_service_with_context_lines() {
-      DiffCollectionService service = new DiffCollectionService(5, "");
+      DiffCollectionService service = new DiffCollectionService(5, "", mock(UnifiedDiffParser.class));
       assertNotNull(service);
       // Context lines are used internally, we can't directly assert them
       // but we can verify they're used in the git command via integration tests
@@ -58,13 +59,13 @@ public class DiffCollectionServiceTest {
     @Test
     @DisplayName("Should create service with zero context lines")
     void should_create_service_with_zero_context_lines() {
-      assertDoesNotThrow(() -> new DiffCollectionService(0, ""));
+      assertDoesNotThrow(() -> new DiffCollectionService(0, "", mock(UnifiedDiffParser.class)));
     }
 
     @Test
     @DisplayName("Should create service with large context lines")
     void should_create_service_with_large_context_lines() {
-      assertDoesNotThrow(() -> new DiffCollectionService(1000, ""));
+      assertDoesNotThrow(() -> new DiffCollectionService(1000, "", mock(UnifiedDiffParser.class)));
     }
   }
 
@@ -294,7 +295,7 @@ public class DiffCollectionServiceTest {
     void should_use_correct_context_lines_in_git_command() throws Exception {
       // Arrange
       int customContextLines = 7;
-      DiffCollectionService customService = new DiffCollectionService(customContextLines, "");
+      DiffCollectionService customService = new DiffCollectionService(customContextLines, "", mock(UnifiedDiffParser.class));
       String base = "main";
       String head = "feature";
 
@@ -501,7 +502,7 @@ public class DiffCollectionServiceTest {
       int[] contextLineValues = {0, 1, 3, 5, 10};
 
       for (int contextLines : contextLineValues) {
-        DiffCollectionService service = new DiffCollectionService(contextLines, "");
+        DiffCollectionService service = new DiffCollectionService(contextLines, "", mock(UnifiedDiffParser.class));
 
         when(mockGithubClient.fetchPrUnifiedDiff(123, contextLines)).thenReturn(sampleDiff);
 

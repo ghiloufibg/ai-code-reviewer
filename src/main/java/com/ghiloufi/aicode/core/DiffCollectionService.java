@@ -6,6 +6,9 @@ import com.ghiloufi.aicode.github.GithubClient;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /**
  * Service responsible for collecting unified diffs from various sources and converting them into
@@ -14,6 +17,7 @@ import java.nio.charset.StandardCharsets;
  * <p>Supports two main collection modes: - GitHub API: Fetches diffs from Pull Requests via GitHub
  * client - Local Git: Executes git diff commands locally between commits/branches
  */
+@Service
 public class DiffCollectionService {
 
   private final int contextLines;
@@ -25,9 +29,12 @@ public class DiffCollectionService {
    *
    * @param contextLines number of context lines to include around changes in diffs
    */
-  public DiffCollectionService(int contextLines, String repository) {
+  @Autowired
+  public DiffCollectionService(@Value("${app.diff.contextLines:5}") int contextLines,
+                              @Value("${app.repository:}") String repository,
+                              UnifiedDiffParser diffParser) {
     this.contextLines = contextLines;
-    this.diffParser = new UnifiedDiffParser();
+    this.diffParser = diffParser;
     this.repository = repository;
   }
 

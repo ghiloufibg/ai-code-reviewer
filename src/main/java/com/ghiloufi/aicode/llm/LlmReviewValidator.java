@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 /**
  * Validateur JSON pour vérifier la conformité des réponses LLM.
@@ -71,6 +72,7 @@ import org.slf4j.LoggerFactory;
  * @see com.networknt.schema.JsonSchema
  * @see com.ghiloufi.aicode.llm.PromptBuilder#OUTPUT_SCHEMA_JSON
  */
+@Component
 public class LlmReviewValidator {
 
   private static final Logger logger = LoggerFactory.getLogger(LlmReviewValidator.class);
