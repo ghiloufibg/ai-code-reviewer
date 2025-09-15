@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -42,9 +41,8 @@ import reactor.util.retry.Retry;
  * @since 1.0
  */
 @Service
+@Slf4j
 public class LlmClient {
-
-  private static final Logger logger = LoggerFactory.getLogger(LlmClient.class);
 
   // Constantes pour l'API
   private static final String API_ENDPOINT = "v1/chat/completions";
@@ -102,7 +100,7 @@ public class LlmClient {
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
             .build();
 
-    logger.info(
+    log.info(
         "LlmClient réactif initialisé - URL: {}, Modèle: {}, Timeout: {}s",
         this.baseUrl,
         this.model,
@@ -128,7 +126,7 @@ public class LlmClient {
             })
         .flatMap(
             payload -> {
-              logger.debug("Envoi de la requête de review au LLM réactif");
+              log.debug("Envoi de la requête de review au LLM réactif");
 
               return webClient
                   .post()
@@ -139,10 +137,10 @@ public class LlmClient {
                   .bodyToMono(String.class)
                   .timeout(timeout)
                   .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
-                  .doOnNext(response -> logger.trace("Réponse brute du LLM: {}", response))
+                  .doOnNext(response -> log.trace("Réponse brute du LLM: {}", response))
                   .map(this::extractContentFromResponse)
                   .doOnError(
-                      error -> logger.error("Erreur lors de la communication avec le LLM", error))
+                      error -> log.error("Erreur lors de la communication avec le LLM", error))
                   .onErrorMap(
                       throwable ->
                           new LlmClientException(
@@ -167,7 +165,7 @@ public class LlmClient {
             })
         .flatMapMany(
             payload -> {
-              logger.debug("Envoi de la requête de review streamée au LLM");
+              log.debug("Envoi de la requête de review streamée au LLM");
 
               return webClient
                   .post()
@@ -181,10 +179,10 @@ public class LlmClient {
                   .filter(chunk -> !chunk.trim().isEmpty())
                   .map(this::extractContentFromStreamChunk)
                   .filter(content -> content != null && !content.isEmpty())
-                  .doOnError(error -> logger.error("Erreur lors du streaming LLM", error))
+                  .doOnError(error -> log.error("Erreur lors du streaming LLM", error))
                   .onErrorResume(
                       throwable -> {
-                        logger.error(
+                        log.error(
                             "Erreur fatale lors du streaming, tentative de récupération",
                             throwable);
                         return Flux.error(
@@ -219,10 +217,10 @@ public class LlmClient {
       payload.put(FIELD_MESSAGES, messages);
       payload.put(FIELD_TEMPERATURE, DEFAULT_TEMPERATURE);
 
-      logger.trace("Payload construit: {}", objectMapper.writeValueAsString(payload));
+      log.trace("Payload construit: {}", objectMapper.writeValueAsString(payload));
       return payload;
     } catch (JsonProcessingException e) {
-      logger.error("Erreur lors de la construction du payload", e);
+      log.error("Erreur lors de la construction du payload", e);
       throw new LlmClientException("Erreur lors de la construction du payload", e);
     }
   }
@@ -244,7 +242,7 @@ public class LlmClient {
         JsonNode firstChoice = rootNode.get("choices").get(0);
         if (firstChoice.has(FIELD_MESSAGE) && firstChoice.get(FIELD_MESSAGE).has(FIELD_CONTENT)) {
           String content = firstChoice.get(FIELD_MESSAGE).get(FIELD_CONTENT).asText();
-          logger.debug("Contenu extrait du format OpenAI");
+          log.debug("Contenu extrait du format OpenAI");
           return content;
         }
       }
@@ -254,7 +252,7 @@ public class LlmClient {
         JsonNode messageNode = rootNode.get(FIELD_MESSAGE);
         if (messageNode.has(FIELD_CONTENT)) {
           String content = messageNode.get(FIELD_CONTENT).asText();
-          logger.debug("Contenu extrait du champ 'message.content'");
+          log.debug("Contenu extrait du champ 'message.content'");
           return content;
         }
       }
@@ -262,15 +260,15 @@ public class LlmClient {
       // Format direct content
       if (rootNode.has(FIELD_CONTENT)) {
         String content = rootNode.get(FIELD_CONTENT).asText();
-        logger.debug("Contenu extrait du champ 'content'");
+        log.debug("Contenu extrait du champ 'content'");
         return content;
       }
 
       // Si aucun champ standard n'est trouvé, retourner le corps brut
-      logger.warn("Format de réponse non reconnu, retour du corps brut");
+      log.warn("Format de réponse non reconnu, retour du corps brut");
       return responseBody;
     } catch (JsonProcessingException e) {
-      logger.error("Erreur lors du parsing JSON, retour du corps brut", e);
+      log.error("Erreur lors du parsing JSON, retour du corps brut", e);
       return responseBody;
     }
   }
@@ -305,7 +303,7 @@ public class LlmClient {
 
       return null;
     } catch (JsonProcessingException e) {
-      logger.trace("Chunk non-JSON ignoré: {}", chunk);
+      log.trace("Chunk non-JSON ignoré: {}", chunk);
       return null;
     }
   }

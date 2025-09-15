@@ -3,8 +3,7 @@ package com.ghiloufi.aicode.github;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -52,10 +51,9 @@ import reactor.util.retry.Retry;
  * @since 1.0
  */
 @Service
+@Slf4j
 @ConditionalOnProperty(name = "app.mode", havingValue = "github")
 public class GithubClient {
-
-  private static final Logger logger = LoggerFactory.getLogger(GithubClient.class);
 
   // Constantes pour l'API GitHub
   private static final String GITHUB_API_BASE_URL = "https://api.github.com";
@@ -115,7 +113,7 @@ public class GithubClient {
 
     this.webClient = builder.build();
 
-    logger.info("GithubClient réactif initialisé pour le repository: {}", repository);
+    log.info("GithubClient réactif initialisé pour le repository: {}", repository);
   }
 
   /**
@@ -134,7 +132,7 @@ public class GithubClient {
         .flatMap(
             prNumber -> {
               String endpoint = String.format(ENDPOINT_PULL, repository, prNumber);
-              logger.debug(
+              log.debug(
                   "Récupération du diff unifié pour PR #{} avec {} lignes de contexte",
                   prNumber,
                   contextLines);
@@ -174,7 +172,7 @@ public class GithubClient {
         .flatMap(
             payload -> {
               String endpoint = String.format(ENDPOINT_ISSUE_COMMENTS, repository, issueNumber);
-              logger.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
+              log.debug("Publication d'un commentaire sur l'issue/PR #{}", issueNumber);
 
               return webClient
                   .post()
@@ -188,7 +186,7 @@ public class GithubClient {
                   .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
                   .doOnSuccess(
                       unused ->
-                          logger.info(
+                          log.info(
                               "Commentaire publié avec succès sur l'issue/PR #{}", issueNumber))
                   .onErrorMap(
                       throwable ->
@@ -217,7 +215,7 @@ public class GithubClient {
         .flatMap(
             payload -> {
               String endpoint = String.format(ENDPOINT_PULL_REVIEWS, repository, pullRequestNumber);
-              logger.debug(
+              log.debug(
                   "Création d'une review sur la PR #{} avec {} commentaire(s)",
                   pullRequestNumber,
                   comments.size());
@@ -234,7 +232,7 @@ public class GithubClient {
                   .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
                   .doOnSuccess(
                       unused ->
-                          logger.info(
+                          log.info(
                               "Review créée avec succès sur la PR #{} avec {} commentaire(s)",
                               pullRequestNumber,
                               comments.size()))

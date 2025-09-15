@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.orchestrator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ghiloufi.aicode.config.ApplicationConfig;
 import com.ghiloufi.aicode.core.DiffCollectionService;
 import com.ghiloufi.aicode.core.GitHubReviewPublisher;
 import com.ghiloufi.aicode.core.ReviewResultMerger;
@@ -19,8 +20,7 @@ import java.nio.file.Path;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -36,9 +36,8 @@ import reactor.core.scheduler.Schedulers;
  * @since 1.0
  */
 @Service
+@Slf4j
 public class CodeReviewOrchestrator {
-
-  private static final Logger logger = LoggerFactory.getLogger(CodeReviewOrchestrator.class);
 
   // Modes d'exécution
   private static final String MODE_LOCAL = "local";
@@ -94,12 +93,12 @@ public class CodeReviewOrchestrator {
    * @return Mono<Void> qui se complète quand l'analyse est terminée
    */
   public Mono<Void> executeCodeReview(ApplicationConfig config) {
-    logger.info("Démarrage d'AI Code Reviewer réactif");
+    log.info("Démarrage d'AI Code Reviewer réactif");
 
     return collectDiff(config)
         .doOnNext(
             diffBundle ->
-                logger.info(
+                log.info(
                     "Diff collecté: {} fichiers, {} lignes totales",
                     diffBundle.getModifiedFileCount(),
                     diffBundle.getTotalLineCount()))
@@ -110,8 +109,8 @@ public class CodeReviewOrchestrator {
                         reviewResult ->
                             saveArtifacts(diffBundle, reviewResult, config)
                                 .then(publishResults(config, reviewResult, diffBundle))))
-        .doOnSuccess(unused -> logger.info("Analyse terminée avec succès"))
-        .doOnError(error -> logger.error("Erreur lors de l'exécution de l'analyse", error))
+        .doOnSuccess(unused -> log.info("Analyse terminée avec succès"))
+        .doOnError(error -> log.error("Erreur lors de l'exécution de l'analyse", error))
         .then();
   }
 
@@ -122,13 +121,13 @@ public class CodeReviewOrchestrator {
    * @return Mono<DiffAnalysisBundle> contenant le diff et métadonnées
    */
   private Mono<DiffAnalysisBundle> collectDiff(ApplicationConfig config) {
-    logger.info("Collecte du diff en mode: {}", config.mode);
+    log.info("Collecte du diff en mode: {}", config.mode);
 
     if (MODE_LOCAL.equals(config.mode)) {
-      logger.info("Analyse locale de {} à {}", config.fromCommit, config.toCommit);
+      log.info("Analyse locale de {} à {}", config.fromCommit, config.toCommit);
       return diffCollectionService.collectFromLocalGit(config.fromCommit, config.toCommit);
     } else {
-      logger.info("Analyse de la PR #{} sur {}", config.pullRequestNumber, config.repository);
+      log.info("Analyse de la PR #{} sur {}", config.pullRequestNumber, config.repository);
       return diffCollectionService.collectFromGitHub(githubClient, config.pullRequestNumber);
     }
   }
@@ -142,17 +141,17 @@ public class CodeReviewOrchestrator {
    */
   private Mono<ReviewResult> performAnalysis(
       ApplicationConfig config, DiffAnalysisBundle diffBundle) {
-    logger.info("Début de l'analyse avec le modèle: {}", config.model);
+    log.info("Début de l'analyse avec le modèle: {}", config.model);
 
     return staticAnalysisRunner
         .runAndCollect()
         .doOnNext(
             staticReports ->
-                logger.debug("Analyse statique collectée: {} outils", staticReports.size()))
+                log.debug("Analyse statique collectée: {} outils", staticReports.size()))
         .flatMap(
             staticReports -> {
               List<GitDiffDocument> chunks = diffBundle.splitByMaxLines(config.maxLinesPerChunk);
-              logger.info("Diff découpé en {} chunk(s)", chunks.size());
+              log.info("Diff découpé en {} chunk(s)", chunks.size());
 
               return Flux.fromIterable(chunks)
                   .index()
@@ -160,18 +159,18 @@ public class CodeReviewOrchestrator {
                       indexedChunk -> {
                         long index = indexedChunk.getT1();
                         GitDiffDocument chunk = indexedChunk.getT2();
-                        logger.info("Analyse du chunk {}/{}", index + 1, chunks.size());
+                        log.info("Analyse du chunk {}/{}", index + 1, chunks.size());
                         return analyzeChunk(config, chunk, staticReports, diffBundle);
                       })
                   .collectList()
                   .flatMap(
                       chunkResults -> {
-                        logger.info("Fusion des résultats de {} chunks", chunkResults.size());
+                        log.info("Fusion des résultats de {} chunks", chunkResults.size());
                         return resultMerger.merge(chunkResults);
                       })
                   .doOnNext(
                       mergedResult ->
-                          logger.info(
+                          log.info(
                               "Résultats fusionnés: {} issues trouvées",
                               mergedResult.getTotalItemCount()));
             });
@@ -204,8 +203,7 @@ public class CodeReviewOrchestrator {
                     fullBundle.getProjectConfiguration(),
                     fullBundle.getTestStatus()))
         .doOnNext(
-            userPrompt ->
-                logger.trace("Prompt construit, taille: {} caractères", userPrompt.length()))
+            userPrompt -> log.trace("Prompt construit, taille: {} caractères", userPrompt.length()))
         .flatMap(
             userPrompt ->
                 llmClient
@@ -243,7 +241,7 @@ public class CodeReviewOrchestrator {
                     fullBundle.getTestStatus()))
         .flatMap(
             userPrompt -> {
-              logger.debug("Démarrage de l'analyse chunk avec streaming");
+              log.debug("Démarrage de l'analyse chunk avec streaming");
 
               return llmClient
                   .reviewStream(PromptBuilder.SYSTEM_PROMPT, userPrompt)
@@ -252,7 +250,7 @@ public class CodeReviewOrchestrator {
                   .map(this::processLlmResponse)
                   .flatMap(llmResponse -> validateAndRetryIfNeeded(userPrompt, llmResponse))
                   .map(this::parseReviewResult)
-                  .doOnNext(result -> logger.debug("Analyse chunk terminée avec streaming"));
+                  .doOnNext(result -> log.debug("Analyse chunk terminée avec streaming"));
             });
   }
 
@@ -275,14 +273,14 @@ public class CodeReviewOrchestrator {
 
       return llmResponse;
     } catch (Exception e) {
-      logger.warn("Erreur lors du traitement de la réponse LLM, utilisation brute", e);
+      log.warn("Erreur lors du traitement de la réponse LLM, utilisation brute", e);
       return llmResponse;
     }
   }
 
   private Mono<String> validateAndRetryIfNeeded(String userPrompt, String llmResponse) {
     if (!reviewValidator.isValid(PromptBuilder.OUTPUT_SCHEMA_JSON, llmResponse)) {
-      logger.warn("Réponse LLM invalide, nouvelle tentative avec instruction stricte");
+      log.warn("Réponse LLM invalide, nouvelle tentative avec instruction stricte");
 
       String strictPrompt =
           userPrompt + "\n\nIMPORTANT: Return ONLY valid JSON complying with the schema above.";
@@ -331,12 +329,12 @@ public class CodeReviewOrchestrator {
                 // Sauvegarder le résultat de la revue
                 Path reviewPath = outputDir.resolve(REVIEW_FILE);
                 Files.writeString(reviewPath, reviewResult.toJson());
-                logger.info("Résultat sauvegardé dans: {}", reviewPath);
+                log.info("Résultat sauvegardé dans: {}", reviewPath);
 
                 // Sauvegarder le diff
                 Path diffPath = outputDir.resolve(DIFF_FILE);
                 Files.writeString(diffPath, diffBundle.getUnifiedDiffString());
-                logger.info("Diff sauvegardé dans: {}", diffPath);
+                log.info("Diff sauvegardé dans: {}", diffPath);
 
                 // Sauvegarder un résumé du prompt
                 Path promptPath = outputDir.resolve(PROMPT_FILE);
@@ -349,7 +347,7 @@ public class CodeReviewOrchestrator {
                         diffBundle.splitByMaxLines(config.maxLinesPerChunk).size(),
                         new Date());
                 Files.writeString(promptPath, promptSummary);
-                logger.debug("Résumé du prompt sauvegardé");
+                log.debug("Résumé du prompt sauvegardé");
 
                 return null;
               } catch (IOException e) {
@@ -374,12 +372,12 @@ public class CodeReviewOrchestrator {
     if (MODE_GITHUB.equals(config.mode)
         && config.pullRequestNumber > 0
         && reviewPublisher != null) {
-      logger.info("Publication des résultats sur GitHub PR #{}", config.pullRequestNumber);
+      log.info("Publication des résultats sur GitHub PR #{}", config.pullRequestNumber);
       return Mono.fromCallable(
               () -> {
                 try {
                   reviewPublisher.publish(config.pullRequestNumber, reviewResult, diffBundle);
-                  logger.info("Résultats publiés avec succès sur GitHub");
+                  log.info("Résultats publiés avec succès sur GitHub");
                   return null;
                 } catch (Exception e) {
                   throw new RuntimeException("Erreur lors de la publication sur GitHub", e);
@@ -397,26 +395,8 @@ public class CodeReviewOrchestrator {
             System.out.println(reviewResult.toPrettyJson());
             System.out.println("=".repeat(80));
 
-            logger.info("Résultats affichés en console");
+            log.info("Résultats affichés en console");
           });
     }
-  }
-
-  /** Configuration complète de l'application. */
-  public static class ApplicationConfig {
-    public String mode;
-    public String repository;
-    public int pullRequestNumber;
-    public String githubToken;
-    public String fromCommit;
-    public String toCommit;
-    public String model;
-    public String ollamaHost;
-    public int timeoutSeconds;
-    public int maxLinesPerChunk;
-    public int contextLines;
-    public String defaultBranch;
-    public String javaVersion;
-    public String buildSystem;
   }
 }
