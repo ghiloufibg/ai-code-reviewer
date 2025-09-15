@@ -1,0 +1,595 @@
+openapi: 3.0.3
+info:
+  title: AI Code Reviewer API
+  description: |
+    API for the AI Code Reviewer application that provides automated code review
+    using LLM and static analysis tools for GitHub Pull Requests and local Git commits.
+
+    This API allows you to:
+    - Trigger code reviews for GitHub PRs or local commits
+    - Get review status and results
+    - Configure review parameters
+    - Access review history
+  version: 1.0.0
+  contact:
+    name: AI Code Reviewer
+    email: support@aicodereview.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.aicodereview.com
+    description: Production server
+
+paths:
+  /api/v1/reviews:
+    post:
+      tags:
+        - Code Review
+      summary: Start a new code review
+      description: |
+        Initiates a new code review process for either a GitHub PR or local Git commits.
+        The review will analyze the code using static analysis tools and LLM.
+      operationId: startCodeReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeReviewRequest'
+      responses:
+        '202':
+          description: Review started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeReviewResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Code Review
+      summary: List code reviews
+      description: Get a paginated list of code reviews with optional filtering
+      operationId: listCodeReviews
+      parameters:
+        - name: status
+          in: query
+          description: Filter by review status
+          schema:
+            $ref: '#/components/schemas/ReviewStatus'
+        - name: mode
+          in: query
+          description: Filter by review mode
+          schema:
+            type: string
+            enum: [local, github]
+        - name: page
+          in: query
+          description: Page number (0-based)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Page size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: List of code reviews
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeReviewListResponse'
+
+  /api/v1/reviews/{reviewId}:
+    get:
+      tags:
+        - Code Review
+      summary: Get code review details
+      description: Retrieve detailed information about a specific code review
+      operationId: getCodeReview
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          description: Unique identifier of the code review
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Code review details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeReviewDetails'
+        '404':
+          description: Code review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/reviews/{reviewId}/status:
+    get:
+      tags:
+        - Code Review
+      summary: Get review status
+      description: Get the current status of a code review process
+      operationId: getReviewStatus
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          description: Unique identifier of the code review
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Review status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewStatusResponse'
+        '404':
+          description: Code review not found
+
+  /api/v1/reviews/{reviewId}/results:
+    get:
+      tags:
+        - Code Review
+      summary: Get review results
+      description: Retrieve the results of a completed code review
+      operationId: getReviewResults
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          description: Unique identifier of the code review
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Review results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResult'
+        '404':
+          description: Code review not found
+        '409':
+          description: Review not completed yet
+
+  /api/v1/config:
+    get:
+      tags:
+        - Configuration
+      summary: Get current configuration
+      description: Retrieve the current application configuration
+      operationId: getConfiguration
+      responses:
+        '200':
+          description: Current configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationConfiguration'
+
+    put:
+      tags:
+        - Configuration
+      summary: Update configuration
+      description: Update the application configuration
+      operationId: updateConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationConfiguration'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationConfiguration'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/health:
+    get:
+      tags:
+        - System
+      summary: Health check
+      description: Check the health status of the application
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    CodeReviewRequest:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          enum: [local, github]
+          description: Review mode - local Git commits or GitHub PR
+        repository:
+          type: string
+          description: GitHub repository (owner/repo format). Required for GitHub mode.
+          example: "myorg/myproject"
+        pullRequestNumber:
+          type: integer
+          description: Pull Request number. Required for GitHub mode.
+          example: 123
+        fromCommit:
+          type: string
+          description: Starting commit for local mode. Defaults to HEAD~1
+          example: "HEAD~3"
+        toCommit:
+          type: string
+          description: Ending commit for local mode. Defaults to HEAD
+          example: "HEAD"
+        model:
+          type: string
+          description: LLM model to use for review
+          example: "deepseek-coder-6.7b-instruct"
+        maxLinesPerChunk:
+          type: integer
+          description: Maximum lines per diff chunk
+          minimum: 100
+          maximum: 5000
+          default: 1500
+        contextLines:
+          type: integer
+          description: Context lines around modifications
+          minimum: 0
+          maximum: 20
+          default: 5
+
+    CodeReviewResponse:
+      type: object
+      required:
+        - reviewId
+        - status
+        - createdAt
+      properties:
+        reviewId:
+          type: string
+          format: uuid
+          description: Unique identifier for the review
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        message:
+          type: string
+          description: Status message
+        createdAt:
+          type: string
+          format: date-time
+          description: Review creation timestamp
+        estimatedDuration:
+          type: integer
+          description: Estimated duration in seconds
+
+    CodeReviewListResponse:
+      type: object
+      required:
+        - content
+        - page
+        - size
+        - totalElements
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeReviewSummary'
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Page size
+        totalElements:
+          type: integer
+          description: Total number of reviews
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    CodeReviewSummary:
+      type: object
+      required:
+        - reviewId
+        - mode
+        - status
+        - createdAt
+      properties:
+        reviewId:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [local, github]
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        repository:
+          type: string
+        pullRequestNumber:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Duration in seconds
+        issuesFound:
+          type: integer
+          description: Number of issues found
+
+    CodeReviewDetails:
+      allOf:
+        - $ref: '#/components/schemas/CodeReviewSummary'
+        - type: object
+          properties:
+            configuration:
+              $ref: '#/components/schemas/ReviewConfiguration'
+            progress:
+              $ref: '#/components/schemas/ReviewProgress'
+            results:
+              $ref: '#/components/schemas/ReviewResult'
+
+    ReviewConfiguration:
+      type: object
+      properties:
+        model:
+          type: string
+        maxLinesPerChunk:
+          type: integer
+        contextLines:
+          type: integer
+        fromCommit:
+          type: string
+        toCommit:
+          type: string
+        timeoutSeconds:
+          type: integer
+
+    ReviewProgress:
+      type: object
+      properties:
+        totalChunks:
+          type: integer
+        processedChunks:
+          type: integer
+        currentStep:
+          type: string
+          enum: [collecting_diff, static_analysis, llm_analysis, merging_results, publishing]
+        percentage:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+
+    ReviewStatusResponse:
+      type: object
+      required:
+        - reviewId
+        - status
+      properties:
+        reviewId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        progress:
+          $ref: '#/components/schemas/ReviewProgress'
+        message:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReviewStatus:
+      type: string
+      enum:
+        - PENDING
+        - IN_PROGRESS
+        - COMPLETED
+        - FAILED
+        - CANCELLED
+
+    ReviewResult:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/ReviewSummary'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeIssue'
+        staticAnalysisResults:
+          type: object
+          additionalProperties:
+            type: object
+        metrics:
+          $ref: '#/components/schemas/ReviewMetrics'
+
+    ReviewSummary:
+      type: object
+      properties:
+        totalIssues:
+          type: integer
+        criticalIssues:
+          type: integer
+        majorIssues:
+          type: integer
+        minorIssues:
+          type: integer
+        linesAnalyzed:
+          type: integer
+        filesAnalyzed:
+          type: integer
+        overallRating:
+          type: string
+          enum: [EXCELLENT, GOOD, FAIR, NEEDS_IMPROVEMENT, POOR]
+
+    CodeIssue:
+      type: object
+      required:
+        - severity
+        - category
+        - description
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [CRITICAL, MAJOR, MINOR, INFO]
+        category:
+          type: string
+          enum: [BUG, SECURITY, PERFORMANCE, MAINTAINABILITY, STYLE, DOCUMENTATION]
+        description:
+          type: string
+        file:
+          type: string
+        line:
+          type: integer
+        column:
+          type: integer
+        suggestion:
+          type: string
+        code:
+          type: string
+          description: Code snippet where the issue was found
+        tool:
+          type: string
+          description: Tool that detected the issue (LLM, checkstyle, pmd, etc.)
+
+    ReviewMetrics:
+      type: object
+      properties:
+        analysisTime:
+          type: integer
+          description: Total analysis time in seconds
+        chunkCount:
+          type: integer
+        llmTokensUsed:
+          type: integer
+        staticAnalysisTime:
+          type: integer
+        llmAnalysisTime:
+          type: integer
+
+    ApplicationConfiguration:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [local, github]
+        model:
+          type: string
+        ollamaHost:
+          type: string
+        timeoutSeconds:
+          type: integer
+        maxLinesPerChunk:
+          type: integer
+        contextLines:
+          type: integer
+        defaultBranch:
+          type: string
+        javaVersion:
+          type: string
+        buildSystem:
+          type: string
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, DEGRADED]
+        checks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/HealthCheck'
+        timestamp:
+          type: string
+          format: date-time
+
+    HealthCheck:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          description: Request path that caused the error

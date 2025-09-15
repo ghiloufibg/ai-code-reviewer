@@ -1,110 +1,60 @@
 package com.ghiloufi.aicode;
 
-import com.ghiloufi.aicode.config.ApplicationConfig;
-import com.ghiloufi.aicode.orchestrator.CodeReviewOrchestrator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Application principale du plugin AI Code Reviewer.
+ * Application principale du service AI Code Reviewer.
  *
- * <p>Cette application analyse les modifications de code (diffs) provenant de Git local ou de Pull
- * Requests GitHub, les envoie à un modèle de langage (LLM) pour analyse, et publie les résultats de
- * la revue de code.
+ * <p>Cette application web fournit des API REST pour analyser les modifications de code (diffs)
+ * provenant de Git local ou de Pull Requests GitHub. Elle utilise un modèle de langage (LLM)
+ * pour effectuer l'analyse et retourne les résultats via les endpoints REST.
  *
- * <h2>Modes de fonctionnement</h2>
+ * <h2>Architecture Web API</h2>
  *
  * <ul>
- *   <li><b>Mode local</b> : Analyse les commits locaux pour tests et développement
- *   <li><b>Mode GitHub</b> : Analyse les Pull Requests GitHub en production
+ *   <li><b>Code Review API</b> : Gestion des revues de code (démarrage, statut, résultats)
+ *   <li><b>Configuration API</b> : Gestion de la configuration applicative
+ *   <li><b>System API</b> : Endpoints système (health check)
  * </ul>
  *
- * <h2>Workflow de l'application</h2>
+ * <h2>Endpoints disponibles</h2>
  *
- * <ol>
- *   <li>Collecte du diff (local Git ou GitHub PR)
- *   <li>Exécution de l'analyse statique (Checkstyle, PMD, SpotBugs, Semgrep)
- *   <li>Découpage du diff en chunks si nécessaire
- *   <li>Envoi de chaque chunk au LLM pour analyse
- *   <li>Validation et fusion des résultats
- *   <li>Publication des résultats (console ou GitHub)
- * </ol>
+ * <ul>
+ *   <li><b>POST /api/v1/reviews</b> : Démarrer une nouvelle revue de code
+ *   <li><b>GET /api/v1/reviews/{id}</b> : Récupérer les détails d'une revue
+ *   <li><b>GET /api/v1/reviews/{id}/status</b> : Obtenir le statut d'une revue
+ *   <li><b>GET /api/v1/reviews/{id}/results</b> : Récupérer les résultats d'une revue
+ *   <li><b>GET /api/v1/configuration</b> : Obtenir la configuration actuelle
+ *   <li><b>PUT /api/v1/configuration</b> : Mettre à jour la configuration
+ *   <li><b>GET /api/v1/health</b> : Vérifier l'état de l'application
+ * </ul>
  *
- * <h2>Configuration via application.properties</h2>
+ * <h2>Documentation OpenAPI</h2>
  *
- * <p>La configuration se fait maintenant exclusivement via le fichier application.properties et les
- * variables d'environnement, conformément aux bonnes pratiques Spring Boot.
+ * <p>La documentation complète de l'API est disponible via Swagger UI à l'endpoint
+ * <code>/swagger-ui.html</code> une fois l'application démarrée.
  *
- * @version 1.0
+ * @version 2.0
  * @since 1.0
  */
 @SpringBootApplication
 @Slf4j
-@RequiredArgsConstructor
-public class Application implements CommandLineRunner {
-
-  private static final String MODE_LOCAL = "local";
-
-  private final CodeReviewOrchestrator orchestrator;
-  private final ApplicationConfig applicationConfig;
+public class Application {
 
   /**
-   * Point d'entrée principal de l'application.
+   * Point d'entrée principal de l'application web.
    *
-   * @param args Arguments de ligne de commande
-   */
-  public static void main(String[] args) {
-    SpringApplication.run(Application.class, args);
-  }
-
-  /**
-   * Méthode principale d'exécution après le démarrage Spring.
+   * <p>Lance le serveur Spring Boot avec les endpoints REST pour le service de revue de code.
+   * L'application se contente de démarrer le serveur web et d'exposer les API REST.
+   * Aucune logique de traitement n'est exécutée au démarrage.
    *
    * @param args Arguments de ligne de commande (ignorés)
-   * @throws Exception Si une erreur survient pendant l'exécution
    */
-  @Override
-  public void run(String... args) throws Exception {
-    try {
-      // Initialiser le token GitHub depuis l'environnement
-      applicationConfig.initializeGithubToken();
-
-      // Valider la configuration GitHub spécifique
-      applicationConfig.validateGithubMode();
-      logConfiguration(applicationConfig);
-
-      // Déléguer l'exécution à l'orchestrateur (réactif)
-      orchestrator.executeCodeReview(applicationConfig).block();
-
-    } catch (Exception e) {
-      log.error("Erreur lors de l'exécution de l'analyse", e);
-      throw e;
-    }
-  }
-
-  /**
-   * Log la configuration pour debug.
-   *
-   * @param config Configuration à logger
-   */
-  private void logConfiguration(ApplicationConfig config) {
-    log.info("Configuration:");
-    log.info("  Mode: {}", config.mode);
-    log.info("  Repository: {}", config.repository);
-    log.info("  Model: {}", config.model);
-    log.info("  Ollama: {}", config.ollamaHost);
-    log.info("  Max lines/chunk: {}", config.maxLinesPerChunk);
-    log.info("  Context lines: {}", config.contextLines);
-    log.info("  Timeout: {}s", config.timeoutSeconds);
-
-    if (MODE_LOCAL.equals(config.mode)) {
-      log.info("  From commit: {}", config.fromCommit);
-      log.info("  To commit: {}", config.toCommit);
-    } else {
-      log.info("  PR number: {}", config.pullRequestNumber);
-    }
+  public static void main(String[] args) {
+    log.info("Démarrage du service AI Code Reviewer Web API");
+    SpringApplication.run(Application.class, args);
+    log.info("Service AI Code Reviewer Web API démarré avec succès");
   }
 }
