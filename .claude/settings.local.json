@@ -6,7 +6,14 @@
       "Bash(mvn test:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(mvn:*)"
+      "Bash(mvn:*)",
+      "Bash(sed:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)",
+      "Bash(mkdir:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.langchain4j.dev)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

@@ -39,7 +39,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @version 2.0
  * @since 1.0
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+    // Exclude LangChain4j auto-configurations that may fail without proper setup
+    // These will be conditionally enabled based on properties
+})
 @Slf4j
 public class Application {
 

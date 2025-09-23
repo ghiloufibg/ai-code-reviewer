@@ -36,16 +36,13 @@ public class ApplicationConfig {
 
   public String toCommit = "HEAD";
 
-  /** LLM model name. */
-  @NotBlank(message = "Model name cannot be blank")
+  /** LLM model name (legacy field for compatibility). */
   public String model = "deepseek-coder-6.7b-instruct";
 
-  /** Ollama host URL. */
-  @NotBlank(message = "Ollama host cannot be blank")
+  /** Ollama host URL (legacy field for compatibility). */
   public String ollamaHost = "http://localhost:1234";
 
-  /** Timeout for LLM requests in seconds. */
-  @Positive(message = "Timeout must be positive")
+  /** Timeout for LLM requests in seconds (legacy field for compatibility). */
   public int timeoutSeconds = 45;
 
   /** Maximum lines per diff chunk. */
