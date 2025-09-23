@@ -6,9 +6,6 @@ import static org.mockito.Mockito.*;
 
 import com.ghiloufi.aicode.domain.model.*;
 import com.ghiloufi.aicode.domain.model.DiffHunkBlock;
-import com.ghiloufi.aicode.client.github.GithubClient;
-import com.ghiloufi.aicode.client.github.GitHubDiffPositionMapper;
-import com.ghiloufi.aicode.client.github.GitHubReviewPublisher;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;

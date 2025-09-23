@@ -8,22 +8,21 @@ import com.ghiloufi.aicode.shared.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
-/**
- * Use case for getting review results.
- */
+/** Use case for getting review results. */
 @UseCase
 @RequiredArgsConstructor
 public class GetReviewResultsUseCase {
 
-    private final ReviewRepository reviewRepository;
+  private final ReviewRepository reviewRepository;
 
-    /**
-     * Gets the results of a completed review.
-     */
-    public Mono<ReviewResult> execute(ReviewResultsQuery query) {
-        return reviewRepository.findById(query.reviewId())
-            .filter(review -> review.getFinalResult() != null)
-            .map(review -> review.getFinalResult())
-            .switchIfEmpty(Mono.error(new ValidationException("Review results not available: " + query.reviewId())));
-    }
+  /** Gets the results of a completed review. */
+  public Mono<ReviewResult> execute(ReviewResultsQuery query) {
+    return reviewRepository
+        .findById(query.reviewId())
+        .filter(review -> review.getFinalResult() != null)
+        .map(review -> review.getFinalResult())
+        .switchIfEmpty(
+            Mono.error(
+                new ValidationException("Review results not available: " + query.reviewId())));
+  }
 }

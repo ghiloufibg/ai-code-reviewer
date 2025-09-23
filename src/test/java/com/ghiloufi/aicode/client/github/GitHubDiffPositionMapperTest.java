@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.ghiloufi.aicode.domain.model.DiffHunkBlock;
 import com.ghiloufi.aicode.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.domain.model.GitFileModification;
-import com.ghiloufi.aicode.client.github.GitHubDiffPositionMapper;
 import com.ghiloufi.aicode.service.diff.UnifiedDiffParser;
 import java.util.ArrayList;
 import org.junit.jupiter.api.BeforeEach;

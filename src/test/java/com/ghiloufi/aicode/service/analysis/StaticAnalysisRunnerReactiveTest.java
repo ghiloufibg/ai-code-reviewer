@@ -2,7 +2,6 @@ package com.ghiloufi.aicode.service.analysis;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.ghiloufi.aicode.service.analysis.StaticAnalysisRunner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.*;

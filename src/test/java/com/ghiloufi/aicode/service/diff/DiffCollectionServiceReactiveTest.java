@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
+import com.ghiloufi.aicode.client.github.GithubClient;
 import com.ghiloufi.aicode.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.model.GitDiffDocument;
-import com.ghiloufi.aicode.client.github.GithubClient;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

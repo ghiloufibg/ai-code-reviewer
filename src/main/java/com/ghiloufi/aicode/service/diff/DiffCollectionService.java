@@ -1,8 +1,8 @@
 package com.ghiloufi.aicode.service.diff;
 
+import com.ghiloufi.aicode.client.github.GithubClient;
 import com.ghiloufi.aicode.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.model.GitDiffDocument;
-import com.ghiloufi.aicode.client.github.GithubClient;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

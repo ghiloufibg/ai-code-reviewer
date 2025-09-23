@@ -3,7 +3,6 @@ package com.ghiloufi.aicode.client.github;
 import com.ghiloufi.aicode.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.domain.model.ReviewResult;
-import com.ghiloufi.aicode.client.github.GithubClient;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;

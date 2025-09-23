@@ -8,8 +8,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Application principale du service AI Code Reviewer.
  *
  * <p>Cette application web fournit des API REST pour analyser les modifications de code (diffs)
- * provenant de Git local ou de Pull Requests GitHub. Elle utilise un modèle de langage (LLM)
- * pour effectuer l'analyse et retourne les résultats via les endpoints REST.
+ * provenant de Git local ou de Pull Requests GitHub. Elle utilise un modèle de langage (LLM) pour
+ * effectuer l'analyse et retourne les résultats via les endpoints REST.
  *
  * <h2>Architecture Web API</h2>
  *
@@ -33,16 +33,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * <h2>Documentation OpenAPI</h2>
  *
- * <p>La documentation complète de l'API est disponible via Swagger UI à l'endpoint
- * <code>/swagger-ui.html</code> une fois l'application démarrée.
+ * <p>La documentation complète de l'API est disponible via Swagger UI à l'endpoint <code>
+ * /swagger-ui.html</code> une fois l'application démarrée.
  *
  * @version 2.0
  * @since 1.0
  */
-@SpringBootApplication(exclude = {
-    // Exclude LangChain4j auto-configurations that may fail without proper setup
-    // These will be conditionally enabled based on properties
-})
+@SpringBootApplication(
+    exclude = {
+      // Exclude LangChain4j auto-configurations that may fail without proper setup
+      // These will be conditionally enabled based on properties
+    })
 @Slf4j
 public class Application {
 
@@ -50,8 +51,8 @@ public class Application {
    * Point d'entrée principal de l'application web.
    *
    * <p>Lance le serveur Spring Boot avec les endpoints REST pour le service de revue de code.
-   * L'application se contente de démarrer le serveur web et d'exposer les API REST.
-   * Aucune logique de traitement n'est exécutée au démarrage.
+   * L'application se contente de démarrer le serveur web et d'exposer les API REST. Aucune logique
+   * de traitement n'est exécutée au démarrage.
    *
    * @param args Arguments de ligne de commande (ignorés)
    */
