@@ -1,7 +1,7 @@
 package com.ghiloufi.aicode.infrastructure.adapter.input.rest;
 
+import com.ghiloufi.aicode.config.ApplicationConfig;
 import com.ghiloufi.aicode.infrastructure.adapter.legacy.LegacyCodeReviewOrchestrator;
-import com.ghiloufi.aicode.infrastructure.config.ApplicationConfig;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -35,7 +35,7 @@ import reactor.core.scheduler.Schedulers;
  *
  * @since 1.0
  */
-@Service
+@Service("mainCodeReviewOrchestrator")
 @Slf4j
 public class CodeReviewOrchestrator {
 

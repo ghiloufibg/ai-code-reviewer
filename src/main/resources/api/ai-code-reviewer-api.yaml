@@ -277,24 +277,30 @@ paths:
   /analysis/upload:
     post:
       tags: [Analysis]
-      summary: Upload files for analysis
+      summary: Upload file for analysis
       description: |
-        Upload code files for AI analysis. Supports multiple files and returns
+        Upload a single code file for AI analysis and returns
         analysis ID for tracking progress and results.
-      operationId: uploadFilesForAnalysis
+      operationId: uploadFileForAnalysis
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/FileUploadRequest'
-            encoding:
-              files:
-                style: form
-                explode: true
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Code file to analyze
+                analysisOptions:
+                  type: string
+                  description: JSON string of analysis options
+              required:
+                - file
       responses:
         '202':
-          description: Files uploaded and analysis started
+          description: File uploaded and analysis started
           content:
             application/json:
               schema:
@@ -1338,14 +1344,12 @@ components:
     FileUploadRequest:
       type: object
       required:
-        - files
+        - file
       properties:
-        files:
-          type: array
-          items:
-            type: string
-            format: binary
-          description: Code files to analyze
+        file:
+          type: string
+          format: binary
+          description: Code file to analyze
         analysisOptions:
           $ref: '#/components/schemas/AnalysisOptions'
 

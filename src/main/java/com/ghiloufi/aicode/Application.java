@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode;
 
+import dev.langchain4j.ollama.spring.AutoConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -39,11 +40,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @version 2.0
  * @since 1.0
  */
-@SpringBootApplication(
-    exclude = {
-      // Exclude LangChain4j auto-configurations that may fail without proper setup
-      // These will be conditionally enabled based on properties
-    })
+@SpringBootApplication(exclude = {AutoConfig.class})
 @Slf4j
 public class Application {
 

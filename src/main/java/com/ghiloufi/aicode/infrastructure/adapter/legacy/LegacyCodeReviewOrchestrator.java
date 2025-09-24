@@ -2,9 +2,9 @@ package com.ghiloufi.aicode.infrastructure.adapter.legacy;
 
 import com.ghiloufi.aicode.application.command.StartReviewCommand;
 import com.ghiloufi.aicode.application.port.input.ReviewManagementPort;
+import com.ghiloufi.aicode.config.ApplicationConfig;
 import com.ghiloufi.aicode.domain.value.RepositoryInfo;
 import com.ghiloufi.aicode.domain.value.ReviewConfiguration;
-import com.ghiloufi.aicode.infrastructure.config.ApplicationConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
