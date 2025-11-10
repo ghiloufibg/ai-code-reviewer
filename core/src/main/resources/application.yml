@@ -1,0 +1,10 @@
+core:
+  review:
+    max-retries: 3
+    timeout-minutes: 10
+    enable-caching: true
+
+logging:
+  level:
+    com.ghiloufi.aicode.core: DEBUG
+    org.kohsuke.github: INFO

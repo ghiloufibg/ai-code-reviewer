@@ -158,7 +158,269 @@ Refactoriser ce projet Java afin de :
 
 - Code refactorisé et organisé par packages, avec IoC complet.
 - Documentation claire (`README.md` + JavaDocs).
-- Tests unitaires et d’intégration avec ≥ 70% de couverture.
+- Tests unitaires et d'intégration avec ≥ 70% de couverture.
 - Maintien de la compatibilité avec le workflow actuel (mode local et GitHub).
+
+---
+
+## 🎯 Code Quality Standards
+
+### CRITICAL: Java 21 LTS - Project Standard
+
+**This project uses Java 21 LTS exclusively.**
+
+All generated code MUST use modern Java 21 features:
+- Records for immutable data structures
+- Pattern matching for instanceof and switch
+- Text blocks for multi-line strings
+- Sealed classes for restricted hierarchies
+- Virtual threads for concurrency
+- Enhanced switch expressions
+- Local variable type inference (var) where it improves readability
+
+**NO Java 22+ only features** - maintain Java 21 LTS compatibility
+
+### 1. CLARITY
+Code must be self-explanatory with clear intent:
+- Use descriptive names for classes, methods, and variables
+- Code should read like well-written prose
+- Intent should be immediately obvious without documentation
+
+### 2. CLEANLINESS
+Follow clean code principles:
+- Single Responsibility Principle for classes and methods
+- No code duplication (DRY principle)
+- Proper separation of concerns
+- Consistent formatting and style
+
+### 3. READABILITY
+Code must be easy to read and understand:
+- Use meaningful variable and method names
+- Keep methods short and focused (ideally under 20 lines)
+- Proper indentation and spacing
+- Clear control flow without deeply nested structures
+
+### 4. PRODUCTION-READY
+Code must be robust and maintainable:
+- Proper error handling and validation
+- No hardcoded values or magic numbers
+- Consider edge cases
+- Thread-safe where applicable
+- Performance-conscious but favor clarity over premature optimization
+
+### 5. ENCAPSULATION & IMMUTABILITY
+Enforce by default whenever possible:
+- All class fields should be `private final` where possible
+- All constructors should be marked `final` (implicit for non-abstract classes)
+- All local variables should be marked `final`
+- Prefer immutable data structures (records, List.of(), Set.of(), Map.of())
+- Use defensive copying when returning mutable objects
+
+### 6. NO DOCUMENTATION
+Code should be self-explanatory and production-ready:
+- NO Javadoc comments anywhere in codebase
+- NO inline comments in production code
+- NO comments in test code
+- Code clarity replaces documentation need
+- Names and structure convey intent
+
+### 7. SIMPLICITY AND NO OVER-ENGINEERING
+
+**CRITICAL: Keep code simple, clean, and clear.**
+
+- **Simple First**: Always prefer the simplest solution that works
+- **No Over-Engineering**: Avoid complex patterns, abstractions, or frameworks when simple code suffices
+- **YAGNI Strictly**: You Aren't Gonna Need It - implement only what's required now
+- **Avoid Premature Abstraction**: Don't create abstractions until you have 3+ concrete use cases
+- **Readability Over Cleverness**: Clear, straightforward code beats clever, complex code
+- **Minimal Dependencies**: Only add dependencies when absolutely necessary
+- **No Speculative Features**: Build what's needed, not what might be needed
+
+**Examples of Over-Engineering to AVOID**:
+- ❌ Creating abstract factories when a simple constructor works
+- ❌ Adding dependency injection framework for 3 classes
+- ❌ Complex builder patterns for simple data objects (use records)
+- ❌ Strategy pattern when a simple if/else or switch is clear
+- ❌ Observer pattern when direct method calls are sufficient
+- ❌ Reflection when compile-time type safety works
+
+**Prefer**:
+- ✅ Direct, straightforward code
+- ✅ Standard library over external frameworks
+- ✅ Records over complex POJOs with builders
+- ✅ Simple conditionals over design patterns
+- ✅ Composition over complex inheritance hierarchies
+
+### 8. CODE FORMATTING
+
+**CRITICAL: Google Java Style is mandatory.**
+
+- **All code MUST be formatted with Google Java Style**
+- **Format AFTER every code generation** - no exceptions
+- Use Spotless Maven plugin (compatible with Java 21)
+- Consistent formatting across entire codebase
+- No manual formatting - let the tool handle it
+
+**MANDATORY: After Every Code Generation**:
+```bash
+mvn spotless:apply
+```
+
+**This command MUST be executed:**
+- After creating new files
+- After editing existing files
+- After any code generation or modification
+- Before marking any task as complete
+- Before committing code to git
+
+**Pre-commit Requirement**:
+- ALL code must be formatted before commit
+- CI/CD will reject unformatted code
+- Run `mvn spotless:apply` as the final step of every implementation task
+
+---
+
+## 🧪 Testing Standards
+
+### CRITICAL: Test-Driven Development (TDD)
+
+**ALL code generation MUST follow TDD:**
+1. Write the test FIRST (red phase)
+2. Write minimal code to make test pass (green phase)
+3. Refactor for quality (refactor phase)
+4. NEVER generate production code without tests first
+
+### CRITICAL: Definition of Done
+
+**A task is NOT complete until it is tested and working as expected:**
+- Code must compile without errors
+- All tests must pass successfully
+- Code must be formatted with Google Java Style
+- Code must meet all quality standards defined above
+- NO task can be marked "done" if tests fail or code doesn't work
+- "Working as expected" means: compiles + tests pass + meets requirements
+
+### 1. TEST COVERAGE
+Minimum 70% test coverage required:
+- Cover main execution paths
+- Cover edge cases and boundary conditions
+- Cover error handling and exception scenarios
+- Aim for both line and branch coverage
+
+### 2. TESTING FRAMEWORK
+Use JUnit 5 with Maven:
+- Use `@Test`, `@BeforeEach`, `@AfterEach`, `@DisplayName` annotations
+- Organize tests with `@Nested` classes for logical grouping
+- Use `@ParameterizedTest` for testing multiple scenarios
+- Tests must be runnable with `mvn test`
+- Follow Maven standard directory structure (src/test/java)
+
+### 3. ASSERTIONS
+Use AssertJ and Hamcrest:
+- Prefer AssertJ's fluent assertions for readability
+- Use Hamcrest matchers where appropriate
+- Write clear, descriptive assertion messages
+
+### 4. NO MOCKING
+Use real objects only:
+- Create actual instances instead of mocks
+- Build test fixtures with real object graphs
+- Use test builders or factories for complex object creation
+- NO Mockito, NO mocking frameworks
+
+### 5. TEST QUALITY
+Tests must be clear and maintainable:
+- Follow Arrange-Act-Assert (AAA) pattern
+- One logical assertion per test method
+- Test method names in snake_case: `should_return_null_when_input_is_empty`
+- Tests should be independent and repeatable
+- NO documentation in tests (self-explanatory names and structure)
+
+### 6. TEST ENCAPSULATION
+Apply same immutability rules to tests:
+- All test local variables marked `final`
+- Use immutable test fixtures where possible
+
+---
+
+## 🛠️ Development Commands
+
+**Maven-based project:**
+```bash
+mvn clean compile          # Compile the project
+mvn test                   # Run all unit tests
+mvn test -Dtest=ClassName  # Run specific test class
+mvn verify                 # Run integration tests
+mvn clean package          # Build JAR artifact
+mvn com.coveo:fmt-maven-plugin:format  # Format code with Google Java Style
+```
+
+---
+
+## 📝 Documentation and Tracking Rules
+
+### Markdown File Management
+
+**CRITICAL: All markdown files MUST follow these rules:**
+
+1. **Location:** All `.md` files (except CLAUDE.md and README.md) MUST be placed in `trackings/` directory
+   - Analysis reports → `trackings/`
+   - Design documents → `trackings/`
+   - Meeting notes → `trackings/`
+   - Technical specifications → `trackings/`
+   - Any other markdown documentation → `trackings/`
+
+2. **Exceptions:** Only two markdown files allowed in project root:
+   - `CLAUDE.md` - This file (guidance for Claude Code)
+   - `README.md` - Project readme
+
+3. **Git Management:**
+   - `trackings/` directory and all its contents should NOT be committed to git
+   - Add `trackings/` to `.gitignore`
+   - `CLAUDE.md` and `README.md` in root should be committed normally
+
+4. **Enforcement:**
+   - Before creating any `.md` file, check if it's CLAUDE.md or README.md
+   - If not, create it in `trackings/` directory
+   - Create `trackings/` directory if it doesn't exist
+
+---
+
+## 🔐 Git Commit Standards
+
+### CRITICAL: Commit Only Required Code
+
+**When committing to git, ONLY include essential production code:**
+
+1. **ALWAYS Commit:**
+   - Production source code (`src/main/java/`)
+   - Test code (`src/test/java/`)
+   - Build configuration (`pom.xml`, `build.gradle`)
+   - Project documentation (`CLAUDE.md`, `README.md`)
+   - Configuration files necessary for build/deployment
+   - `.gitignore` file
+
+2. **NEVER Commit:**
+   - IDE configuration files (`.idea/`, `*.iml`, `*.iws`, `*.ipr`)
+   - Build outputs (`target/`, `build/`, `out/`, `*.class`)
+   - Tracking documents (`trackings/` directory)
+   - Temporary files (`*.tmp`, `*.bak`, `*.swp`, `*~`)
+   - Log files (`*.log`)
+   - OS-specific files (`.DS_Store`, `Thumbs.db`)
+   - Maven/Gradle wrapper files unless explicitly needed
+   - Local environment configurations
+   - Generated reports (`reports/` directory)
+
+3. **Verification Before Commit:**
+   - Always run `git status` before staging files
+   - Review `git diff` to verify only required code changes
+   - Ensure `.gitignore` is properly configured
+   - Check that no IDE, build, or temporary files are staged
+
+4. **Clean Repository Principle:**
+   - Keep repository minimal and focused on source code
+   - Anyone cloning should only get what they need to build/run
+   - No developer-specific or machine-specific files
+   - No generated artifacts or build outputs
 
 ---

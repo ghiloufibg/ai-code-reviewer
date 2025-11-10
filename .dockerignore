@@ -1,0 +1,64 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE files
+.idea
+*.iml
+*.iws
+*.ipr
+.vscode
+.DS_Store
+
+# Build outputs (will be rebuilt in container)
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+
+# Test outputs
+**/test-results/
+**/coverage/
+
+# Logs
+*.log
+logs/
+
+# Documentation and tracking
+*.md
+!README.md
+claudedocs/
+trackings/
+
+# Docker files (not needed in build context)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+*.sh
+*.bat
+
+# Environment files (use docker-compose env instead)
+.env
+.env.*
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Maven wrapper (already in image)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Node modules (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# OS files
+Thumbs.db

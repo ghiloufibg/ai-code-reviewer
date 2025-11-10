@@ -1,0 +1,88 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-code-reviewer-gateway
+  webflux:
+    base-path: /
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# LLM Provider Configuration (LM Studio via OpenAI-compatible API).
+llm:
+  provider:
+    active: ${LLM_PROVIDER:OPENAI}
+    circuit-breaker:
+      failure-threshold: 50.0
+      timeout: 30s
+    max-retries: 3
+
+  providers:
+    openai:
+      enabled: true
+      api-key: ${LLM_API_KEY:dummy}
+      # For Docker: use host.docker.internal to access LM Studio on host machine
+      # For local development: use 127.0.0.1:1234
+      base-url: ${LLM_BASE_URL:http://host.docker.internal:1234/v1}
+      default-model: ${LLM_MODEL:deepseek-coder-6.7b-instruct}
+      available-models:
+        - deepseek-coder-6.7b-instruct
+        - gpt-4o
+        - gpt-4o-mini
+        - gpt-3.5-turbo
+      max-tokens: ${LLM_MAX_TOKENS:4000}
+      temperature: ${LLM_TEMPERATURE:0.1}
+      stream-enabled: ${LLM_STREAM:true}
+      max-retries: 3
+      timeout: ${LLM_TIMEOUT:120}s
+      circuit-breaker-failure-threshold: 50.0
+      circuit-breaker-timeout: 30s
+
+# Management endpoints.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,mappings
+  endpoint:
+    health:
+      show-details: always
+
+# Logging.
+logging:
+  level:
+    com.ghiloufi.aicode: DEBUG
+    com.ghiloufi.aicode.core: DEBUG
+    org.kohsuke.github: INFO
+    org.springframework.web.reactive: INFO
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Reactor Netty settings.
+reactor:
+  netty:
+    pool:
+      max-connections: 500
+      acquire-timeout: 60s
+
+# SCM Provider Configuration.
+scm:
+  providers:
+    github:
+      enabled: false
+      api-url: https://api.github.com
+      token: ${GITHUB_TOKEN:ghp_dummy_token}
+
+    gitlab:
+      enabled: true
+      api-url: ${GITLAB_API_URL:http://host.docker.internal:8080/api/v4}
+      token: ${GITLAB_TOKEN:}
+
+core:
+  review:
+    max-retries: 3
+    timeout-minutes: 10
+    enable-caching: true

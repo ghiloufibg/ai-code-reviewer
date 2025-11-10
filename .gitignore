@@ -1,10 +1,30 @@
-/target/
+# Maven
+**/target/
+/.mvn/wrapper/
+
+# IDE
 /.idea/
 *.iml
+
+# Logs
 *.log
+**/logs/
+
+# OS
 *.DS_Store
+
+# Project specific
 /venv/
-/.mvn/wrapper/
 /.scannerwork/
 /.semgrep/
 /.claude/*
+.env
+trackings/
+
+# Compiled class files
+*.class
+**/*.class
+/claudedocs/
+
+nul
+null

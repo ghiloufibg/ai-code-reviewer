@@ -1,0 +1,91 @@
+package com.ghiloufi.aicode.core.service.accumulator;
+
+import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
+import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.service.ReviewSummaryFormatter;
+import com.ghiloufi.aicode.core.service.prompt.JsonReviewResultParser;
+import java.util.List;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@Slf4j
+public class ReviewChunkAccumulator {
+
+  private final ReviewSummaryFormatter summaryFormatter;
+  private final JsonReviewResultParser jsonParser;
+
+  public ReviewChunkAccumulator(
+      final ReviewSummaryFormatter summaryFormatter, final JsonReviewResultParser jsonParser) {
+    this.summaryFormatter = summaryFormatter;
+    this.jsonParser = jsonParser;
+  }
+
+  public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
+    final List<ReviewChunk> validChunks =
+        Optional.ofNullable(chunks)
+            .orElseThrow(() -> new IllegalArgumentException("Chunks list cannot be null"));
+
+    log.debug("Accumulating {} review chunks into ReviewResult", validChunks.size());
+
+    final String accumulatedContent = concatenateChunkContents(validChunks);
+
+    if (!looksLikeJson(accumulatedContent)) {
+      throw new IllegalArgumentException(
+          "Expected JSON response from LLM, but received non-JSON content. "
+              + "Ensure the LLM is configured to return structured JSON format.");
+    }
+
+    log.info("Detected JSON response, parsing as ReviewResult");
+    final ReviewResult parsedResult = jsonParser.parse(accumulatedContent);
+    log.info(
+        "Successfully parsed JSON ReviewResult: {} issues, {} notes",
+        parsedResult.issues.size(),
+        parsedResult.non_blocking_notes.size());
+    logAccumulatedReviewSummary(parsedResult);
+
+    return parsedResult;
+  }
+
+  private String concatenateChunkContents(final List<ReviewChunk> chunks) {
+    final StringBuilder builder = new StringBuilder();
+    for (final ReviewChunk chunk : chunks) {
+      builder.append(chunk.content());
+    }
+    return builder.toString();
+  }
+
+  private boolean looksLikeJson(final String content) {
+    final String trimmed = content.trim();
+
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      return true;
+    }
+
+    if (trimmed.startsWith("```json")) {
+      return trimmed.contains("{") && trimmed.contains("}");
+    }
+
+    if (trimmed.startsWith("```")) {
+      return trimmed.contains("{") && trimmed.contains("}");
+    }
+
+    if (trimmed.startsWith("[")) {
+      return false;
+    }
+
+    final int openBraceIndex = trimmed.indexOf('{');
+    final int closeBraceIndex = trimmed.lastIndexOf('}');
+
+    if (openBraceIndex >= 0 && closeBraceIndex > openBraceIndex) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private void logAccumulatedReviewSummary(final ReviewResult result) {
+    log.info(summaryFormatter.formatSummary(result));
+  }
+}

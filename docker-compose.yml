@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-reviewer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_code_reviewer
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-reviewer}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reviewer -d ai_code_reviewer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # AI Code Reviewer Application (Production Configuration)
+  # Uses existing GitLab instance at host port 8080 (via host.docker.internal)
+  ai-code-reviewer:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ai-code-reviewer
+    restart: unless-stopped
+    environment:
+      # Spring profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
+
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ai_code_reviewer
+      DB_USER: reviewer
+      DB_PASSWORD: ${DB_PASSWORD:-reviewer}
+
+      # SCM Provider Configuration - GitLab (enabled for local testing)
+      SCM_PROVIDERS_GITLAB_ENABLED: "true"
+      SCM_PROVIDERS_GITLAB_API_URL: "http://host.docker.internal:80"
+      SCM_PROVIDERS_GITLAB_TOKEN: ${GITLAB_TOKEN}
+
+      # SCM Provider Configuration - GitHub (disabled for local UAT)
+      SCM_PROVIDERS_GITHUB_ENABLED: "false"
+      SCM_PROVIDERS_GITHUB_TOKEN: "${GITHUB_TOKEN:-dummy-token}"
+
+      # LLM Configuration - LM Studio (on host machine)
+      LLM_PROVIDER: "${LLM_PROVIDER:-lmstudio}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-http://host.docker.internal:1234/v1}"
+      LLM_MODEL: "${LLM_MODEL:-deepseek-coder-6.7b-instruct}"
+      LLM_API_KEY: "${LLM_API_KEY:-not-required}"
+      LLM_TIMEOUT: "${LLM_TIMEOUT:-120}"
+      LLM_STREAM: "${LLM_STREAM:-true}"
+
+      # Application Configuration
+      LOGGING_LEVEL_COM_GHILOUFI_AICODE: "${LOG_LEVEL:-DEBUG}"
+
+      # JVM Options
+      JAVA_OPTS: "-Xmx1024m -Xms512m"
+    ports:
+      - "8081:8080"      # AI Code Reviewer API
+    volumes:
+      - ai-reviewer-logs:/app/logs
+    extra_hosts:
+      # Enable access to host machine for LM Studio and existing GitLab
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres-data:
+    name: ai-reviewer-postgres-data
+  ai-reviewer-logs:
+    name: ai-reviewer-logs
