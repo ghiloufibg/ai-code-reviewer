@@ -2,18 +2,23 @@ package com.ghiloufi.aicode.core.infrastructure.adapter;
 
 import com.ghiloufi.aicode.core.domain.model.*;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.domain.service.CommentPlacementRouter;
+import com.ghiloufi.aicode.core.domain.service.DiffLineValidator;
 import com.ghiloufi.aicode.core.domain.service.GitLabDiffBuilder;
 import com.ghiloufi.aicode.core.domain.service.GitLabMergeRequestMapper;
 import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
-import com.ghiloufi.aicode.core.domain.service.ReviewResultFormatter;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.gitlab4j.api.DiscussionsApi;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Diff;
+import org.gitlab4j.api.models.Discussion;
 import org.gitlab4j.api.models.MergeRequest;
+import org.gitlab4j.api.models.Position;
 import org.gitlab4j.api.models.Project;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,28 +34,31 @@ public class GitLabAdapter implements SCMPort {
 
   private final GitLabApi gitLabApi;
   private final UnifiedDiffParser diffParser;
-  private final ReviewResultFormatter reviewResultFormatter;
   private final SCMIdentifierValidator identifierValidator;
   private final GitLabDiffBuilder diffBuilder;
   private final GitLabMergeRequestMapper mergeRequestMapper;
   private final GitLabProjectMapper projectMapper;
+  private final DiffLineValidator diffLineValidator;
+  private final CommentPlacementRouter commentPlacementRouter;
 
   public GitLabAdapter(
       @Value("${scm.providers.gitlab.api-url}") final String apiUrl,
       @Value("${scm.providers.gitlab.token}") final String token,
       final UnifiedDiffParser diffParser,
-      final ReviewResultFormatter reviewResultFormatter,
       final SCMIdentifierValidator identifierValidator,
       final GitLabDiffBuilder diffBuilder,
       final GitLabMergeRequestMapper mergeRequestMapper,
-      final GitLabProjectMapper projectMapper) {
+      final GitLabProjectMapper projectMapper,
+      final DiffLineValidator diffLineValidator,
+      final CommentPlacementRouter commentPlacementRouter) {
     this.gitLabApi = new GitLabApi(apiUrl, token);
     this.diffParser = diffParser;
-    this.reviewResultFormatter = reviewResultFormatter;
     this.identifierValidator = identifierValidator;
     this.diffBuilder = diffBuilder;
     this.mergeRequestMapper = mergeRequestMapper;
     this.projectMapper = projectMapper;
+    this.diffLineValidator = diffLineValidator;
+    this.commentPlacementRouter = commentPlacementRouter;
     log.info("GitLab adapter initialized for: {}", apiUrl);
   }
 
@@ -101,43 +109,54 @@ public class GitLabAdapter implements SCMPort {
       final RepositoryIdentifier repo,
       final ChangeRequestIdentifier changeRequest,
       final ReviewResult reviewResult) {
-    return Mono.<Void>fromRunnable(
+    return Mono.fromCallable(
             () -> {
-              try {
-                final GitLabRepositoryId gitLabRepo =
-                    identifierValidator.validateGitLabRepository(repo);
-                final MergeRequestId mrId =
-                    identifierValidator.validateGitLabChangeRequest(changeRequest);
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+              final MergeRequestId mrId =
+                  identifierValidator.validateGitLabChangeRequest(changeRequest);
 
-                log.debug("Publishing review for {}/MR!{}", gitLabRepo.projectId(), mrId.iid());
+              log.debug("Publishing review for {}/MR!{}", gitLabRepo.projectId(), mrId.iid());
 
-                final Object projectIdOrPath = gitLabRepo.projectId();
-                final String reviewBody = reviewResultFormatter.format(reviewResult);
+              final Object projectIdOrPath = gitLabRepo.projectId();
+              final MergeRequest mergeRequest =
+                  gitLabApi
+                      .getMergeRequestApi()
+                      .getMergeRequestChanges(projectIdOrPath, (long) mrId.iid());
 
-                log.debug(
-                    "Publishing review: issues={}, notes={}",
-                    reviewResult.issues.size(),
-                    reviewResult.non_blocking_notes.size());
+              final List<Diff> diffs = mergeRequest.getChanges();
+              final String rawDiff = diffBuilder.buildRawDiff(diffs);
+              final GitDiffDocument structuredDiff = diffParser.parse(rawDiff);
 
-                gitLabApi
-                    .getNotesApi()
-                    .createMergeRequestNote(
-                        projectIdOrPath, (long) mrId.iid(), reviewBody, null, null);
+              final DiffLineValidator.ValidationResult validationResult =
+                  diffLineValidator.validate(structuredDiff, reviewResult);
 
+              final CommentPlacementRouter.SplitResult splitResult =
+                  commentPlacementRouter.split(validationResult);
+
+              log.debug(
+                  "Validation: {} valid issues, {} invalid issues",
+                  splitResult.validForInline().issues.size(),
+                  splitResult.invalidForFallback().issues.size());
+
+              return publishWithInlineComments(
+                  projectIdOrPath, mrId.iid(), mergeRequest, splitResult);
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .then()
+        .doOnSuccess(
+            unused ->
                 log.info(
                     "Review published for {}/MR!{}",
                     repo.getDisplayName(),
-                    changeRequest.getNumber());
-              } catch (final GitLabApiException e) {
+                    changeRequest.getNumber()))
+        .doOnError(
+            error ->
                 log.error(
                     "Failed to publish review for {}/MR!{}",
                     repo.getDisplayName(),
                     changeRequest.getNumber(),
-                    e);
-                throw new RuntimeException("Failed to publish review", e);
-              }
-            })
-        .subscribeOn(Schedulers.boundedElastic());
+                    error));
   }
 
   @Override
@@ -271,5 +290,201 @@ public class GitLabAdapter implements SCMPort {
   @Override
   public SourceProvider getProviderType() {
     return SourceProvider.GITLAB;
+  }
+
+  private PublishResult publishWithInlineComments(
+      final Object projectIdOrPath,
+      final long mergeRequestIid,
+      final MergeRequest mergeRequest,
+      final CommentPlacementRouter.SplitResult splitResult) {
+
+    final DiscussionsApi discussionsApi = gitLabApi.getDiscussionsApi();
+    final List<String> discussionIds = new ArrayList<>();
+    final List<PublishError> errors = new ArrayList<>();
+
+    int inlineCommentsCreated = 0;
+
+    for (final ReviewResult.Issue issue : splitResult.validForInline().issues) {
+      try {
+        final String commentBody = formatInlineComment(issue);
+        final Position position = createPosition(mergeRequest, issue.file, issue.start_line);
+
+        final Discussion discussion =
+            discussionsApi.createMergeRequestDiscussion(
+                projectIdOrPath, mergeRequestIid, commentBody, null, null, position);
+
+        discussionIds.add(discussion.getId());
+        inlineCommentsCreated++;
+
+        log.debug(
+            "Created inline comment on {}:{} (discussion {})",
+            issue.file,
+            issue.start_line,
+            discussion.getId());
+
+      } catch (final GitLabApiException e) {
+        log.error("Failed to create inline comment for {}:{}", issue.file, issue.start_line, e);
+        errors.add(
+            new PublishError(
+                issue.file,
+                issue.start_line,
+                "Failed to create inline comment: " + e.getMessage()));
+      }
+    }
+
+    for (final ReviewResult.Note note : splitResult.validForInline().non_blocking_notes) {
+      try {
+        final String commentBody = formatInlineNote(note);
+        final Position position = createPosition(mergeRequest, note.file, note.line);
+
+        final Discussion discussion =
+            discussionsApi.createMergeRequestDiscussion(
+                projectIdOrPath, mergeRequestIid, commentBody, null, null, position);
+
+        discussionIds.add(discussion.getId());
+        inlineCommentsCreated++;
+
+        log.debug(
+            "Created inline note on {}:{} (discussion {})",
+            note.file,
+            note.line,
+            discussion.getId());
+
+      } catch (final GitLabApiException e) {
+        log.error("Failed to create inline note for {}:{}", note.file, note.line, e);
+        errors.add(
+            new PublishError(
+                note.file, note.line, "Failed to create inline note: " + e.getMessage()));
+      }
+    }
+
+    if (!splitResult.invalidForFallback().issues.isEmpty()
+        || !splitResult.invalidForFallback().non_blocking_notes.isEmpty()) {
+      try {
+        final String fallbackBody = formatFallbackComment(splitResult);
+        gitLabApi
+            .getNotesApi()
+            .createMergeRequestNote(projectIdOrPath, mergeRequestIid, fallbackBody, null, null);
+
+        log.debug(
+            "Published fallback comment with {} invalid issues",
+            splitResult.invalidForFallback().issues.size());
+
+      } catch (final GitLabApiException e) {
+        log.error("Failed to publish fallback comment", e);
+        errors.add(
+            new PublishError(null, 0, "Failed to publish fallback comment: " + e.getMessage()));
+      }
+    }
+
+    log.info(
+        "Published review: {} inline comments, {} fallback items",
+        inlineCommentsCreated,
+        splitResult.invalidForFallback().issues.size());
+
+    return new PublishResult(
+        inlineCommentsCreated,
+        splitResult.invalidForFallback().issues.size(),
+        discussionIds,
+        errors);
+  }
+
+  private Position createPosition(
+      final MergeRequest mergeRequest, final String filePath, final int lineNumber) {
+
+    final Position position = new Position();
+    position.setPositionType(Position.PositionType.TEXT);
+    position.setBaseSha(mergeRequest.getDiffRefs().getBaseSha());
+    position.setHeadSha(mergeRequest.getDiffRefs().getHeadSha());
+    position.setStartSha(mergeRequest.getDiffRefs().getStartSha());
+    position.setNewPath(filePath);
+    position.setOldPath(filePath);
+    position.setNewLine(lineNumber);
+
+    return position;
+  }
+
+  private String formatInlineComment(final ReviewResult.Issue issue) {
+    final String label = "issue";
+
+    final String blockingStatus =
+        switch (issue.severity) {
+          case "critical" -> "(blocking)";
+          case "major" -> "(blocking)";
+          case "minor" -> "(non-blocking)";
+          case "info" -> "(non-blocking)";
+          default -> "(non-blocking)";
+        };
+
+    final String severityDecoration =
+        switch (issue.severity) {
+          case "critical" -> "critical";
+          case "major" -> "major";
+          case "minor" -> "minor";
+          case "info" -> "info";
+          default -> issue.severity;
+        };
+
+    final StringBuilder comment = new StringBuilder();
+    comment.append(
+        String.format("%s %s, %s: %s\n\n", label, blockingStatus, severityDecoration, issue.title));
+
+    if (issue.suggestion != null && !issue.suggestion.isBlank()) {
+      comment.append(String.format("**Recommendation:** %s", issue.suggestion));
+    }
+
+    return comment.toString();
+  }
+
+  private String formatInlineNote(final ReviewResult.Note note) {
+    return "note (non-blocking): Code observation\n\n" + note.note;
+  }
+
+  private String formatFallbackComment(final CommentPlacementRouter.SplitResult splitResult) {
+    final StringBuilder body = new StringBuilder();
+    body.append("## Additional Review Findings\n\n");
+    body.append("The following issues were found in code areas outside the current diff:\n\n");
+
+    for (final ReviewResult.Issue issue : splitResult.invalidForFallback().issues) {
+      final String blockingStatus =
+          switch (issue.severity) {
+            case "critical" -> "(blocking)";
+            case "major" -> "(blocking)";
+            case "minor" -> "(non-blocking)";
+            case "info" -> "(non-blocking)";
+            default -> "(non-blocking)";
+          };
+
+      final String severityLabel =
+          switch (issue.severity) {
+            case "critical" -> "CRITICAL";
+            case "major" -> "MAJOR";
+            case "minor" -> "MINOR";
+            case "info" -> "INFO";
+            default -> issue.severity.toUpperCase();
+          };
+
+      body.append("---\n\n");
+      body.append(String.format("**Issue:** %s\n", issue.title));
+      body.append(String.format("**Severity:** %s %s\n", severityLabel, blockingStatus));
+      body.append(String.format("**Location:** `%s:%d`\n\n", issue.file, issue.start_line));
+
+      if (issue.suggestion != null && !issue.suggestion.isBlank()) {
+        body.append(String.format("**Recommendation:** %s\n\n", issue.suggestion));
+      }
+    }
+
+    if (!splitResult.invalidForFallback().non_blocking_notes.isEmpty()) {
+      body.append("---\n\n");
+      body.append("## Additional Notes\n\n");
+      for (final ReviewResult.Note note : splitResult.invalidForFallback().non_blocking_notes) {
+        body.append("---\n\n");
+        body.append("**Note:** Code observation\n");
+        body.append(String.format("**Location:** `%s:%d`\n\n", note.file, note.line));
+        body.append(String.format("%s\n\n", note.note));
+      }
+    }
+
+    return body.toString();
   }
 }

@@ -53,6 +53,19 @@ public class ReviewIssueEntity {
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
+  @Column(name = "inline_comment_posted", nullable = false)
+  @Builder.Default
+  private boolean inlineCommentPosted = false;
+
+  @Column(name = "scm_comment_id", length = 255)
+  private String scmCommentId;
+
+  @Column(name = "fallback_reason", length = 255)
+  private String fallbackReason;
+
+  @Column(name = "position_metadata", columnDefinition = "TEXT")
+  private String positionMetadata;
+
   @PrePersist
   protected void onCreate() {
     createdAt = Instant.now();

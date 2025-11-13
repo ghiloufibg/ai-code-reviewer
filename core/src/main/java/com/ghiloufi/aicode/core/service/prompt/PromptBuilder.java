@@ -2,11 +2,19 @@ package com.ghiloufi.aicode.core.service.prompt;
 
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
+import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultSchema;
+import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PromptBuilder {
+
+  private final DiffFormatter diffFormatter;
+
+  public PromptBuilder(final DiffFormatter diffFormatter) {
+    this.diffFormatter = Objects.requireNonNull(diffFormatter, "DiffFormatter cannot be null");
+  }
 
   private static final String SYSTEM_PROMPT =
       """
@@ -56,17 +64,19 @@ public class PromptBuilder {
       throw new IllegalArgumentException("ReviewConfiguration cannot be null");
     }
 
+    final String formattedDiff = diffFormatter.formatDiff(diff.structuredDiff());
+
     final StringBuilder prompt = new StringBuilder();
     prompt.append(SYSTEM_PROMPT).append("\n\n");
     prompt.append("[REPO]\n");
     prompt.append("language: ").append(config.programmingLanguage()).append("\n");
-    prompt.append("focus: ").append(config.focus()).append("\n");
+    prompt.append("focus: ").append(config.focus().name()).append("\n");
     prompt.append("[/REPO]\n\n");
     prompt.append("[DIFF]\n");
-    prompt.append(diff.rawDiffText());
+    prompt.append(formattedDiff);
     prompt.append("\n[/DIFF]\n");
 
-    if (config.customInstructions() != null) {
+    if (config.customInstructions() != null && !config.customInstructions().isBlank()) {
       prompt.append("\n[CUSTOM_INSTRUCTIONS]\n");
       prompt.append(config.customInstructions());
       prompt.append("\n[/CUSTOM_INSTRUCTIONS]\n");

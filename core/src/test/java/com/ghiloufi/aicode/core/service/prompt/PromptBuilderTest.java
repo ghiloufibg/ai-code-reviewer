@@ -1,135 +1,120 @@
 package com.ghiloufi.aicode.core.service.prompt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.DiffHunkBlock;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
+import com.ghiloufi.aicode.core.domain.model.GitFileModification;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
-import com.ghiloufi.aicode.core.service.validation.ReviewResultSchema;
+import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("PromptBuilder")
+@DisplayName("PromptBuilder Tests")
 class PromptBuilderTest {
 
   private PromptBuilder promptBuilder;
+  private DiffFormatter diffFormatter;
 
   @BeforeEach
   void setUp() {
-    promptBuilder = new PromptBuilder();
+    diffFormatter = new DiffFormatter();
+    promptBuilder = new PromptBuilder(diffFormatter);
   }
 
   @Test
-  @DisplayName("should_include_json_schema_in_prompt")
-  void should_include_json_schema_in_prompt() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
+  @DisplayName("should_use_enriched_diff_instead_of_raw_diff")
+  void should_use_enriched_diff_instead_of_raw_diff() {
+    final GitFileModification file = new GitFileModification("src/Test.java", "src/Test.java");
+    final DiffHunkBlock hunk = new DiffHunkBlock(10, 2, 10, 3);
+    hunk.lines = List.of(" context", "+added line", " context");
+    file.diffHunkBlocks = List.of(hunk);
+
+    final GitDiffDocument diff = new GitDiffDocument(List.of(file));
+    final String rawDiff = "--- a/src/Test.java\n+++ b/src/Test.java\n@@ -10,2 +10,3 @@";
+
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(diff, rawDiff);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
+    final String prompt = promptBuilder.buildReviewPrompt(bundle, config);
 
-    assertThat(prompt).contains(ReviewResultSchema.SCHEMA);
-    assertThat(prompt).contains("JSON SCHEMA");
-    assertThat(prompt).contains("RESPONSE FORMAT REQUIREMENTS");
+    assertThat(prompt).contains("FILE: src/Test.java");
+    assertThat(prompt).contains("10   │   context");
+    assertThat(prompt).contains("11   │ + added line");
+    assertThat(prompt).doesNotContain("--- a/src/Test.java");
+    assertThat(prompt).doesNotContain("+++ b/src/Test.java");
   }
 
   @Test
-  @DisplayName("should_instruct_llm_to_return_valid_json_only")
-  void should_instruct_llm_to_return_valid_json_only() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
+  @DisplayName("should_include_enriched_diff_with_explicit_line_numbers")
+  void should_include_enriched_diff_with_explicit_line_numbers() {
+    final GitFileModification file = new GitFileModification("Example.java", "Example.java");
+    final DiffHunkBlock hunk = new DiffHunkBlock(50, 3, 50, 4);
+    hunk.lines = List.of(" line 50", "+added line 51", " line 52", "+added line 53");
+    file.diffHunkBlocks = List.of(hunk);
+
+    final GitDiffDocument diff = new GitDiffDocument(List.of(file));
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(diff, "raw diff text");
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
+    final String prompt = promptBuilder.buildReviewPrompt(bundle, config);
 
-    assertThat(prompt).contains("MUST be valid JSON");
-    assertThat(prompt).contains("Return ONLY the raw JSON object");
-    assertThat(prompt).contains("NO markdown code blocks");
-    assertThat(prompt).contains("NO additional text or explanations");
+    assertThat(prompt).contains("50   │   line 50");
+    assertThat(prompt).contains("51   │ + added line 51");
+    assertThat(prompt).contains("52   │   line 52");
+    assertThat(prompt).contains("53   │ + added line 53");
   }
 
   @Test
-  @DisplayName("should_specify_required_severity_values")
-  void should_specify_required_severity_values() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
+  @DisplayName("should_include_system_prompt_and_configuration")
+  void should_include_system_prompt_and_configuration() {
+    final GitFileModification file = new GitFileModification("Test.java", "Test.java");
+    final DiffHunkBlock hunk = new DiffHunkBlock(1, 1, 1, 1);
+    hunk.lines = List.of(" test");
+    file.diffHunkBlocks = List.of(hunk);
+
+    final GitDiffDocument diff = new GitDiffDocument(List.of(file));
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(diff, "raw");
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
+    final String prompt = promptBuilder.buildReviewPrompt(bundle, config);
 
-    assertThat(prompt).contains("critical, major, minor, info");
-  }
-
-  @Test
-  @DisplayName("should_include_diff_content_in_prompt")
-  void should_include_diff_content_in_prompt() {
-    final String diffContent = "--- a/Test.java\n+++ b/Test.java\n@@ -1,1 +1,1 @@";
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, diffContent);
-    final ReviewConfiguration config = ReviewConfiguration.defaults();
-
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
-
-    assertThat(prompt).contains("[DIFF]");
-    assertThat(prompt).contains(diffContent);
-    assertThat(prompt).contains("[/DIFF]");
-  }
-
-  @Test
-  @DisplayName("should_include_repository_configuration_in_prompt")
-  void should_include_repository_configuration_in_prompt() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
-    final ReviewConfiguration config =
-        new ReviewConfiguration(
-            ReviewConfiguration.ReviewFocus.COMPREHENSIVE,
-            ReviewConfiguration.SeverityThreshold.LOW,
-            true,
-            null,
-            "Java",
-            null,
-            null);
-
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
-
+    assertThat(prompt).contains("code review assistant");
     assertThat(prompt).contains("[REPO]");
     assertThat(prompt).contains("language: Java");
     assertThat(prompt).contains("focus: COMPREHENSIVE");
     assertThat(prompt).contains("[/REPO]");
+    assertThat(prompt).contains("[DIFF]");
+    assertThat(prompt).contains("[/DIFF]");
   }
 
   @Test
-  @DisplayName("should_include_custom_instructions_when_provided")
-  void should_include_custom_instructions_when_provided() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
-    final ReviewConfiguration config =
-        new ReviewConfiguration(
-            ReviewConfiguration.ReviewFocus.COMPREHENSIVE,
-            ReviewConfiguration.SeverityThreshold.LOW,
-            true,
-            "Focus on performance",
-            "Java",
-            null,
-            null);
-
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
-
-    assertThat(prompt).contains("[CUSTOM_INSTRUCTIONS]");
-    assertThat(prompt).contains("Focus on performance");
-    assertThat(prompt).contains("[/CUSTOM_INSTRUCTIONS]");
-  }
-
-  @Test
-  @DisplayName("should_not_include_custom_instructions_section_when_null")
-  void should_not_include_custom_instructions_section_when_null() {
-    final GitDiffDocument gitDiff = new GitDiffDocument();
-    final DiffAnalysisBundle diff = new DiffAnalysisBundle(gitDiff, "test diff");
+  @DisplayName("should_throw_exception_when_diff_bundle_is_null")
+  void should_throw_exception_when_diff_bundle_is_null() {
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(diff, config);
+    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(null, config))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("DiffAnalysisBundle cannot be null");
+  }
 
-    assertThat(prompt).doesNotContain("[CUSTOM_INSTRUCTIONS]");
+  @Test
+  @DisplayName("should_throw_exception_when_config_is_null")
+  void should_throw_exception_when_config_is_null() {
+    final GitFileModification file = new GitFileModification("Test.java", "Test.java");
+    final DiffHunkBlock hunk = new DiffHunkBlock(1, 1, 1, 1);
+    hunk.lines = List.of(" test");
+    file.diffHunkBlocks = List.of(hunk);
+
+    final GitDiffDocument diff = new GitDiffDocument(List.of(file));
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(diff, "raw");
+
+    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(bundle, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("ReviewConfiguration cannot be null");
   }
 }
