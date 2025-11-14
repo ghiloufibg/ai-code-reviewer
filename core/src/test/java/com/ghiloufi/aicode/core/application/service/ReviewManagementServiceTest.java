@@ -552,6 +552,14 @@ final class ReviewManagementServiceTest {
 
     @Override
     public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
+      return accumulateChunks(
+          chunks, com.ghiloufi.aicode.core.domain.model.ReviewConfiguration.defaults());
+    }
+
+    @Override
+    public ReviewResult accumulateChunks(
+        final List<ReviewChunk> chunks,
+        final com.ghiloufi.aicode.core.domain.model.ReviewConfiguration config) {
       accumulateChunksCalled.set(true);
 
       final ReviewResult result = new ReviewResult();

@@ -66,7 +66,7 @@ public class ReviewIssueEntity {
   @Column(name = "position_metadata", columnDefinition = "TEXT")
   private String positionMetadata;
 
-  @Column(name = "confidence_score", precision = 3, scale = 2)
+  @Column(name = "confidence_score")
   private Double confidenceScore;
 
   @Column(name = "confidence_explanation", columnDefinition = "TEXT")
