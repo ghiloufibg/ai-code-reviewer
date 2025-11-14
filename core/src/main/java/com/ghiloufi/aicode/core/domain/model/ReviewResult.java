@@ -24,6 +24,19 @@ public class ReviewResult {
     public String scmCommentId;
     public String fallbackReason;
     public String positionMetadata;
+
+    public Double confidenceScore;
+    public String confidenceExplanation;
+    public String suggestedFix;
+    public String fixDiff;
+
+    public boolean isHighConfidence() {
+      return confidenceScore != null && confidenceScore >= 0.7;
+    }
+
+    public boolean hasFixSuggestion() {
+      return suggestedFix != null && !suggestedFix.isBlank();
+    }
   }
 
   public static class Note {

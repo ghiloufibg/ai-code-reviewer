@@ -66,8 +66,42 @@ public class ReviewIssueEntity {
   @Column(name = "position_metadata", columnDefinition = "TEXT")
   private String positionMetadata;
 
+  @Column(name = "confidence_score", precision = 3, scale = 2)
+  private Double confidenceScore;
+
+  @Column(name = "confidence_explanation", columnDefinition = "TEXT")
+  private String confidenceExplanation;
+
+  @Column(name = "suggested_fix", columnDefinition = "TEXT")
+  private String suggestedFix;
+
+  @Column(name = "fix_diff", columnDefinition = "TEXT")
+  private String fixDiff;
+
+  @Column(name = "fix_applied", nullable = false)
+  @Builder.Default
+  private boolean fixApplied = false;
+
+  @Column(name = "applied_at")
+  private Instant appliedAt;
+
+  @Column(name = "applied_commit_sha", length = 40)
+  private String appliedCommitSha;
+
   @PrePersist
   protected void onCreate() {
     createdAt = Instant.now();
+  }
+
+  public boolean isHighConfidence() {
+    return confidenceScore != null && confidenceScore >= 0.7;
+  }
+
+  public boolean hasFixSuggestion() {
+    return suggestedFix != null && !suggestedFix.isBlank();
+  }
+
+  public boolean canApplyFix() {
+    return hasFixSuggestion() && !fixApplied && isHighConfidence();
   }
 }
