@@ -80,6 +80,11 @@ public class PostgresReviewRepository {
                     .severity(issue.severity)
                     .title(issue.title)
                     .suggestion(issue.suggestion)
+                    .inlineCommentPosted(
+                        issue.inlineCommentPosted != null && issue.inlineCommentPosted)
+                    .scmCommentId(issue.scmCommentId)
+                    .fallbackReason(issue.fallbackReason)
+                    .positionMetadata(issue.positionMetadata)
                     .build();
             entity.addIssue(issueEntity);
           });
@@ -94,6 +99,11 @@ public class PostgresReviewRepository {
                     .filePath(note.file)
                     .lineNumber(note.line)
                     .note(note.note)
+                    .inlineCommentPosted(
+                        note.inlineCommentPosted != null && note.inlineCommentPosted)
+                    .scmCommentId(note.scmCommentId)
+                    .fallbackReason(note.fallbackReason)
+                    .positionMetadata(note.positionMetadata)
                     .build();
             entity.addNote(noteEntity);
           });

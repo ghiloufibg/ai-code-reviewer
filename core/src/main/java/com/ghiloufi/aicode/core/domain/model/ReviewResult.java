@@ -19,11 +19,21 @@ public class ReviewResult {
     public String severity;
     public String title;
     public String suggestion;
+
+    public Boolean inlineCommentPosted;
+    public String scmCommentId;
+    public String fallbackReason;
+    public String positionMetadata;
   }
 
   public static class Note {
     public String file;
     public int line;
     public String note;
+
+    public Boolean inlineCommentPosted;
+    public String scmCommentId;
+    public String fallbackReason;
+    public String positionMetadata;
   }
 }
