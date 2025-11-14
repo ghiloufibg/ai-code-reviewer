@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
@@ -472,6 +473,21 @@ final class ReviewManagementServiceTest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
+    }
+
+    @Override
+    public Mono<CommitResult> applyFix(
+        final RepositoryIdentifier repo,
+        final String branchName,
+        final String filePath,
+        final String fixDiff,
+        final String commitMessage) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+      return Mono.just(true);
     }
   }
 

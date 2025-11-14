@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.core.domain.service.GitLabDiffBuilder;
 import com.ghiloufi.aicode.core.domain.service.GitLabMergeRequestMapper;
 import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
+import com.ghiloufi.aicode.core.exception.SCMException;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.util.ArrayList;
 import java.util.List;
@@ -290,6 +291,151 @@ public class GitLabAdapter implements SCMPort {
   @Override
   public SourceProvider getProviderType() {
     return SourceProvider.GITLAB;
+  }
+
+  @Override
+  public Mono<CommitResult> applyFix(
+      final RepositoryIdentifier repo,
+      final String branchName,
+      final String filePath,
+      final String fixDiff,
+      final String commitMessage) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+
+              log.debug(
+                  "Applying fix to {}/{} on branch {}",
+                  gitLabRepo.projectId(),
+                  filePath,
+                  branchName);
+
+              final Object projectIdOrPath = gitLabRepo.toNumericId();
+
+              try {
+                final org.gitlab4j.api.models.RepositoryFile currentFile =
+                    gitLabApi.getRepositoryFileApi().getFile(projectIdOrPath, filePath, branchName);
+
+                final String currentContent =
+                    new String(
+                        java.util.Base64.getDecoder().decode(currentFile.getContent()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+
+                final String updatedContent = applyDiffPatch(currentContent, fixDiff);
+
+                final org.gitlab4j.api.models.RepositoryFile fileToUpdate =
+                    new org.gitlab4j.api.models.RepositoryFile();
+                fileToUpdate.setFilePath(filePath);
+                fileToUpdate.setContent(updatedContent);
+
+                gitLabApi
+                    .getRepositoryFileApi()
+                    .updateFile(projectIdOrPath, fileToUpdate, branchName, commitMessage);
+
+                final org.gitlab4j.api.models.Branch branch =
+                    gitLabApi.getRepositoryApi().getBranch(projectIdOrPath, branchName);
+                final String commitSha = branch.getCommit().getId();
+
+                final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
+                final String commitUrl =
+                    String.format("%s/-/commit/%s", project.getWebUrl(), commitSha);
+
+                final CommitResult commitResult =
+                    new CommitResult(
+                        commitSha,
+                        commitUrl,
+                        branchName,
+                        List.of(filePath),
+                        java.time.Instant.now());
+
+                log.info(
+                    "Successfully applied fix to {}/{} (commit {})",
+                    gitLabRepo.projectId(),
+                    filePath,
+                    commitSha);
+
+                return commitResult;
+
+              } catch (final GitLabApiException e) {
+                log.error(
+                    "Failed to apply fix to {}/{} on branch {}",
+                    gitLabRepo.projectId(),
+                    filePath,
+                    branchName,
+                    e);
+                throw new SCMException(
+                    "Failed to apply fix: " + e.getMessage(), SourceProvider.GITLAB, "applyFix", e);
+              }
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to apply fix to {}/{} on branch {}",
+                    repo.getDisplayName(),
+                    filePath,
+                    branchName,
+                    error));
+  }
+
+  @Override
+  public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+
+              log.debug("Checking write access for: {}", gitLabRepo.projectId());
+
+              final Object projectIdOrPath = gitLabRepo.toNumericId();
+              final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
+
+              final org.gitlab4j.api.models.AccessLevel accessLevel =
+                  project.getPermissions().getProjectAccess().getAccessLevel();
+              final boolean hasWrite = accessLevel != null && accessLevel.toValue() >= 30;
+
+              log.debug(
+                  "Write access for {}: {} (access level: {})",
+                  gitLabRepo.projectId(),
+                  hasWrite,
+                  accessLevel);
+
+              return hasWrite;
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(
+            error ->
+                log.error("Failed to check write access for: {}", repo.getDisplayName(), error));
+  }
+
+  private String applyDiffPatch(final String originalContent, final String unifiedDiff) {
+    final String[] originalLines = originalContent.split("\n");
+    final List<String> resultLines = new ArrayList<>(List.of(originalLines));
+
+    final String[] diffLines = unifiedDiff.split("\n");
+    int currentLineIndex = 0;
+
+    for (final String diffLine : diffLines) {
+      if (diffLine.startsWith("@@")) {
+        final String rangeInfo =
+            diffLine.substring(diffLine.indexOf('-') + 1, diffLine.indexOf('+') - 1).trim();
+        final int startLine = Integer.parseInt(rangeInfo.split(",")[0]) - 1;
+        currentLineIndex = startLine;
+      } else if (diffLine.startsWith("-")) {
+        if (currentLineIndex < resultLines.size()) {
+          resultLines.remove(currentLineIndex);
+        }
+      } else if (diffLine.startsWith("+")) {
+        final String lineToAdd = diffLine.substring(1);
+        resultLines.add(currentLineIndex, lineToAdd);
+        currentLineIndex++;
+      } else if (diffLine.startsWith(" ")) {
+        currentLineIndex++;
+      }
+    }
+
+    return String.join("\n", resultLines);
   }
 
   private PublishResult publishWithInlineComments(

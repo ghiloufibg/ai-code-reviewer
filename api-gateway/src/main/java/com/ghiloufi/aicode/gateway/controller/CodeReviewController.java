@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.gateway.controller;
 
+import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -35,6 +36,7 @@ import reactor.core.publisher.Mono;
 public class CodeReviewController {
 
   private final ReviewManagementUseCase reviewManagementUseCase;
+  private final FixApplicationService fixApplicationService;
   private final SSEFormatter sseFormatter;
 
   @GetMapping(
@@ -316,4 +318,103 @@ public class CodeReviewController {
                     error.getMessage()))
         .timeout(Duration.ofSeconds(30));
   }
+
+  @PostMapping(
+      value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/apply-fix",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<Map<String, Object>> applyFix(
+      @PathVariable final String provider,
+      @PathVariable final String repositoryId,
+      @PathVariable @Positive final int changeRequestId,
+      @RequestBody final FixApplicationRequest request) {
+
+    final SourceProvider sourceProvider = SourceProvider.fromString(provider);
+    final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);
+
+    log.info(
+        "Applying fix: provider={}, repository={}, changeRequest={}, file={}",
+        sourceProvider,
+        decodedRepositoryId,
+        changeRequestId,
+        request.filePath());
+
+    final RepositoryIdentifier repository =
+        RepositoryIdentifier.create(sourceProvider, decodedRepositoryId);
+    final ChangeRequestIdentifier changeRequest =
+        ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
+
+    log.debug(
+        "Created domain identifiers for fix application: repository={}, changeRequest={}",
+        repository.getClass().getSimpleName(),
+        changeRequest.getClass().getSimpleName());
+
+    return fixApplicationService
+        .applyFix(
+            repository, changeRequest, request.filePath(), request.fixDiff(), request.issueTitle())
+        .map(
+            commitResult ->
+                Map.<String, Object>of(
+                    "status",
+                    "success",
+                    "message",
+                    "Fix applied successfully",
+                    "commitSha",
+                    commitResult.commitSha(),
+                    "commitUrl",
+                    commitResult.commitUrl(),
+                    "branchName",
+                    commitResult.branchName(),
+                    "filesModified",
+                    commitResult.filesModified(),
+                    "timestamp",
+                    commitResult.createdAt().toEpochMilli()))
+        .doOnSubscribe(
+            s ->
+                log.info(
+                    "Client initiated fix application: provider={}, repo={}, cr={}, file={}",
+                    sourceProvider,
+                    repositoryId,
+                    changeRequestId,
+                    request.filePath()))
+        .doOnSuccess(
+            response ->
+                log.info(
+                    "Fix applied successfully: provider={}, repo={}, cr={}, file={}, commit={}",
+                    sourceProvider,
+                    repositoryId,
+                    changeRequestId,
+                    request.filePath(),
+                    response.get("commitSha")))
+        .doOnError(
+            error ->
+                log.error(
+                    "Fix application error: provider={}, repo={}, cr={}, file={}, error={}",
+                    sourceProvider,
+                    repositoryId,
+                    changeRequestId,
+                    request.filePath(),
+                    error.getMessage()))
+        .onErrorResume(
+            error ->
+                Mono.just(
+                    Map.<String, Object>of(
+                        "status",
+                        "error",
+                        "message",
+                        error.getMessage() != null ? error.getMessage() : "Failed to apply fix",
+                        "provider",
+                        sourceProvider.name(),
+                        "repository",
+                        decodedRepositoryId,
+                        "changeRequestId",
+                        changeRequestId,
+                        "filePath",
+                        request.filePath(),
+                        "timestamp",
+                        System.currentTimeMillis())))
+        .timeout(Duration.ofSeconds(30));
+  }
+
+  public record FixApplicationRequest(String filePath, String fixDiff, String issueTitle) {}
 }

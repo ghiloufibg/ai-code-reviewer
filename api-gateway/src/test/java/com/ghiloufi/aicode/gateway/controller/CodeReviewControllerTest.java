@@ -3,6 +3,9 @@ package com.ghiloufi.aicode.gateway.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ghiloufi.aicode.core.application.service.FixApplicationService;
+import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
+import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
@@ -11,6 +14,7 @@ import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
+import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,8 +36,10 @@ final class CodeReviewControllerTest {
     reviewManagementUseCase = new TestReviewManagementUseCase();
     final ObjectMapper objectMapper = new ObjectMapper();
     final SSEFormatter sseFormatter = new SSEFormatter(objectMapper);
+    final TestSCMPort testSCMPort = new TestSCMPort();
+    final FixApplicationService fixApplicationService = new FixApplicationService(testSCMPort);
     final CodeReviewController controller =
-        new CodeReviewController(reviewManagementUseCase, sseFormatter);
+        new CodeReviewController(reviewManagementUseCase, fixApplicationService, sseFormatter);
 
     webTestClient =
         WebTestClient.bindToController(controller)
@@ -386,6 +392,65 @@ final class CodeReviewControllerTest {
     @Override
     public Flux<RepositoryInfo> getAllRepositories(final SourceProvider provider) {
       return Flux.fromIterable(repositories);
+    }
+  }
+
+  private static final class TestSCMPort implements SCMPort {
+
+    @Override
+    public reactor.core.publisher.Mono<CommitResult> applyFix(
+        final RepositoryIdentifier repo,
+        final String branchName,
+        final String filePath,
+        final String fixDiff,
+        final String commitMessage) {
+      return reactor.core.publisher.Mono.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+      return reactor.core.publisher.Mono.just(true);
+    }
+
+    @Override
+    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle>
+        getDiff(final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return reactor.core.publisher.Mono.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Mono<Void> publishReview(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final ReviewResult reviewResult) {
+      return reactor.core.publisher.Mono.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Mono<Boolean> isChangeRequestOpen(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return reactor.core.publisher.Mono.just(true);
+    }
+
+    @Override
+    public reactor.core.publisher.Mono<RepositoryInfo> getRepository(
+        final RepositoryIdentifier repo) {
+      return reactor.core.publisher.Mono.empty();
+    }
+
+    @Override
+    public Flux<MergeRequestSummary> getOpenChangeRequests(final RepositoryIdentifier repo) {
+      return Flux.empty();
+    }
+
+    @Override
+    public Flux<RepositoryInfo> getAllRepositories() {
+      return Flux.empty();
+    }
+
+    @Override
+    public SourceProvider getProviderType() {
+      return SourceProvider.GITLAB;
     }
   }
 }
