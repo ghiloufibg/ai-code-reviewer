@@ -16,6 +16,50 @@ public class PromptBuilder {
     this.diffFormatter = Objects.requireNonNull(diffFormatter, "DiffFormatter cannot be null");
   }
 
+  private static final String CONFIDENCE_SCORING_INSTRUCTIONS =
+      """
+
+            CONFIDENCE SCORING GUIDELINES:
+            For each issue identified, you MUST provide a confidence score from 0.0 to 1.0 and a brief explanation.
+
+            Consider these factors when assigning confidence:
+
+            1. Pattern Clarity (How well-established is this issue pattern?)
+               - High confidence (0.8-1.0): Clear security vulnerabilities (SQL injection, XSS, buffer overflow),
+                 well-known anti-patterns, or violations of language best practices with strong consensus
+               - Medium confidence (0.5-0.7): Code smells, potential performance issues, maintainability concerns
+                 that depend on broader context, or patterns that are problematic in most but not all cases
+               - Low confidence (0.0-0.4): Stylistic preferences, subjective design choices, or issues that are
+                 highly context-dependent and might be intentional
+
+            2. Context Completeness (Do you have enough information to be certain?)
+               - Full context: Complete function/method visible with clear intent and surrounding code
+               - Partial context: Some parts of the logic visible but missing critical dependencies or state
+               - Limited context: Only fragments visible, missing key context that could change the assessment
+
+            3. False Positive Risk (Could this be intentional or acceptable?)
+               - Low risk: Unambiguous bug or security flaw with no reasonable justification
+               - Medium risk: Questionable practice that might be valid in specific scenarios or frameworks
+               - High risk: Pattern that looks problematic but could be framework-specific, performance-optimized,
+                 or intentionally designed for a specific use case you cannot see
+
+            CONFIDENCE SCALE:
+            - 0.9-1.0: Definitive issue (e.g., "SQL injection via string concatenation", "Null pointer dereference")
+            - 0.7-0.8: High confidence (e.g., "Resource leak - InputStream not closed", "Thread-safety violation")
+            - 0.5-0.6: Moderate confidence (e.g., "Possible N+1 query", "Code duplication suggests refactoring")
+            - 0.3-0.4: Low confidence (e.g., "Consider using Optional", "Method could be extracted")
+            - 0.0-0.2: Speculative (avoid reporting issues this low unless specifically requested)
+
+            CONFIDENCE EXPLANATION:
+            Provide a 1-2 sentence explanation of why you assigned this confidence score. Reference specific factors:
+            - "Clear SQL injection pattern with user input directly concatenated into query"
+            - "Well-established anti-pattern, but incomplete context about exception handling strategy"
+            - "Stylistic preference for builder pattern; existing approach is valid but less maintainable"
+
+            IMPORTANT: Only report issues with confidence >= 0.5 unless specifically instructed otherwise.
+            If you identify something but confidence is below 0.5, do not include it in the issues array.
+            """;
+
   private static final String SYSTEM_PROMPT =
       """
             You are a rigorous code review assistant specialized in Java.
@@ -30,6 +74,9 @@ public class PromptBuilder {
             - If uncertain, use severity=info and explain briefly.
             - Classify findings: critical, major, minor, info.
             - Categories: correctness, security, concurrency, performance, maintainability, test gaps.
+            """
+          + CONFIDENCE_SCORING_INSTRUCTIONS
+          + """
 
             JSON SCHEMA (strictly follow this structure):
             """

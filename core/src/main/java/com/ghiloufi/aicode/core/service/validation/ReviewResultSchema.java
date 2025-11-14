@@ -43,6 +43,16 @@ public final class ReviewResultSchema {
                 "suggestion": {
                   "type": "string",
                   "description": "Suggested fix or improvement"
+                },
+                "confidenceScore": {
+                  "type": "number",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "AI confidence level (0.0-1.0) indicating certainty about the issue"
+                },
+                "confidenceExplanation": {
+                  "type": "string",
+                  "description": "Brief explanation of the confidence score considering pattern clarity, context completeness, and false positive risk"
                 }
               },
               "additionalProperties": false

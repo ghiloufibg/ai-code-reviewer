@@ -31,7 +31,9 @@ class JsonParsingIntegrationTest {
     validator = new ReviewResultValidator(objectMapper);
     summaryFormatter = new ReviewSummaryFormatter();
     jsonParser = new JsonReviewResultParser(validator, objectMapper);
-    chunkAccumulator = new ReviewChunkAccumulator(summaryFormatter, jsonParser);
+    final com.ghiloufi.aicode.core.service.filter.ConfidenceFilter confidenceFilter =
+        new com.ghiloufi.aicode.core.service.filter.ConfidenceFilter();
+    chunkAccumulator = new ReviewChunkAccumulator(summaryFormatter, jsonParser, confidenceFilter);
   }
 
   @Nested

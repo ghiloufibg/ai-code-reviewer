@@ -44,6 +44,7 @@ public final class JsonReviewResultParser {
 
     try {
       final ReviewResult result = objectMapper.readValue(cleanedJson, ReviewResult.class);
+      normalizeConfidenceScores(result);
       log.info(
           "Successfully parsed ReviewResult: {} issues, {} notes",
           result.issues.size(),
@@ -53,6 +54,42 @@ public final class JsonReviewResultParser {
       log.error("Failed to parse JSON into ReviewResult", e);
       throw new JsonValidationException(
           "Failed to parse JSON into ReviewResult: " + e.getMessage(), e);
+    }
+  }
+
+  private void normalizeConfidenceScores(final ReviewResult result) {
+    if (result.issues == null || result.issues.isEmpty()) {
+      return;
+    }
+
+    for (final ReviewResult.Issue issue : result.issues) {
+      if (issue.confidenceScore == null) {
+        log.warn(
+            "Issue '{}' at {}:{} has null confidence score, defaulting to 0.5",
+            issue.title,
+            issue.file,
+            issue.start_line);
+        issue.confidenceScore = 0.5;
+      }
+
+      if (issue.confidenceScore < 0.0) {
+        log.warn(
+            "Issue '{}' has invalid confidence score {}, clamping to 0.0",
+            issue.title,
+            issue.confidenceScore);
+        issue.confidenceScore = 0.0;
+      } else if (issue.confidenceScore > 1.0) {
+        log.warn(
+            "Issue '{}' has invalid confidence score {}, clamping to 1.0",
+            issue.title,
+            issue.confidenceScore);
+        issue.confidenceScore = 1.0;
+      }
+
+      if (issue.confidenceExplanation == null || issue.confidenceExplanation.isBlank()) {
+        log.debug("Issue '{}' has missing confidence explanation, using default", issue.title);
+        issue.confidenceExplanation = "No explanation provided";
+      }
     }
   }
 

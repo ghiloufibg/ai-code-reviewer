@@ -527,7 +527,7 @@ final class ReviewManagementServiceTest {
     private final AtomicBoolean accumulateChunksCalled = new AtomicBoolean(false);
 
     TestReviewChunkAccumulator() {
-      super(null, null);
+      super(null, null, null);
     }
 
     final boolean isAccumulateChunksCalled() {
