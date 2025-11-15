@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewIssueEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,7 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity review = createReviewWithConfidenceFields();
     final ReviewIssueEntity issue = review.getIssues().get(0);
 
-    issue.setConfidenceScore(0.85);
+    issue.setConfidenceScore(new BigDecimal("0.85"));
     issue.setConfidenceExplanation(
         "High confidence: Clear SQL injection vulnerability with well-established pattern");
 
@@ -65,7 +66,7 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity retrievedReview = jpaRepository.findById(savedReview.getId()).orElseThrow();
     final ReviewIssueEntity retrievedIssue = retrievedReview.getIssues().get(0);
 
-    assertThat(retrievedIssue.getConfidenceScore()).isEqualTo(0.85);
+    assertThat(retrievedIssue.getConfidenceScore()).isEqualByComparingTo(new BigDecimal("0.85"));
     assertThat(retrievedIssue.getConfidenceExplanation())
         .contains("High confidence")
         .contains("SQL injection");
@@ -75,19 +76,22 @@ class DatabaseMigrationV3IntegrationTest {
   @DisplayName("should_validate_confidence_score_boundaries")
   void should_validate_confidence_score_boundaries() {
     final ReviewEntity review1 = createReviewWithConfidenceFields();
-    review1.getIssues().get(0).setConfidenceScore(0.00);
+    review1.getIssues().get(0).setConfidenceScore(new BigDecimal("0.00"));
     final ReviewEntity saved1 = jpaRepository.save(review1);
-    assertThat(saved1.getIssues().get(0).getConfidenceScore()).isEqualTo(0.00);
+    assertThat(saved1.getIssues().get(0).getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("0.00"));
 
     final ReviewEntity review2 = createReviewWithConfidenceFields();
-    review2.getIssues().get(0).setConfidenceScore(1.00);
+    review2.getIssues().get(0).setConfidenceScore(new BigDecimal("1.00"));
     final ReviewEntity saved2 = jpaRepository.save(review2);
-    assertThat(saved2.getIssues().get(0).getConfidenceScore()).isEqualTo(1.00);
+    assertThat(saved2.getIssues().get(0).getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("1.00"));
 
     final ReviewEntity review3 = createReviewWithConfidenceFields();
-    review3.getIssues().get(0).setConfidenceScore(0.60);
+    review3.getIssues().get(0).setConfidenceScore(new BigDecimal("0.60"));
     final ReviewEntity saved3 = jpaRepository.save(review3);
-    assertThat(saved3.getIssues().get(0).getConfidenceScore()).isEqualTo(0.60);
+    assertThat(saved3.getIssues().get(0).getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("0.60"));
   }
 
   @Test
@@ -199,16 +203,16 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity review = createReviewWithConfidenceFields();
     final ReviewIssueEntity issue = review.getIssues().get(0);
 
-    issue.setConfidenceScore(0.85);
+    issue.setConfidenceScore(new BigDecimal("0.85"));
     assertThat(issue.isHighConfidence()).isTrue();
 
-    issue.setConfidenceScore(0.70);
+    issue.setConfidenceScore(new BigDecimal("0.70"));
     assertThat(issue.isHighConfidence()).isTrue();
 
-    issue.setConfidenceScore(0.69);
+    issue.setConfidenceScore(new BigDecimal("0.69"));
     assertThat(issue.isHighConfidence()).isFalse();
 
-    issue.setConfidenceScore(0.50);
+    issue.setConfidenceScore(new BigDecimal("0.50"));
     assertThat(issue.isHighConfidence()).isFalse();
 
     issue.setConfidenceScore(null);
@@ -240,7 +244,7 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity review = createReviewWithConfidenceFields();
     final ReviewIssueEntity issue = review.getIssues().get(0);
 
-    issue.setConfidenceScore(0.85);
+    issue.setConfidenceScore(new BigDecimal("0.85"));
     issue.setSuggestedFix("corrected code");
     issue.setFixApplied(false);
     assertThat(issue.canApplyFix()).isTrue();
@@ -249,10 +253,10 @@ class DatabaseMigrationV3IntegrationTest {
     assertThat(issue.canApplyFix()).isFalse();
 
     issue.setFixApplied(false);
-    issue.setConfidenceScore(0.65);
+    issue.setConfidenceScore(new BigDecimal("0.65"));
     assertThat(issue.canApplyFix()).isFalse();
 
-    issue.setConfidenceScore(0.75);
+    issue.setConfidenceScore(new BigDecimal("0.75"));
     issue.setSuggestedFix(null);
     assertThat(issue.canApplyFix()).isFalse();
   }
@@ -272,7 +276,8 @@ class DatabaseMigrationV3IntegrationTest {
             .filter(i -> i.getTitle().equals("Critical security issue"))
             .findFirst()
             .orElseThrow();
-    assertThat(highConfidenceIssue.getConfidenceScore()).isEqualTo(0.95);
+    assertThat(highConfidenceIssue.getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("0.95"));
     assertThat(highConfidenceIssue.isHighConfidence()).isTrue();
 
     final ReviewIssueEntity mediumConfidenceIssue =
@@ -280,7 +285,8 @@ class DatabaseMigrationV3IntegrationTest {
             .filter(i -> i.getTitle().equals("Code smell detected"))
             .findFirst()
             .orElseThrow();
-    assertThat(mediumConfidenceIssue.getConfidenceScore()).isEqualTo(0.65);
+    assertThat(mediumConfidenceIssue.getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("0.65"));
     assertThat(mediumConfidenceIssue.isHighConfidence()).isFalse();
 
     final ReviewIssueEntity lowConfidenceIssue =
@@ -288,7 +294,8 @@ class DatabaseMigrationV3IntegrationTest {
             .filter(i -> i.getTitle().equals("Potential improvement"))
             .findFirst()
             .orElseThrow();
-    assertThat(lowConfidenceIssue.getConfidenceScore()).isEqualTo(0.45);
+    assertThat(lowConfidenceIssue.getConfidenceScore())
+        .isEqualByComparingTo(new BigDecimal("0.45"));
     assertThat(lowConfidenceIssue.isHighConfidence()).isFalse();
   }
 
@@ -357,7 +364,7 @@ class DatabaseMigrationV3IntegrationTest {
             .severity("CRITICAL")
             .title("Critical security issue")
             .suggestion("Fix immediately")
-            .confidenceScore(0.95)
+            .confidenceScore(new BigDecimal("0.95"))
             .confidenceExplanation("Clear SQL injection pattern")
             .suggestedFix(
                 "PreparedStatement ps = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");")
@@ -371,7 +378,7 @@ class DatabaseMigrationV3IntegrationTest {
             .severity("MEDIUM")
             .title("Code smell detected")
             .suggestion("Consider refactoring")
-            .confidenceScore(0.65)
+            .confidenceScore(new BigDecimal("0.65"))
             .confidenceExplanation("Possible code duplication")
             .build();
 
@@ -383,7 +390,7 @@ class DatabaseMigrationV3IntegrationTest {
             .severity("LOW")
             .title("Potential improvement")
             .suggestion("Could use Java 21 features")
-            .confidenceScore(0.45)
+            .confidenceScore(new BigDecimal("0.45"))
             .confidenceExplanation("Stylistic preference, context-dependent")
             .build();
 

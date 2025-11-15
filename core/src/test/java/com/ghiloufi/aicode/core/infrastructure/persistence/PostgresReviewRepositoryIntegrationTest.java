@@ -196,6 +196,95 @@ class PostgresReviewRepositoryIntegrationTest {
     assertThat(jpaRepository.count()).isEqualTo(0);
   }
 
+  @Test
+  @DisplayName("should store and retrieve raw LLM JSON response")
+  void should_store_and_retrieve_raw_llm_json_response() {
+    final String reviewId = "test-repo_rawjson_github";
+    final String rawJson =
+        """
+        {
+          "summary": "Test review summary",
+          "issues": [
+            {
+              "file": "TestFile.java",
+              "start_line": 10,
+              "severity": "MEDIUM",
+              "title": "Test issue 1",
+              "suggestion": "Fix this issue"
+            }
+          ],
+          "non_blocking_notes": []
+        }
+        """;
+
+    final ReviewResult result = createSampleReviewResult();
+    result.rawLlmResponse = rawJson;
+
+    StepVerifier.create(repository.save(reviewId, result)).verifyComplete();
+
+    StepVerifier.create(repository.findById(reviewId))
+        .assertNext(
+            optionalResult -> {
+              assertThat(optionalResult).isPresent();
+              final ReviewResult savedResult = optionalResult.get();
+              assertThat(savedResult.rawLlmResponse).isNotNull();
+              assertThat(savedResult.rawLlmResponse).isEqualTo(rawJson);
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  @DisplayName("should preserve raw JSON when updating review")
+  void should_preserve_raw_json_when_updating_review() {
+    final String reviewId = "test-repo_update_rawjson_github";
+    final String initialRawJson = "{\"summary\": \"Initial\"}";
+    final String updatedRawJson = "{\"summary\": \"Updated\"}";
+
+    final ReviewResult initialResult = createSampleReviewResult();
+    initialResult.rawLlmResponse = initialRawJson;
+
+    final ReviewResult updatedResult = createSampleReviewResult();
+    updatedResult.summary = "Updated summary";
+    updatedResult.rawLlmResponse = updatedRawJson;
+
+    StepVerifier.create(
+            repository
+                .save(reviewId, initialResult)
+                .then(
+                    repository.updateResultAndState(
+                        reviewId, updatedResult, ReviewState.COMPLETED)))
+        .verifyComplete();
+
+    StepVerifier.create(repository.findById(reviewId))
+        .assertNext(
+            optionalResult -> {
+              assertThat(optionalResult).isPresent();
+              final ReviewResult result = optionalResult.get();
+              assertThat(result.rawLlmResponse).isEqualTo(updatedRawJson);
+              assertThat(result.summary).isEqualTo("Updated summary");
+            })
+        .verifyComplete();
+  }
+
+  @Test
+  @DisplayName("should handle null raw LLM response gracefully")
+  void should_handle_null_raw_llm_response_gracefully() {
+    final String reviewId = "test-repo_null_rawjson_github";
+    final ReviewResult result = createSampleReviewResult();
+    result.rawLlmResponse = null;
+
+    StepVerifier.create(repository.save(reviewId, result)).verifyComplete();
+
+    StepVerifier.create(repository.findById(reviewId))
+        .assertNext(
+            optionalResult -> {
+              assertThat(optionalResult).isPresent();
+              final ReviewResult savedResult = optionalResult.get();
+              assertThat(savedResult.rawLlmResponse).isNull();
+            })
+        .verifyComplete();
+  }
+
   private ReviewResult createSampleReviewResult() {
     final ReviewResult result = new ReviewResult();
     result.summary = "Test review summary";

@@ -19,8 +19,10 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.Discussion;
 import org.gitlab4j.api.models.MergeRequest;
+import org.gitlab4j.api.models.Permissions;
 import org.gitlab4j.api.models.Position;
 import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.ProjectAccess;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -305,6 +307,38 @@ public class GitLabAdapter implements SCMPort {
               final GitLabRepositoryId gitLabRepo =
                   identifierValidator.validateGitLabRepository(repo);
 
+              if (filePath == null || filePath.isBlank()) {
+                throw new SCMException(
+                    "File path is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (fixDiff == null || fixDiff.isBlank()) {
+                throw new SCMException(
+                    "Fix diff is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (branchName == null || branchName.isBlank()) {
+                throw new SCMException(
+                    "Branch name is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (commitMessage == null || commitMessage.isBlank()) {
+                throw new SCMException(
+                    "Commit message is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
               log.debug(
                   "Applying fix to {}/{} on branch {}",
                   gitLabRepo.projectId(),
@@ -364,8 +398,52 @@ public class GitLabAdapter implements SCMPort {
                     filePath,
                     branchName,
                     e);
-                throw new SCMException(
-                    "Failed to apply fix: " + e.getMessage(), SourceProvider.GITLAB, "applyFix", e);
+
+                final String errorMessage;
+                if (e.getHttpStatus() == 403) {
+                  errorMessage =
+                      String.format(
+                          "Access denied: Personal Access Token lacks 'write_repository' scope or "
+                              + "insufficient permissions to modify file '%s' on branch '%s'. "
+                              + "Please ensure your token has the required scopes: api, write_repository",
+                          filePath, branchName);
+                  log.error(
+                      "PAT scope error for {}/{}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      errorMessage);
+                } else if (e.getHttpStatus() == 404) {
+                  errorMessage =
+                      String.format(
+                          "Not found: File '%s' does not exist on branch '%s' in project %s",
+                          filePath, branchName, gitLabRepo.projectId());
+                  log.error(
+                      "File not found for {}/{} on branch {}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      branchName,
+                      errorMessage);
+                } else if (e.getHttpStatus() == 400) {
+                  errorMessage =
+                      String.format(
+                          "Invalid request: The diff patch for file '%s' is malformed or cannot be applied. "
+                              + "Original error: %s",
+                          filePath, e.getMessage());
+                  log.error(
+                      "Invalid diff for {}/{}: {}", gitLabRepo.projectId(), filePath, errorMessage);
+                } else {
+                  errorMessage =
+                      String.format(
+                          "Failed to apply fix to file '%s' on branch '%s': %s (HTTP %d)",
+                          filePath, branchName, e.getMessage(), e.getHttpStatus());
+                  log.error(
+                      "GitLab API error for {}/{}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      errorMessage);
+                }
+
+                throw new SCMException(errorMessage, SourceProvider.GITLAB, "applyFix", e);
               }
             })
         .subscribeOn(Schedulers.boundedElastic())
@@ -391,9 +469,32 @@ public class GitLabAdapter implements SCMPort {
               final Object projectIdOrPath = gitLabRepo.toNumericId();
               final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
 
+              final Permissions permissions = project.getPermissions();
+              if (permissions == null) {
+                log.debug(
+                    "No permissions object found for {}, checking with PAT capabilities",
+                    gitLabRepo.projectId());
+                return checkWriteAccessViaPAT(project);
+              }
+
+              final ProjectAccess projectAccess = permissions.getProjectAccess();
+              if (projectAccess == null || projectAccess.getAccessLevel() == null) {
+                log.debug(
+                    "No project access level found for {}, checking group access",
+                    gitLabRepo.projectId());
+                final boolean hasGroupAccess = checkGroupAccess(permissions);
+                if (!hasGroupAccess) {
+                  log.debug(
+                      "No group access found, checking with PAT capabilities for {}",
+                      gitLabRepo.projectId());
+                  return checkWriteAccessViaPAT(project);
+                }
+                return true;
+              }
+
               final org.gitlab4j.api.models.AccessLevel accessLevel =
-                  project.getPermissions().getProjectAccess().getAccessLevel();
-              final boolean hasWrite = accessLevel != null && accessLevel.toValue() >= 30;
+                  projectAccess.getAccessLevel();
+              final boolean hasWrite = accessLevel.toValue() >= 30;
 
               log.debug(
                   "Write access for {}: {} (access level: {})",
@@ -576,7 +677,19 @@ public class GitLabAdapter implements SCMPort {
         String.format("%s %s, %s: %s\n\n", label, blockingStatus, severityDecoration, issue.title));
 
     if (issue.suggestion != null && !issue.suggestion.isBlank()) {
-      comment.append(String.format("**Recommendation:** %s", issue.suggestion));
+      comment.append(String.format("**Recommendation:** %s\n\n", issue.suggestion));
+    }
+
+    if (issue.isHighConfidence() && issue.hasFixSuggestion()) {
+      if (issue.confidenceScore != null) {
+        comment.append(String.format("**Confidence: %.0f%%**\n\n", issue.confidenceScore * 100));
+      }
+      comment.append("```suggestion\n");
+      comment.append(issue.suggestedFix);
+      if (!issue.suggestedFix.endsWith("\n")) {
+        comment.append("\n");
+      }
+      comment.append("```\n");
     }
 
     return comment.toString();
@@ -632,5 +745,56 @@ public class GitLabAdapter implements SCMPort {
     }
 
     return body.toString();
+  }
+
+  private boolean checkGroupAccess(final Permissions permissions) {
+    try {
+      final Object groupAccessObj = permissions.getGroupAccess();
+      if (groupAccessObj == null) {
+        log.debug("No group access found");
+        return false;
+      }
+
+      if (groupAccessObj instanceof ProjectAccess) {
+        final ProjectAccess groupAccess = (ProjectAccess) groupAccessObj;
+        final org.gitlab4j.api.models.AccessLevel accessLevel = groupAccess.getAccessLevel();
+        if (accessLevel != null) {
+          final boolean hasWrite = accessLevel.toValue() >= 30;
+          log.debug("Group access level: {}, has write: {}", accessLevel, hasWrite);
+          return hasWrite;
+        }
+      }
+
+      log.debug("Unable to determine group access level");
+      return false;
+    } catch (final Exception e) {
+      log.debug("Error checking group access", e);
+      return false;
+    }
+  }
+
+  private boolean checkWriteAccessViaPAT(final Project project) {
+    try {
+      final Boolean canPushCode = project.getSharedRunnersEnabled();
+      final Boolean canCreateMergeRequest = project.getMergeRequestsEnabled();
+
+      if (canPushCode != null || canCreateMergeRequest != null) {
+        log.debug(
+            "PAT has access to project {} (push: {}, MR: {})",
+            project.getId(),
+            canPushCode,
+            canCreateMergeRequest);
+        return true;
+      }
+
+      log.debug("Unable to verify PAT write access for project {}", project.getId());
+      return true;
+    } catch (final Exception e) {
+      log.debug(
+          "Error checking PAT capabilities for project {}, assuming write access",
+          project.getId(),
+          e);
+      return true;
+    }
   }
 }

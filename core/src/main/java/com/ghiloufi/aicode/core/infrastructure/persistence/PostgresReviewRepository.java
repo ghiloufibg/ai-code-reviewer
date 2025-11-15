@@ -58,6 +58,7 @@ public class PostgresReviewRepository {
             entity.setSummary(result.summary);
             entity.setLlmProvider(result.llmProvider);
             entity.setLlmModel(result.llmModel);
+            entity.setRawLlmResponse(result.rawLlmResponse);
             updateIssuesAndNotes(entity, result);
           } else {
             entity = convertToEntity(reviewId, result);
@@ -169,6 +170,7 @@ public class PostgresReviewRepository {
           entity.setSummary(result.summary);
           entity.setLlmProvider(result.llmProvider);
           entity.setLlmModel(result.llmModel);
+          entity.setRawLlmResponse(result.rawLlmResponse);
           entity.setStatus(newState);
 
           if (newState.isTerminal()) {
@@ -250,6 +252,7 @@ public class PostgresReviewRepository {
             .summary(result.summary)
             .llmProvider(result.llmProvider)
             .llmModel(result.llmModel)
+            .rawLlmResponse(result.rawLlmResponse)
             .build();
 
     if (result.issues != null) {
@@ -286,6 +289,9 @@ public class PostgresReviewRepository {
   private ReviewResult convertToDomain(final ReviewEntity entity) {
     final ReviewResult result = new ReviewResult();
     result.summary = entity.getSummary();
+    result.llmProvider = entity.getLlmProvider();
+    result.llmModel = entity.getLlmModel();
+    result.rawLlmResponse = entity.getRawLlmResponse();
 
     if (entity.getIssues() != null) {
       entity

@@ -37,9 +37,16 @@ final class CodeReviewControllerTest {
     final ObjectMapper objectMapper = new ObjectMapper();
     final SSEFormatter sseFormatter = new SSEFormatter(objectMapper);
     final TestSCMPort testSCMPort = new TestSCMPort();
-    final FixApplicationService fixApplicationService = new FixApplicationService(testSCMPort);
+    final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+        mockRepository =
+            org.mockito.Mockito.mock(
+                com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+                    .class);
+    final FixApplicationService fixApplicationService =
+        new FixApplicationService(testSCMPort, mockRepository);
     final CodeReviewController controller =
-        new CodeReviewController(reviewManagementUseCase, fixApplicationService, sseFormatter);
+        new CodeReviewController(
+            reviewManagementUseCase, fixApplicationService, sseFormatter, mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)

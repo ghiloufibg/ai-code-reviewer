@@ -20,11 +20,17 @@ final class FixApplicationServiceTest {
 
   private FixApplicationService fixApplicationService;
   private TestSCMPort testSCMPort;
+  private com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+      mockRepository;
 
   @BeforeEach
   void setUp() {
     testSCMPort = new TestSCMPort();
-    fixApplicationService = new FixApplicationService(testSCMPort);
+    mockRepository =
+        org.mockito.Mockito.mock(
+            com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+                .class);
+    fixApplicationService = new FixApplicationService(testSCMPort, mockRepository);
   }
 
   @Test

@@ -53,6 +53,14 @@ public final class ReviewResultSchema {
                 "confidenceExplanation": {
                   "type": "string",
                   "description": "Brief explanation of the confidence score considering pattern clarity, context completeness, and false positive risk"
+                },
+                "suggestedFix": {
+                  "type": "string",
+                  "description": "AI-generated corrected code snippet that should replace the problematic section. Only provide for high-confidence issues (score >= 0.7) where an automated fix is safe and clear."
+                },
+                "fixDiff": {
+                  "type": "string",
+                  "description": "Unified diff format showing exact changes to apply. Must be valid unified diff that can be applied programmatically. Only provide for high-confidence issues (score >= 0.7) with clear, safe fixes."
                 }
               },
               "additionalProperties": false

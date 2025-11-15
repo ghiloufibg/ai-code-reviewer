@@ -1,0 +1,428 @@
+diff --git a/src/main/java/com/example/service/UserService.java b/src/main/java/com/example/service/UserService.java
+index 1a2b3c4..5d6e7f8 100644
+--- a/src/main/java/com/example/service/UserService.java
++++ b/src/main/java/com/example/service/UserService.java
+@@ -1,45 +1,78 @@
+ package com.example.service;
+
+ import com.example.model.User;
+ import com.example.repository.UserRepository;
++import com.example.exception.UserNotFoundException;
++import com.example.exception.InvalidUserDataException;
++import lombok.extern.slf4j.Slf4j;
+ import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
+
+ import java.util.List;
++import java.util.Optional;
+
+ @Service
++@Slf4j
+ public class UserService {
+
+     private final UserRepository userRepository;
++    private final UserValidator userValidator;
++    private final EmailService emailService;
+
+-    public UserService(UserRepository userRepository) {
++    public UserService(UserRepository userRepository, UserValidator userValidator, EmailService emailService) {
+         this.userRepository = userRepository;
++        this.userValidator = userValidator;
++        this.emailService = emailService;
+     }
+
++    @Transactional(readOnly = true)
+     public List<User> getAllUsers() {
++        log.info("Fetching all users");
+         return userRepository.findAll();
+     }
+
+-    public User getUserById(Long id) {
+-        return userRepository.findById(id).orElse(null);
++    @Transactional(readOnly = true)
++    public User getUserById(final Long id) {
++        log.debug("Fetching user by id: {}", id);
++        return userRepository.findById(id)
++                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+     }
+
+-    public User createUser(User user) {
+-        return userRepository.save(user);
++    @Transactional
++    public User createUser(final User user) {
++        log.info("Creating new user: {}", user.getEmail());
++
++        userValidator.validate(user);
++
++        if (userRepository.existsByEmail(user.getEmail())) {
++            throw new InvalidUserDataException("User with email already exists: " + user.getEmail());
++        }
++
++        final User savedUser = userRepository.save(user);
++        emailService.sendWelcomeEmail(savedUser);
++
++        log.info("User created successfully with id: {}", savedUser.getId());
++        return savedUser;
+     }
+
+-    public User updateUser(Long id, User user) {
+-        User existingUser = getUserById(id);
+-        if (existingUser != null) {
+-            existingUser.setName(user.getName());
+-            existingUser.setEmail(user.getEmail());
+-            return userRepository.save(existingUser);
++    @Transactional
++    public User updateUser(final Long id, final User user) {
++        log.info("Updating user: {}", id);
++
++        final User existingUser = getUserById(id);
++        userValidator.validate(user);
++
++        existingUser.setName(user.getName());
++        existingUser.setEmail(user.getEmail());
++        existingUser.setPhoneNumber(user.getPhoneNumber());
++
++        final User updatedUser = userRepository.save(existingUser);
++        log.info("User updated successfully: {}", id);
++        return updatedUser;
++    }
++
++    @Transactional
++    public void deleteUser(final Long id) {
++        log.info("Deleting user: {}", id);
++        final User user = getUserById(id);
++        userRepository.delete(user);
++        log.info("User deleted successfully: {}", id);
+     }
+-        return null;
+-    }
+-
+-    public void deleteUser(Long id) {
+-        userRepository.deleteById(id);
+-    }
+ }
+diff --git a/src/main/java/com/example/service/UserValidator.java b/src/main/java/com/example/service/UserValidator.java
+new file mode 100644
+index 0000000..9a8b7c6
+--- /dev/null
++++ b/src/main/java/com/example/service/UserValidator.java
+@@ -0,0 +1,35 @@
++package com.example.service;
++
++import com.example.model.User;
++import com.example.exception.InvalidUserDataException;
++import org.springframework.stereotype.Component;
++
++@Component
++public class UserValidator {
++
++    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
++
++    public void validate(final User user) {
++        validateNotNull(user);
++        validateName(user.getName());
++        validateEmail(user.getEmail());
++    }
++
++    private void validateNotNull(final User user) {
++        if (user == null) {
++            throw new InvalidUserDataException("User cannot be null");
++        }
++    }
++
++    private void validateName(final String name) {
++        if (name == null || name.trim().isEmpty()) {
++            throw new InvalidUserDataException("User name cannot be empty");
++        }
++    }
++
++    private void validateEmail(final String email) {
++        if (email == null || !email.matches(EMAIL_REGEX)) {
++            throw new InvalidUserDataException("Invalid email format");
++        }
++    }
++}
+diff --git a/src/main/java/com/example/service/EmailService.java b/src/main/java/com/example/service/EmailService.java
+new file mode 100644
+index 0000000..3b4c9d7
+--- /dev/null
++++ b/src/main/java/com/example/service/EmailService.java
+@@ -0,0 +1,24 @@
++package com.example.service;
++
++import com.example.model.User;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.stereotype.Service;
++
++@Service
++@Slf4j
++public class EmailService {
++
++    public void sendWelcomeEmail(final User user) {
++        log.info("Sending welcome email to: {}", user.getEmail());
++        // Email sending logic here
++    }
++
++    public void sendPasswordResetEmail(final User user, final String resetToken) {
++        log.info("Sending password reset email to: {}", user.getEmail());
++        // Email sending logic here
++    }
++
++    public void sendNotificationEmail(final User user, final String message) {
++        log.info("Sending notification email to: {}", user.getEmail());
++    }
++}
+diff --git a/src/main/java/com/example/exception/UserNotFoundException.java b/src/main/java/com/example/exception/UserNotFoundException.java
+new file mode 100644
+index 0000000..7a3b9c8
+--- /dev/null
++++ b/src/main/java/com/example/exception/UserNotFoundException.java
+@@ -0,0 +1,11 @@
++package com.example.exception;
++
++public class UserNotFoundException extends RuntimeException {
++
++    public UserNotFoundException(final String message) {
++        super(message);
++    }
++
++    public UserNotFoundException(final String message, final Throwable cause) {
++        super(message, cause);
++    }
++}
+diff --git a/src/main/java/com/example/exception/InvalidUserDataException.java b/src/main/java/com/example/exception/InvalidUserDataException.java
+new file mode 100644
+index 0000000..a2f4d9b
+--- /dev/null
++++ b/src/main/java/com/example/exception/InvalidUserDataException.java
+@@ -0,0 +1,11 @@
++package com.example.exception;
++
++public class InvalidUserDataException extends RuntimeException {
++
++    public InvalidUserDataException(final String message) {
++        super(message);
++    }
++
++    public InvalidUserDataException(final String message, final Throwable cause) {
++        super(message, cause);
++    }
++}
+diff --git a/src/main/java/com/example/repository/UserRepository.java b/src/main/java/com/example/repository/UserRepository.java
+index 9c8d0e1..2f3g4h5 100644
+--- a/src/main/java/com/example/repository/UserRepository.java
++++ b/src/main/java/com/example/repository/UserRepository.java
+@@ -3,7 +3,12 @@ package com.example.repository;
+ import com.example.model.User;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
++import java.util.Optional;
+
+ @Repository
+ public interface UserRepository extends JpaRepository<User, Long> {
++
++    Optional<User> findByEmail(String email);
++
++    boolean existsByEmail(String email);
+ }
+diff --git a/src/main/java/com/example/model/User.java b/src/main/java/com/example/model/User.java
+index 6d7e8f9..0a1b2c3 100644
+--- a/src/main/java/com/example/model/User.java
++++ b/src/main/java/com/example/model/User.java
+@@ -1,25 +1,45 @@
+ package com.example.model;
+
+ import jakarta.persistence.*;
++import lombok.AllArgsConstructor;
++import lombok.Builder;
+ import lombok.Data;
++import lombok.NoArgsConstructor;
++
++import java.time.LocalDateTime;
+
+ @Entity
+ @Table(name = "users")
+ @Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
+ public class User {
+
+     @Id
+     @GeneratedValue(strategy = GenerationType.IDENTITY)
+     private Long id;
+
+-    private String name;
++    @Column(nullable = false)
++    private String name;
++
++    @Column(nullable = false, unique = true)
++    private String email;
+
+-    private String email;
++    @Column(name = "phone_number")
++    private String phoneNumber;
+
+-    public User() {
+-    }
++    @Column(name = "created_at", nullable = false, updatable = false)
++    private LocalDateTime createdAt;
+
+-    public User(String name, String email) {
+-        this.name = name;
+-        this.email = email;
++    @Column(name = "updated_at", nullable = false)
++    private LocalDateTime updatedAt;
++
++    @PrePersist
++    protected void onCreate() {
++        createdAt = LocalDateTime.now();
++        updatedAt = LocalDateTime.now();
++    }
++
++    @PreUpdate
++    protected void onUpdate() {
++        updatedAt = LocalDateTime.now();
+     }
+ }
+diff --git a/src/test/java/com/example/service/UserServiceTest.java b/src/test/java/com/example/service/UserServiceTest.java
+index 3e4f5g6..7h8i9j0 100644
+--- a/src/test/java/com/example/service/UserServiceTest.java
++++ b/src/test/java/com/example/service/UserServiceTest.java
+@@ -1,50 +1,120 @@
+ package com.example.service;
+
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.Mockito.*;
+
+ import com.example.model.User;
+ import com.example.repository.UserRepository;
++import com.example.exception.UserNotFoundException;
++import com.example.exception.InvalidUserDataException;
+ import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+ import org.mockito.Mock;
+ import org.mockito.junit.jupiter.MockitoExtension;
+
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Optional;
+
+-import static org.junit.jupiter.api.Assertions.*;
+-
+ @ExtendWith(MockitoExtension.class)
++@DisplayName("UserService Tests")
+ class UserServiceTest {
+
+     @Mock
+     private UserRepository userRepository;
++
++    @Mock
++    private UserValidator userValidator;
++
++    @Mock
++    private EmailService emailService;
+
+     private UserService userService;
+
+     @BeforeEach
+     void setUp() {
+-        userService = new UserService(userRepository);
++        userService = new UserService(userRepository, userValidator, emailService);
+     }
+
+     @Test
++    @DisplayName("should return all users")
+     void testGetAllUsers() {
+-        User user1 = new User("John", "john@example.com");
+-        User user2 = new User("Jane", "jane@example.com");
+-        when(userRepository.findAll()).thenReturn(Arrays.asList(user1, user2));
++        final User user1 = User.builder().name("John").email("john@example.com").build();
++        final User user2 = User.builder().name("Jane").email("jane@example.com").build();
++        when(userRepository.findAll()).thenReturn(List.of(user1, user2));
+
+-        List<User> users = userService.getAllUsers();
++        final List<User> users = userService.getAllUsers();
+
+-        assertEquals(2, users.size());
++        assertThat(users).hasSize(2);
++        assertThat(users).containsExactly(user1, user2);
+         verify(userRepository).findAll();
+     }
+
+     @Test
++    @DisplayName("should return user by id when user exists")
+     void testGetUserById() {
+-        User user = new User("John", "john@example.com");
++        final User user = User.builder().id(1L).name("John").email("john@example.com").build();
+         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+-        User result = userService.getUserById(1L);
++        final User result = userService.getUserById(1L);
+
+-        assertNotNull(result);
+-        assertEquals("John", result.getName());
++        assertThat(result).isNotNull();
++        assertThat(result.getName()).isEqualTo("John");
++        verify(userRepository).findById(1L);
++    }
++
++    @Test
++    @DisplayName("should throw UserNotFoundException when user does not exist")
++    void testGetUserByIdNotFound() {
++        when(userRepository.findById(999L)).thenReturn(Optional.empty());
++
++        assertThatThrownBy(() -> userService.getUserById(999L))
++                .isInstanceOf(UserNotFoundException.class)
++                .hasMessageContaining("User not found with id: 999");
++    }
++
++    @Test
++    @DisplayName("should create user successfully")
++    void testCreateUser() {
++        final User user = User.builder().name("John").email("john@example.com").build();
++        final User savedUser = User.builder().id(1L).name("John").email("john@example.com").build();
++
++        when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
++        when(userRepository.save(user)).thenReturn(savedUser);
++
++        final User result = userService.createUser(user);
++
++        assertThat(result.getId()).isEqualTo(1L);
++        verify(userValidator).validate(user);
++        verify(userRepository).existsByEmail("john@example.com");
++        verify(userRepository).save(user);
++        verify(emailService).sendWelcomeEmail(savedUser);
++    }
++
++    @Test
++    @DisplayName("should throw exception when creating user with duplicate email")
++    void testCreateUserDuplicateEmail() {
++        final User user = User.builder().name("John").email("john@example.com").build();
++
++        when(userRepository.existsByEmail("john@example.com")).thenReturn(true);
++
++        assertThatThrownBy(() -> userService.createUser(user))
++                .isInstanceOf(InvalidUserDataException.class)
++                .hasMessageContaining("User with email already exists");
++
++        verify(userValidator).validate(user);
++        verify(userRepository).existsByEmail("john@example.com");
++        verify(userRepository, never()).save(any());
++    }
++
++    @Test
++    @DisplayName("should delete user successfully")
++    void testDeleteUser() {
++        final User user = User.builder().id(1L).name("John").email("john@example.com").build();
++        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
++
++        userService.deleteUser(1L);
++
++        verify(userRepository).findById(1L);
++        verify(userRepository).delete(user);
+     }
+ }

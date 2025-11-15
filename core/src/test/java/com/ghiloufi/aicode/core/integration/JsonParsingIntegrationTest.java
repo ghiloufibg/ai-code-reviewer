@@ -89,6 +89,9 @@ class JsonParsingIntegrationTest {
 
       assertThat(result.non_blocking_notes.get(0).file).isEqualTo("Utils.java");
       assertThat(result.non_blocking_notes.get(0).line).isEqualTo(12);
+
+      assertThat(result.rawLlmResponse).isNotNull();
+      assertThat(result.rawLlmResponse).contains("Code review completed successfully");
     }
 
     @Test
@@ -380,7 +383,7 @@ class JsonParsingIntegrationTest {
 
       assertThatThrownBy(() -> chunkAccumulator.accumulateChunks(chunks))
           .isInstanceOf(JsonValidationException.class)
-          .hasMessageContaining("Invalid JSON format");
+          .hasMessageContaining("JSON validation failed");
     }
 
     @Test

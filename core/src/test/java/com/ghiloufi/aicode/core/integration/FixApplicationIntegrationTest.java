@@ -42,6 +42,8 @@ final class FixApplicationIntegrationTest {
   private TestGitLabSCMPort testGitLabPort;
   private TestAIReviewStreamingService testAIService;
   private TestReviewChunkAccumulator testChunkAccumulator;
+  private com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+      mockRepository;
 
   @BeforeEach
   final void setUp() {
@@ -50,12 +52,16 @@ final class FixApplicationIntegrationTest {
     testAIService = new TestAIReviewStreamingService();
     testChunkAccumulator = new TestReviewChunkAccumulator();
     final TestPostgresReviewRepository testReviewRepository = new TestPostgresReviewRepository();
+    mockRepository =
+        org.mockito.Mockito.mock(
+            com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
+                .class);
 
     reviewManagementService =
         new ReviewManagementService(
             testAIService, scmFactory, testChunkAccumulator, testReviewRepository);
 
-    fixApplicationService = new FixApplicationService(testGitLabPort);
+    fixApplicationService = new FixApplicationService(testGitLabPort, mockRepository);
   }
 
   @Nested

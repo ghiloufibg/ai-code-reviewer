@@ -6,6 +6,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.exception.JsonValidationException;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultValidator;
 import com.ghiloufi.aicode.core.service.validation.ValidationResult;
+import com.google.json.JsonSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -112,6 +113,7 @@ public final class JsonReviewResultParser {
 
     cleaned = stripMarkdownCodeBlocks(cleaned);
     cleaned = extractJsonObject(cleaned);
+    cleaned = JsonSanitizer.sanitize(cleaned);
     cleaned = removeSchemaProperty(cleaned);
 
     log.debug(

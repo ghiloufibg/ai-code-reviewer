@@ -16,6 +16,64 @@ public class PromptBuilder {
     this.diffFormatter = Objects.requireNonNull(diffFormatter, "DiffFormatter cannot be null");
   }
 
+  private static final String FIX_GENERATION_INSTRUCTIONS =
+      """
+
+            AUTOMATED FIX GENERATION (CRITICAL):
+            For HIGH-CONFIDENCE issues (score >= 0.7) where the fix is clear and safe, you MUST provide:
+
+            1. suggestedFix: The corrected code snippet that replaces the problematic section
+               - CRITICAL: Must be valid JSON - all special characters MUST be escaped
+               - Newlines MUST be escaped as \\n (not literal line breaks)
+               - Double quotes MUST be escaped as \\"
+               - Backslashes MUST be escaped as \\\\
+               - Tabs MUST be escaped as \\t
+               - Must be complete, compilable code
+               - Include necessary imports if adding new dependencies
+               - Preserve indentation and formatting style from original code
+               - Should be the minimal change needed to fix the issue
+
+            2. fixDiff: A valid unified diff format that can be applied programmatically
+               - CRITICAL: Must be valid JSON - all special characters MUST be escaped
+               - Newlines MUST be escaped as \\n (not literal line breaks)
+               - Use standard unified diff format (--- original, +++ modified, @@ line numbers @@)
+               - Show exact line changes with context
+               - Must be applicable to the source file without conflicts
+               - Include 3 lines of context before and after changes
+
+            WHEN TO PROVIDE AUTOMATED FIXES:
+            ✅ PROVIDE fixes for:
+            - Clear security vulnerabilities (SQL injection, XSS) with obvious safe alternatives
+            - Missing null checks with clear fix locations
+            - Resource leaks (unclosed streams, connections) with clear try-with-resources fix
+            - Incorrect API usage with documented correct usage
+            - Simple logic errors with unambiguous corrections
+
+            ❌ DO NOT provide fixes for:
+            - Architectural or design issues requiring broader refactoring
+            - Issues where multiple valid approaches exist
+            - Changes requiring understanding of broader business logic
+            - Stylistic preferences without functional impact
+            - Complex performance optimizations requiring profiling
+
+            JSON ESCAPING EXAMPLES (CRITICAL - FOLLOW THESE EXACTLY):
+
+            ✅ CORRECT suggestedFix (properly escaped):
+            "suggestedFix": "if (user != null) {\\n  user.getName();\\n}"
+
+            ❌ WRONG suggestedFix (literal newlines - DO NOT DO THIS):
+            "suggestedFix": "if (user != null) {
+              user.getName();
+            }"
+
+            ✅ CORRECT fixDiff (properly escaped):
+            "fixDiff": "--- a/User.java\\n+++ b/User.java\\n@@ -10,1 +10,3 @@\\n-user.getName();\\n+if (user != null) {\\n+  user.getName();\\n+}"
+
+            COMPLETE EXAMPLE:
+            "suggestedFix": "String query = \\"SELECT * FROM users WHERE id = ?\\";\\nPreparedStatement pstmt = conn.prepareStatement(query);\\npstmt.setInt(1, userId);"
+
+            """;
+
   private static final String CONFIDENCE_SCORING_INSTRUCTIONS =
       """
 
@@ -75,6 +133,7 @@ public class PromptBuilder {
             - Classify findings: critical, major, minor, info.
             - Categories: correctness, security, concurrency, performance, maintainability, test gaps.
             """
+          + FIX_GENERATION_INSTRUCTIONS
           + CONFIDENCE_SCORING_INSTRUCTIONS
           + """
 

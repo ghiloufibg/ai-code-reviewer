@@ -50,6 +50,7 @@ public class ReviewChunkAccumulator {
 
     log.info("Detected JSON response, parsing as ReviewResult");
     final ReviewResult parsedResult = jsonParser.parse(accumulatedContent);
+    parsedResult.rawLlmResponse = accumulatedContent;
     log.info(
         "Successfully parsed JSON ReviewResult: {} issues, {} notes",
         parsedResult.issues.size(),

@@ -1,0 +1,537 @@
+diff --git a/src/main/java/com/example/controller/UserController.java b/src/main/java/com/example/controller/UserController.java
+index a1b2c3d..e4f5g6h 100644
+--- a/src/main/java/com/example/controller/UserController.java
++++ b/src/main/java/com/example/controller/UserController.java
+@@ -1,50 +1,110 @@
+ package com.example.controller;
+
+ import com.example.model.User;
+ import com.example.service.UserService;
++import com.example.dto.UserCreateRequest;
++import com.example.dto.UserUpdateRequest;
++import com.example.dto.UserResponse;
++import com.example.mapper.UserMapper;
++import jakarta.validation.Valid;
++import lombok.extern.slf4j.Slf4j;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+
+ import java.util.List;
++import java.util.stream.Collectors;
+
+ @RestController
+ @RequestMapping("/api/v1/users")
++@Slf4j
+ public class UserController {
+
+     private final UserService userService;
++    private final UserMapper userMapper;
+
+-    public UserController(UserService userService) {
++    public UserController(final UserService userService, final UserMapper userMapper) {
+         this.userService = userService;
++        this.userMapper = userMapper;
+     }
+
+     @GetMapping
+-    public ResponseEntity<List<User>> getAllUsers() {
+-        List<User> users = userService.getAllUsers();
+-        return ResponseEntity.ok(users);
++    public ResponseEntity<List<UserResponse>> getAllUsers(
++            @RequestParam(required = false) final String email,
++            @RequestParam(required = false) final String name) {
++
++        log.info("GET /api/v1/users - email: {}, name: {}", email, name);
++
++        final List<User> users;
++        if (email != null) {
++            users = userService.findByEmail(email);
++        } else if (name != null) {
++            users = userService.findByNameContaining(name);
++        } else {
++            users = userService.getAllUsers();
++        }
++
++        final List<UserResponse> response = users.stream()
++                .map(userMapper::toResponse)
++                .collect(Collectors.toList());
++
++        return ResponseEntity.ok(response);
+     }
+
+     @GetMapping("/{id}")
+-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+-        User user = userService.getUserById(id);
+-        return ResponseEntity.ok(user);
++    public ResponseEntity<UserResponse> getUserById(@PathVariable final Long id) {
++        log.info("GET /api/v1/users/{}", id);
++
++        final User user = userService.getUserById(id);
++        final UserResponse response = userMapper.toResponse(user);
++
++        return ResponseEntity.ok(response);
+     }
+
+     @PostMapping
+-    public ResponseEntity<User> createUser(@RequestBody User user) {
+-        User createdUser = userService.createUser(user);
+-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
++    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody final UserCreateRequest request) {
++        log.info("POST /api/v1/users - email: {}", request.getEmail());
++
++        final User user = userMapper.toEntity(request);
++        final User createdUser = userService.createUser(user);
++        final UserResponse response = userMapper.toResponse(createdUser);
++
++        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+     }
+
+     @PutMapping("/{id}")
+-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
+-        User updatedUser = userService.updateUser(id, user);
+-        return ResponseEntity.ok(updatedUser);
++    public ResponseEntity<UserResponse> updateUser(
++            @PathVariable final Long id,
++            @Valid @RequestBody final UserUpdateRequest request) {
++
++        log.info("PUT /api/v1/users/{}", id);
++
++        final User user = userMapper.toEntity(request);
++        final User updatedUser = userService.updateUser(id, user);
++        final UserResponse response = userMapper.toResponse(updatedUser);
++
++        return ResponseEntity.ok(response);
++    }
++
++    @PatchMapping("/{id}")
++    public ResponseEntity<UserResponse> partialUpdateUser(
++            @PathVariable final Long id,
++            @RequestBody final UserUpdateRequest request) {
++
++        log.info("PATCH /api/v1/users/{}", id);
++
++        final User updatedUser = userService.partialUpdate(id, request);
++        final UserResponse response = userMapper.toResponse(updatedUser);
++
++        return ResponseEntity.ok(response);
+     }
+
+     @DeleteMapping("/{id}")
+-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
++    public ResponseEntity<Void> deleteUser(@PathVariable final Long id) {
++        log.info("DELETE /api/v1/users/{}", id);
++
+         userService.deleteUser(id);
+         return ResponseEntity.noContent().build();
+     }
++
++    @PostMapping("/{id}/reset-password")
++    public ResponseEntity<Void> resetPassword(@PathVariable final Long id) {
++        log.info("POST /api/v1/users/{}/reset-password", id);
++
++        userService.sendPasswordResetEmail(id);
++        return ResponseEntity.ok().build();
++    }
+ }
+diff --git a/src/main/java/com/example/dto/UserCreateRequest.java b/src/main/java/com/example/dto/UserCreateRequest.java
+new file mode 100644
+index 0000000..1a2b3c4
+--- /dev/null
++++ b/src/main/java/com/example/dto/UserCreateRequest.java
+@@ -0,0 +1,25 @@
++package com.example.dto;
++
++import jakarta.validation.constraints.Email;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.Size;
++import lombok.AllArgsConstructor;
++import lombok.Builder;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++
++@Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
++public class UserCreateRequest {
++
++    @NotBlank(message = "Name is required")
++    @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
++    private String name;
++
++    @NotBlank(message = "Email is required")
++    @Email(message = "Email must be valid")
++    private String email;
++
++    private String phoneNumber;
++}
+diff --git a/src/main/java/com/example/dto/UserUpdateRequest.java b/src/main/java/com/example/dto/UserUpdateRequest.java
+new file mode 100644
+index 0000000..5d6e7f8
+--- /dev/null
++++ b/src/main/java/com/example/dto/UserUpdateRequest.java
+@@ -0,0 +1,23 @@
++package com.example.dto;
++
++import jakarta.validation.constraints.Email;
++import jakarta.validation.constraints.Size;
++import lombok.AllArgsConstructor;
++import lombok.Builder;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++
++@Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
++public class UserUpdateRequest {
++
++    @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
++    private String name;
++
++    @Email(message = "Email must be valid")
++    private String email;
++
++    private String phoneNumber;
++}
+diff --git a/src/main/java/com/example/dto/UserResponse.java b/src/main/java/com/example/dto/UserResponse.java
+new file mode 100644
+index 0000000..9a8b7c6
+--- /dev/null
++++ b/src/main/java/com/example/dto/UserResponse.java
+@@ -0,0 +1,25 @@
++package com.example.dto;
++
++import lombok.AllArgsConstructor;
++import lombok.Builder;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++
++import java.time.LocalDateTime;
++
++@Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
++public class UserResponse {
++
++    private Long id;
++
++    private String name;
++
++    private String email;
++
++    private String phoneNumber;
++
++    private LocalDateTime createdAt;
++}
+diff --git a/src/main/java/com/example/mapper/UserMapper.java b/src/main/java/com/example/mapper/UserMapper.java
+new file mode 100644
+index 0000000..0a1b2c3
+--- /dev/null
++++ b/src/main/java/com/example/mapper/UserMapper.java
+@@ -0,0 +1,36 @@
++package com.example.mapper;
++
++import com.example.dto.UserCreateRequest;
++import com.example.dto.UserUpdateRequest;
++import com.example.dto.UserResponse;
++import com.example.model.User;
++import org.springframework.stereotype.Component;
++
++@Component
++public class UserMapper {
++
++    public User toEntity(final UserCreateRequest request) {
++        return User.builder()
++                .name(request.getName())
++                .email(request.getEmail())
++                .phoneNumber(request.getPhoneNumber())
++                .build();
++    }
++
++    public User toEntity(final UserUpdateRequest request) {
++        return User.builder()
++                .name(request.getName())
++                .email(request.getEmail())
++                .phoneNumber(request.getPhoneNumber())
++                .build();
++    }
++
++    public UserResponse toResponse(final User user) {
++        return UserResponse.builder()
++                .id(user.getId())
++                .name(user.getName())
++                .email(user.getEmail())
++                .phoneNumber(user.getPhoneNumber())
++                .createdAt(user.getCreatedAt())
++                .build();
++    }
++}
+diff --git a/src/main/java/com/example/config/SecurityConfig.java b/src/main/java/com/example/config/SecurityConfig.java
+new file mode 100644
+index 0000000..3d4e5f6
+--- /dev/null
++++ b/src/main/java/com/example/config/SecurityConfig.java
+@@ -0,0 +1,50 @@
++package com.example.config;
++
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.security.config.annotation.web.builders.HttpSecurity;
++import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
++import org.springframework.security.config.http.SessionCreationPolicy;
++import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.security.web.SecurityFilterChain;
++
++@Configuration
++@EnableWebSecurity
++public class SecurityConfig {
++
++    @Bean
++    public SecurityFilterChain filterChain(final HttpSecurity http) throws Exception {
++        http
++                .csrf().disable()
++                .authorizeHttpRequests(auth -> auth
++                        .requestMatchers("/api/v1/public/**").permitAll()
++                        .requestMatchers("/api/v1/users/**").authenticated()
++                        .anyRequest().authenticated()
++                )
++                .sessionManagement()
++                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
++
++        return http.build();
++    }
++
++    @Bean
++    public PasswordEncoder passwordEncoder() {
++        return new BCryptPasswordEncoder();
++    }
++}
+diff --git a/src/main/java/com/example/config/DatabaseConfig.java b/src/main/java/com/example/config/DatabaseConfig.java
+new file mode 100644
+index 0000000..7g8h9i0
+--- /dev/null
++++ b/src/main/java/com/example/config/DatabaseConfig.java
+@@ -0,0 +1,40 @@
++package com.example.config;
++
++import com.zaxxer.hikari.HikariConfig;
++import com.zaxxer.hikari.HikariDataSource;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++
++import javax.sql.DataSource;
++
++@Configuration
++public class DatabaseConfig {
++
++    @Value("${spring.datasource.url}")
++    private String jdbcUrl;
++
++    @Value("${spring.datasource.username}")
++    private String username;
++
++    @Value("${spring.datasource.password}")
++    private String password;
++
++    @Bean
++    public DataSource dataSource() {
++        final HikariConfig config = new HikariConfig();
++        config.setJdbcUrl(jdbcUrl);
++        config.setUsername(username);
++        config.setPassword(password);
++        config.setMaximumPoolSize(20);
++        config.setMinimumIdle(5);
++        config.setConnectionTimeout(30000);
++        config.setIdleTimeout(600000);
++        config.setMaxLifetime(1800000);
++        config.setAutoCommit(true);
++        config.setPoolName("HikariPool-UserService");
++
++        return new HikariDataSource(config);
++    }
++}
+diff --git a/src/main/java/com/example/exception/GlobalExceptionHandler.java b/src/main/java/com/example/exception/GlobalExceptionHandler.java
+new file mode 100644
+index 0000000..1j2k3l4
+--- /dev/null
++++ b/src/main/java/com/example/exception/GlobalExceptionHandler.java
+@@ -0,0 +1,65 @@
++package com.example.exception;
++
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.validation.FieldError;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++
++import java.time.LocalDateTime;
++import java.util.HashMap;
++import java.util.Map;
++
++@RestControllerAdvice
++@Slf4j
++public class GlobalExceptionHandler {
++
++    @ExceptionHandler(UserNotFoundException.class)
++    public ResponseEntity<ErrorResponse> handleUserNotFoundException(final UserNotFoundException ex) {
++        log.error("User not found: {}", ex.getMessage());
++
++        final ErrorResponse error = ErrorResponse.builder()
++                .timestamp(LocalDateTime.now())
++                .status(HttpStatus.NOT_FOUND.value())
++                .error("Not Found")
++                .message(ex.getMessage())
++                .build();
++
++        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
++    }
++
++    @ExceptionHandler(InvalidUserDataException.class)
++    public ResponseEntity<ErrorResponse> handleInvalidUserDataException(final InvalidUserDataException ex) {
++        log.error("Invalid user data: {}", ex.getMessage());
++
++        final ErrorResponse error = ErrorResponse.builder()
++                .timestamp(LocalDateTime.now())
++                .status(HttpStatus.BAD_REQUEST.value())
++                .error("Bad Request")
++                .message(ex.getMessage())
++                .build();
++
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
++    }
++
++    @ExceptionHandler(MethodArgumentNotValidException.class)
++    public ResponseEntity<ErrorResponse> handleValidationExceptions(final MethodArgumentNotValidException ex) {
++        final Map<String, String> errors = new HashMap<>();
++        ex.getBindingResult().getAllErrors().forEach(error -> {
++            final String fieldName = ((FieldError) error).getField();
++            final String errorMessage = error.getDefaultMessage();
++            errors.put(fieldName, errorMessage);
++        });
++
++        final ErrorResponse error = ErrorResponse.builder()
++                .timestamp(LocalDateTime.now())
++                .status(HttpStatus.BAD_REQUEST.value())
++                .error("Validation Failed")
++                .message("Input validation failed")
++                .validationErrors(errors)
++                .build();
++
++        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
++    }
++
++    @ExceptionHandler(Exception.class)
++    public ResponseEntity<ErrorResponse> handleGenericException(final Exception ex) {
++        log.error("Unexpected error occurred", ex);
++
++        final ErrorResponse error = ErrorResponse.builder()
++                .timestamp(LocalDateTime.now())
++                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
++                .error("Internal Server Error")
++                .message("An unexpected error occurred")
++                .build();
++
++        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
++    }
++}
+diff --git a/src/main/java/com/example/exception/ErrorResponse.java b/src/main/java/com/example/exception/ErrorResponse.java
+new file mode 100644
+index 0000000..5m6n7o8
+--- /dev/null
++++ b/src/main/java/com/example/exception/ErrorResponse.java
+@@ -0,0 +1,25 @@
++package com.example.exception;
++
++import lombok.AllArgsConstructor;
++import lombok.Builder;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++
++import java.time.LocalDateTime;
++import java.util.Map;
++
++@Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
++public class ErrorResponse {
++
++    private LocalDateTime timestamp;
++
++    private int status;
++
++    private String error;
++
++    private String message;
++
++    private Map<String, String> validationErrors;
++}
+diff --git a/src/main/resources/db/migration/V2__add_phone_number.sql b/src/main/resources/db/migration/V2__add_phone_number.sql
+new file mode 100644
+index 0000000..9p0q1r2
+--- /dev/null
++++ b/src/main/resources/db/migration/V2__add_phone_number.sql
+@@ -0,0 +1,5 @@
++-- Add phone number column to users table
++ALTER TABLE users
++    ADD COLUMN phone_number VARCHAR(20);
++
++CREATE INDEX idx_users_phone_number ON users(phone_number);
+diff --git a/src/main/resources/db/migration/V3__add_timestamps.sql b/src/main/resources/db/migration/V3__add_timestamps.sql
+new file mode 100644
+index 0000000..3s4t5u6
+--- /dev/null
++++ b/src/main/resources/db/migration/V3__add_timestamps.sql
+@@ -0,0 +1,7 @@
++-- Add timestamp columns to users table
++ALTER TABLE users
++    ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
++
++CREATE INDEX idx_users_created_at ON users(created_at);
++CREATE INDEX idx_users_updated_at ON users(updated_at);
+diff --git a/src/main/resources/application.yml b/src/main/resources/application.yml
+index 7v8w9x0..1y2z3a4 100644
+--- a/src/main/resources/application.yml
++++ b/src/main/resources/application.yml
+@@ -1,10 +1,30 @@
+ spring:
++  application:
++    name: user-service
++
+   datasource:
+-    url: jdbc:postgresql://localhost:5432/userdb
++    url: jdbc:postgresql://localhost:5432/userdb?ssl=false
+     username: user
+     password: password
+-    driver-class-name: org.postgresql.Driver
++    hikari:
++      maximum-pool-size: 20
++      minimum-idle: 5
++      connection-timeout: 30000
++      idle-timeout: 600000
++      max-lifetime: 1800000
++
+   jpa:
+     hibernate:
+       ddl-auto: validate
+-    show-sql: true
++    show-sql: false
++    properties:
++      hibernate:
++        format_sql: true
++        use_sql_comments: true
++
++  flyway:
++    enabled: true
++    locations: classpath:db/migration
++
++server:
++  port: 8080

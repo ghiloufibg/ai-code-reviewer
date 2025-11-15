@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -66,8 +67,8 @@ public class ReviewIssueEntity {
   @Column(name = "position_metadata", columnDefinition = "TEXT")
   private String positionMetadata;
 
-  @Column(name = "confidence_score")
-  private Double confidenceScore;
+  @Column(name = "confidence_score", precision = 3, scale = 2)
+  private BigDecimal confidenceScore;
 
   @Column(name = "confidence_explanation", columnDefinition = "TEXT")
   private String confidenceExplanation;
@@ -94,7 +95,7 @@ public class ReviewIssueEntity {
   }
 
   public boolean isHighConfidence() {
-    return confidenceScore != null && confidenceScore >= 0.7;
+    return confidenceScore != null && confidenceScore.compareTo(new BigDecimal("0.70")) >= 0;
   }
 
   public boolean hasFixSuggestion() {
