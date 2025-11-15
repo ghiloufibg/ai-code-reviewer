@@ -56,11 +56,7 @@ public final class ReviewResultSchema {
                 },
                 "suggestedFix": {
                   "type": "string",
-                  "description": "AI-generated corrected code snippet that should replace the problematic section. Only provide for high-confidence issues (score >= 0.7) where an automated fix is safe and clear."
-                },
-                "fixDiff": {
-                  "type": "string",
-                  "description": "Unified diff format showing exact changes to apply. Must be valid unified diff that can be applied programmatically. Only provide for high-confidence issues (score >= 0.7) with clear, safe fixes."
+                  "description": "Base64-encoded markdown diff block showing the fix. The LLM should: 1) Create markdown diff with ```diff markers, 2) Base64-encode the entire diff, 3) Put the Base64 string here. Only provide for high-confidence issues (score >= 0.7) where an automated fix is safe and clear."
                 }
               },
               "additionalProperties": false

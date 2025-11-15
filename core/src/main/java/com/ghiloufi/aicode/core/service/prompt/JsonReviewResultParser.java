@@ -46,6 +46,7 @@ public final class JsonReviewResultParser {
     try {
       final ReviewResult result = objectMapper.readValue(cleanedJson, ReviewResult.class);
       normalizeConfidenceScores(result);
+      decodeSuggestedFixes(result);
       log.info(
           "Successfully parsed ReviewResult: {} issues, {} notes",
           result.issues.size(),
@@ -55,6 +56,27 @@ public final class JsonReviewResultParser {
       log.error("Failed to parse JSON into ReviewResult", e);
       throw new JsonValidationException(
           "Failed to parse JSON into ReviewResult: " + e.getMessage(), e);
+    }
+  }
+
+  private void decodeSuggestedFixes(final ReviewResult result) {
+    if (result.issues == null || result.issues.isEmpty()) {
+      return;
+    }
+
+    for (final ReviewResult.Issue issue : result.issues) {
+      if (issue.suggestedFix != null && !issue.suggestedFix.isBlank()) {
+        try {
+          final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.suggestedFix);
+          issue.suggestedFix = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+          log.debug("Successfully decoded Base64 suggestedFix for issue: {}", issue.title);
+        } catch (final IllegalArgumentException e) {
+          log.warn(
+              "Issue '{}' has suggestedFix that is not valid Base64, keeping as-is: {}",
+              issue.title,
+              e.getMessage());
+        }
+      }
     }
   }
 
