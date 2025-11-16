@@ -17,6 +17,28 @@ public interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
   Optional<ReviewEntity> findByRepositoryIdAndChangeRequestIdAndProvider(
       String repositoryId, String changeRequestId, String provider);
 
+  @Query(
+      "SELECT DISTINCT r FROM ReviewEntity r "
+          + "LEFT JOIN FETCH r.issues "
+          + "WHERE r.repositoryId = :repositoryId "
+          + "AND r.changeRequestId = :changeRequestId "
+          + "AND r.provider = :provider")
+  Optional<ReviewEntity> findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+      @Param("repositoryId") String repositoryId,
+      @Param("changeRequestId") String changeRequestId,
+      @Param("provider") String provider);
+
+  @Query(
+      "SELECT DISTINCT r FROM ReviewEntity r "
+          + "LEFT JOIN FETCH r.notes "
+          + "WHERE r.repositoryId = :repositoryId "
+          + "AND r.changeRequestId = :changeRequestId "
+          + "AND r.provider = :provider")
+  Optional<ReviewEntity> findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
+      @Param("repositoryId") String repositoryId,
+      @Param("changeRequestId") String changeRequestId,
+      @Param("provider") String provider);
+
   List<ReviewEntity> findByStatusOrderByCreatedAtDesc(ReviewState status);
 
   List<ReviewEntity> findByProviderOrderByCreatedAtDesc(String provider);

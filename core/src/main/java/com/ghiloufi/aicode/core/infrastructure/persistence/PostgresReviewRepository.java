@@ -48,16 +48,21 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
-          final Optional<ReviewEntity> existing =
-              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProvider(
+          final Optional<ReviewEntity> existingWithIssues =
+              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
                   repositoryId, changeRequestId, provider);
+          if (existingWithIssues.isPresent()) {
+            jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
+                repositoryId, changeRequestId, provider);
+          }
 
           final ReviewEntity entity;
-          if (existing.isPresent()) {
-            entity = existing.get();
+          if (existingWithIssues.isPresent()) {
+            entity = existingWithIssues.get();
             entity.setSummary(result.summary);
             entity.setLlmProvider(result.llmProvider);
             entity.setLlmModel(result.llmModel);
+            entity.setRawLlmResponse(result.rawLlmResponse);
             updateIssuesAndNotes(entity, result);
           } else {
             entity = convertToEntity(reviewId, result);
@@ -70,6 +75,8 @@ public class PostgresReviewRepository {
 
   private void updateIssuesAndNotes(final ReviewEntity entity, final ReviewResult result) {
     entity.getIssues().clear();
+    entity.getNotes().clear();
+
     if (result.issues != null) {
       result.issues.forEach(
           issue -> {
@@ -90,7 +97,6 @@ public class PostgresReviewRepository {
           });
     }
 
-    entity.getNotes().clear();
     if (result.non_blocking_notes != null) {
       result.non_blocking_notes.forEach(
           note -> {
@@ -160,15 +166,18 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
+          jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+              repositoryId, changeRequestId, provider);
           final ReviewEntity entity =
               jpaRepository
-                  .findByRepositoryIdAndChangeRequestIdAndProvider(
+                  .findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
                       repositoryId, changeRequestId, provider)
                   .orElseThrow(() -> new IllegalArgumentException("Review not found: " + reviewId));
 
           entity.setSummary(result.summary);
           entity.setLlmProvider(result.llmProvider);
           entity.setLlmModel(result.llmModel);
+          entity.setRawLlmResponse(result.rawLlmResponse);
           entity.setStatus(newState);
 
           if (newState.isTerminal()) {
@@ -176,6 +185,8 @@ public class PostgresReviewRepository {
           }
 
           entity.getIssues().clear();
+          entity.getNotes().clear();
+
           if (result.issues != null) {
             result.issues.forEach(
                 issue -> {
@@ -191,7 +202,6 @@ public class PostgresReviewRepository {
                 });
           }
 
-          entity.getNotes().clear();
           if (result.non_blocking_notes != null) {
             result.non_blocking_notes.forEach(
                 note -> {
@@ -250,6 +260,7 @@ public class PostgresReviewRepository {
             .summary(result.summary)
             .llmProvider(result.llmProvider)
             .llmModel(result.llmModel)
+            .rawLlmResponse(result.rawLlmResponse)
             .build();
 
     if (result.issues != null) {
@@ -286,6 +297,9 @@ public class PostgresReviewRepository {
   private ReviewResult convertToDomain(final ReviewEntity entity) {
     final ReviewResult result = new ReviewResult();
     result.summary = entity.getSummary();
+    result.llmProvider = entity.getLlmProvider();
+    result.llmModel = entity.getLlmModel();
+    result.rawLlmResponse = entity.getRawLlmResponse();
 
     if (entity.getIssues() != null) {
       entity

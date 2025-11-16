@@ -12,6 +12,7 @@ public class ReviewResult {
   public List<Note> non_blocking_notes = new ArrayList<>();
   public String llmProvider;
   public String llmModel;
+  public String rawLlmResponse;
 
   public static class Issue {
     public String file;
@@ -24,6 +25,18 @@ public class ReviewResult {
     public String scmCommentId;
     public String fallbackReason;
     public String positionMetadata;
+
+    public Double confidenceScore;
+    public String confidenceExplanation;
+    public String suggestedFix;
+
+    public boolean isHighConfidence() {
+      return confidenceScore != null && confidenceScore >= 0.7;
+    }
+
+    public boolean hasFixSuggestion() {
+      return suggestedFix != null && !suggestedFix.isBlank();
+    }
   }
 
   public static class Note {

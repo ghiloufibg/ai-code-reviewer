@@ -107,7 +107,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName());
 
-                final ReviewResult result = chunkAccumulator.accumulateChunks(accumulatedChunks);
+                final ReviewResult result =
+                    chunkAccumulator.accumulateChunks(accumulatedChunks, config);
                 final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
                 result.llmProvider = llmMetadata.llmProvider();
                 result.llmModel = llmMetadata.llmModel();

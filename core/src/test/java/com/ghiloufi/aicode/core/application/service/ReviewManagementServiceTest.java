@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
@@ -473,6 +474,21 @@ final class ReviewManagementServiceTest {
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
     }
+
+    @Override
+    public Mono<CommitResult> applyFix(
+        final RepositoryIdentifier repo,
+        final String branchName,
+        final String filePath,
+        final String fixDiff,
+        final String commitMessage) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+      return Mono.just(true);
+    }
   }
 
   private static final class TestSCMProviderFactory extends SCMProviderFactory {
@@ -527,7 +543,7 @@ final class ReviewManagementServiceTest {
     private final AtomicBoolean accumulateChunksCalled = new AtomicBoolean(false);
 
     TestReviewChunkAccumulator() {
-      super(null, null);
+      super(null, null, null);
     }
 
     final boolean isAccumulateChunksCalled() {
@@ -536,6 +552,14 @@ final class ReviewManagementServiceTest {
 
     @Override
     public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
+      return accumulateChunks(
+          chunks, com.ghiloufi.aicode.core.domain.model.ReviewConfiguration.defaults());
+    }
+
+    @Override
+    public ReviewResult accumulateChunks(
+        final List<ReviewChunk> chunks,
+        final com.ghiloufi.aicode.core.domain.model.ReviewConfiguration config) {
       accumulateChunksCalled.set(true);
 
       final ReviewResult result = new ReviewResult();

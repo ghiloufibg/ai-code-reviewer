@@ -58,6 +58,9 @@ public class ReviewEntity {
   @Column(name = "summary", columnDefinition = "TEXT")
   private String summary;
 
+  @Column(name = "raw_llm_response", columnDefinition = "TEXT")
+  private String rawLlmResponse;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 

@@ -7,7 +7,8 @@ public record ReviewConfiguration(
     String customInstructions,
     String programmingLanguage,
     String llmProvider,
-    String llmModel) {
+    String llmModel,
+    double minimumConfidenceThreshold) {
 
   public enum ReviewFocus {
     COMPREHENSIVE
@@ -19,7 +20,7 @@ public record ReviewConfiguration(
 
   public static final ReviewConfiguration DEFAULT =
       new ReviewConfiguration(
-          ReviewFocus.COMPREHENSIVE, SeverityThreshold.LOW, true, null, "Java", null, null);
+          ReviewFocus.COMPREHENSIVE, SeverityThreshold.LOW, true, null, "Java", null, null, 0.5);
 
   public static ReviewConfiguration defaults() {
     return DEFAULT;
@@ -33,6 +34,7 @@ public record ReviewConfiguration(
         customInstructions,
         programmingLanguage,
         provider,
-        model);
+        model,
+        minimumConfidenceThreshold);
   }
 }

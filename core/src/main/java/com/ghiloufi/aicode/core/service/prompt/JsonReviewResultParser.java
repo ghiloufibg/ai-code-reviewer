@@ -6,6 +6,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.exception.JsonValidationException;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultValidator;
 import com.ghiloufi.aicode.core.service.validation.ValidationResult;
+import com.google.json.JsonSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -44,6 +45,8 @@ public final class JsonReviewResultParser {
 
     try {
       final ReviewResult result = objectMapper.readValue(cleanedJson, ReviewResult.class);
+      normalizeConfidenceScores(result);
+      decodeSuggestedFixes(result);
       log.info(
           "Successfully parsed ReviewResult: {} issues, {} notes",
           result.issues.size(),
@@ -53,6 +56,90 @@ public final class JsonReviewResultParser {
       log.error("Failed to parse JSON into ReviewResult", e);
       throw new JsonValidationException(
           "Failed to parse JSON into ReviewResult: " + e.getMessage(), e);
+    }
+  }
+
+  private void decodeSuggestedFixes(final ReviewResult result) {
+    if (result.issues == null || result.issues.isEmpty()) {
+      return;
+    }
+
+    for (final ReviewResult.Issue issue : result.issues) {
+      if (issue.suggestedFix != null && !issue.suggestedFix.isBlank()) {
+        try {
+          final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.suggestedFix);
+          final String decoded = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+          if (!isValidMarkdownDiff(decoded)) {
+            log.error(
+                "Issue '{}' at {}:{} has invalid suggestedFix content (not a markdown diff), discarding. Content preview: {}",
+                issue.title,
+                issue.file,
+                issue.start_line,
+                decoded.substring(0, Math.min(100, decoded.length())));
+            issue.suggestedFix = null;
+          } else {
+            issue.suggestedFix = decoded;
+            log.debug(
+                "Successfully decoded and validated Base64 suggestedFix for issue: {}",
+                issue.title);
+          }
+        } catch (final IllegalArgumentException e) {
+          log.error(
+              "Issue '{}' at {}:{} has suggestedFix that is not valid Base64, discarding: {}",
+              issue.title,
+              issue.file,
+              issue.start_line,
+              e.getMessage());
+          issue.suggestedFix = null;
+        }
+      }
+    }
+  }
+
+  private boolean isValidMarkdownDiff(final String content) {
+    if (content == null || content.isBlank()) {
+      return false;
+    }
+
+    final String trimmed = content.trim();
+
+    return trimmed.startsWith("```diff") || trimmed.startsWith("```");
+  }
+
+  private void normalizeConfidenceScores(final ReviewResult result) {
+    if (result.issues == null || result.issues.isEmpty()) {
+      return;
+    }
+
+    for (final ReviewResult.Issue issue : result.issues) {
+      if (issue.confidenceScore == null) {
+        log.warn(
+            "Issue '{}' at {}:{} has null confidence score, defaulting to 0.5",
+            issue.title,
+            issue.file,
+            issue.start_line);
+        issue.confidenceScore = 0.5;
+      }
+
+      if (issue.confidenceScore < 0.0) {
+        log.warn(
+            "Issue '{}' has invalid confidence score {}, clamping to 0.0",
+            issue.title,
+            issue.confidenceScore);
+        issue.confidenceScore = 0.0;
+      } else if (issue.confidenceScore > 1.0) {
+        log.warn(
+            "Issue '{}' has invalid confidence score {}, clamping to 1.0",
+            issue.title,
+            issue.confidenceScore);
+        issue.confidenceScore = 1.0;
+      }
+
+      if (issue.confidenceExplanation == null || issue.confidenceExplanation.isBlank()) {
+        log.debug("Issue '{}' has missing confidence explanation, using default", issue.title);
+        issue.confidenceExplanation = "No explanation provided";
+      }
     }
   }
 
@@ -75,6 +162,7 @@ public final class JsonReviewResultParser {
 
     cleaned = stripMarkdownCodeBlocks(cleaned);
     cleaned = extractJsonObject(cleaned);
+    cleaned = JsonSanitizer.sanitize(cleaned);
     cleaned = removeSchemaProperty(cleaned);
 
     log.debug(

@@ -204,4 +204,21 @@ public class GitHubAdapter implements SCMPort {
   public SourceProvider getProviderType() {
     return SourceProvider.GITHUB;
   }
+
+  @Override
+  public Mono<CommitResult> applyFix(
+      final RepositoryIdentifier repo,
+      final String branchName,
+      final String filePath,
+      final String fixDiff,
+      final String commitMessage) {
+    return Mono.error(
+        new UnsupportedOperationException("Fix application is not yet implemented for GitHub"));
+  }
+
+  @Override
+  public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+    return Mono.error(
+        new UnsupportedOperationException("Write access check is not yet implemented for GitHub"));
+  }
 }

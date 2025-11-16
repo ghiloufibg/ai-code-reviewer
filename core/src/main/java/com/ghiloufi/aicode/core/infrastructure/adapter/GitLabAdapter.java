@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.core.domain.service.GitLabDiffBuilder;
 import com.ghiloufi.aicode.core.domain.service.GitLabMergeRequestMapper;
 import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
+import com.ghiloufi.aicode.core.exception.SCMException;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +19,10 @@ import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Diff;
 import org.gitlab4j.api.models.Discussion;
 import org.gitlab4j.api.models.MergeRequest;
+import org.gitlab4j.api.models.Permissions;
 import org.gitlab4j.api.models.Position;
 import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.ProjectAccess;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -292,6 +295,250 @@ public class GitLabAdapter implements SCMPort {
     return SourceProvider.GITLAB;
   }
 
+  @Override
+  public Mono<CommitResult> applyFix(
+      final RepositoryIdentifier repo,
+      final String branchName,
+      final String filePath,
+      final String fixDiff,
+      final String commitMessage) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+
+              if (filePath == null || filePath.isBlank()) {
+                throw new SCMException(
+                    "File path is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (fixDiff == null || fixDiff.isBlank()) {
+                throw new SCMException(
+                    "Fix diff is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (branchName == null || branchName.isBlank()) {
+                throw new SCMException(
+                    "Branch name is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              if (commitMessage == null || commitMessage.isBlank()) {
+                throw new SCMException(
+                    "Commit message is required for fix application",
+                    SourceProvider.GITLAB,
+                    "applyFix",
+                    null);
+              }
+
+              log.debug(
+                  "Applying fix to {}/{} on branch {}",
+                  gitLabRepo.projectId(),
+                  filePath,
+                  branchName);
+
+              final Object projectIdOrPath = gitLabRepo.toNumericId();
+
+              try {
+                final org.gitlab4j.api.models.RepositoryFile currentFile =
+                    gitLabApi.getRepositoryFileApi().getFile(projectIdOrPath, filePath, branchName);
+
+                final String currentContent =
+                    new String(
+                        java.util.Base64.getDecoder().decode(currentFile.getContent()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+
+                final String updatedContent = applyDiffPatch(currentContent, fixDiff);
+
+                final org.gitlab4j.api.models.RepositoryFile fileToUpdate =
+                    new org.gitlab4j.api.models.RepositoryFile();
+                fileToUpdate.setFilePath(filePath);
+                fileToUpdate.setContent(updatedContent);
+
+                gitLabApi
+                    .getRepositoryFileApi()
+                    .updateFile(projectIdOrPath, fileToUpdate, branchName, commitMessage);
+
+                final org.gitlab4j.api.models.Branch branch =
+                    gitLabApi.getRepositoryApi().getBranch(projectIdOrPath, branchName);
+                final String commitSha = branch.getCommit().getId();
+
+                final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
+                final String commitUrl =
+                    String.format("%s/-/commit/%s", project.getWebUrl(), commitSha);
+
+                final CommitResult commitResult =
+                    new CommitResult(
+                        commitSha,
+                        commitUrl,
+                        branchName,
+                        List.of(filePath),
+                        java.time.Instant.now());
+
+                log.info(
+                    "Successfully applied fix to {}/{} (commit {})",
+                    gitLabRepo.projectId(),
+                    filePath,
+                    commitSha);
+
+                return commitResult;
+
+              } catch (final GitLabApiException e) {
+                log.error(
+                    "Failed to apply fix to {}/{} on branch {}",
+                    gitLabRepo.projectId(),
+                    filePath,
+                    branchName,
+                    e);
+
+                final String errorMessage;
+                if (e.getHttpStatus() == 403) {
+                  errorMessage =
+                      String.format(
+                          "Access denied: Personal Access Token lacks 'write_repository' scope or "
+                              + "insufficient permissions to modify file '%s' on branch '%s'. "
+                              + "Please ensure your token has the required scopes: api, write_repository",
+                          filePath, branchName);
+                  log.error(
+                      "PAT scope error for {}/{}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      errorMessage);
+                } else if (e.getHttpStatus() == 404) {
+                  errorMessage =
+                      String.format(
+                          "Not found: File '%s' does not exist on branch '%s' in project %s",
+                          filePath, branchName, gitLabRepo.projectId());
+                  log.error(
+                      "File not found for {}/{} on branch {}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      branchName,
+                      errorMessage);
+                } else if (e.getHttpStatus() == 400) {
+                  errorMessage =
+                      String.format(
+                          "Invalid request: The diff patch for file '%s' is malformed or cannot be applied. "
+                              + "Original error: %s",
+                          filePath, e.getMessage());
+                  log.error(
+                      "Invalid diff for {}/{}: {}", gitLabRepo.projectId(), filePath, errorMessage);
+                } else {
+                  errorMessage =
+                      String.format(
+                          "Failed to apply fix to file '%s' on branch '%s': %s (HTTP %d)",
+                          filePath, branchName, e.getMessage(), e.getHttpStatus());
+                  log.error(
+                      "GitLab API error for {}/{}: {}",
+                      gitLabRepo.projectId(),
+                      filePath,
+                      errorMessage);
+                }
+
+                throw new SCMException(errorMessage, SourceProvider.GITLAB, "applyFix", e);
+              }
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to apply fix to {}/{} on branch {}",
+                    repo.getDisplayName(),
+                    filePath,
+                    branchName,
+                    error));
+  }
+
+  @Override
+  public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+
+              log.debug("Checking write access for: {}", gitLabRepo.projectId());
+
+              final Object projectIdOrPath = gitLabRepo.toNumericId();
+              final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
+
+              final Permissions permissions = project.getPermissions();
+              if (permissions == null) {
+                log.debug(
+                    "No permissions object found for {}, checking with PAT capabilities",
+                    gitLabRepo.projectId());
+                return checkWriteAccessViaPAT(project);
+              }
+
+              final ProjectAccess projectAccess = permissions.getProjectAccess();
+              if (projectAccess == null || projectAccess.getAccessLevel() == null) {
+                log.debug(
+                    "No project access level found for {}, checking group access",
+                    gitLabRepo.projectId());
+                final boolean hasGroupAccess = checkGroupAccess(permissions);
+                if (!hasGroupAccess) {
+                  log.debug(
+                      "No group access found, checking with PAT capabilities for {}",
+                      gitLabRepo.projectId());
+                  return checkWriteAccessViaPAT(project);
+                }
+                return true;
+              }
+
+              final org.gitlab4j.api.models.AccessLevel accessLevel =
+                  projectAccess.getAccessLevel();
+              final boolean hasWrite = accessLevel.toValue() >= 30;
+
+              log.debug(
+                  "Write access for {}: {} (access level: {})",
+                  gitLabRepo.projectId(),
+                  hasWrite,
+                  accessLevel);
+
+              return hasWrite;
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(
+            error ->
+                log.error("Failed to check write access for: {}", repo.getDisplayName(), error));
+  }
+
+  private String applyDiffPatch(final String originalContent, final String unifiedDiff) {
+    final String[] originalLines = originalContent.split("\n");
+    final List<String> resultLines = new ArrayList<>(List.of(originalLines));
+
+    final String[] diffLines = unifiedDiff.split("\n");
+    int currentLineIndex = 0;
+
+    for (final String diffLine : diffLines) {
+      if (diffLine.startsWith("@@")) {
+        final String rangeInfo =
+            diffLine.substring(diffLine.indexOf('-') + 1, diffLine.indexOf('+') - 1).trim();
+        final int startLine = Integer.parseInt(rangeInfo.split(",")[0]) - 1;
+        currentLineIndex = startLine;
+      } else if (diffLine.startsWith("-")) {
+        if (currentLineIndex < resultLines.size()) {
+          resultLines.remove(currentLineIndex);
+        }
+      } else if (diffLine.startsWith("+")) {
+        final String lineToAdd = diffLine.substring(1);
+        resultLines.add(currentLineIndex, lineToAdd);
+        currentLineIndex++;
+      } else if (diffLine.startsWith(" ")) {
+        currentLineIndex++;
+      }
+    }
+
+    return String.join("\n", resultLines);
+  }
+
   private PublishResult publishWithInlineComments(
       final Object projectIdOrPath,
       final long mergeRequestIid,
@@ -404,6 +651,45 @@ public class GitLabAdapter implements SCMPort {
     return position;
   }
 
+  private String convertMarkdownDiffToGitLabSuggestion(final String markdownDiff) {
+    if (markdownDiff == null || markdownDiff.isBlank()) {
+      return "";
+    }
+
+    final StringBuilder suggestion = new StringBuilder();
+    final String[] lines = markdownDiff.split("\\n");
+    int linesAbove = 0;
+    int linesBelow = 0;
+    final StringBuilder suggestionContent = new StringBuilder();
+
+    for (final String line : lines) {
+      if (line.startsWith("```diff") || line.startsWith("```")) {
+        continue;
+      }
+
+      if (line.startsWith("+")) {
+        suggestionContent.append(line.substring(1)).append("\n");
+      } else if (line.startsWith("-")) {
+        linesAbove++;
+      } else if (line.trim().startsWith("@@")) {
+        continue;
+      } else if (!line.trim().isEmpty()) {
+        suggestionContent.append(line).append("\n");
+      }
+    }
+
+    suggestion
+        .append("```suggestion:-")
+        .append(linesAbove)
+        .append("+")
+        .append(linesBelow)
+        .append("\n");
+    suggestion.append(suggestionContent);
+    suggestion.append("```\n");
+
+    return suggestion.toString();
+  }
+
   private String formatInlineComment(final ReviewResult.Issue issue) {
     final String label = "issue";
 
@@ -430,7 +716,18 @@ public class GitLabAdapter implements SCMPort {
         String.format("%s %s, %s: %s\n\n", label, blockingStatus, severityDecoration, issue.title));
 
     if (issue.suggestion != null && !issue.suggestion.isBlank()) {
-      comment.append(String.format("**Recommendation:** %s", issue.suggestion));
+      comment.append(String.format("**Recommendation:** %s\n\n", issue.suggestion));
+    }
+
+    if (issue.isHighConfidence() && issue.hasFixSuggestion()) {
+      if (issue.confidenceScore != null) {
+        comment.append(String.format("**Confidence: %.0f%%**\n\n", issue.confidenceScore * 100));
+      }
+      final String gitlabSuggestion = convertMarkdownDiffToGitLabSuggestion(issue.suggestedFix);
+      comment.append(gitlabSuggestion);
+      if (!gitlabSuggestion.endsWith("\n")) {
+        comment.append("\n");
+      }
     }
 
     return comment.toString();
@@ -486,5 +783,56 @@ public class GitLabAdapter implements SCMPort {
     }
 
     return body.toString();
+  }
+
+  private boolean checkGroupAccess(final Permissions permissions) {
+    try {
+      final Object groupAccessObj = permissions.getGroupAccess();
+      if (groupAccessObj == null) {
+        log.debug("No group access found");
+        return false;
+      }
+
+      if (groupAccessObj instanceof ProjectAccess) {
+        final ProjectAccess groupAccess = (ProjectAccess) groupAccessObj;
+        final org.gitlab4j.api.models.AccessLevel accessLevel = groupAccess.getAccessLevel();
+        if (accessLevel != null) {
+          final boolean hasWrite = accessLevel.toValue() >= 30;
+          log.debug("Group access level: {}, has write: {}", accessLevel, hasWrite);
+          return hasWrite;
+        }
+      }
+
+      log.debug("Unable to determine group access level");
+      return false;
+    } catch (final Exception e) {
+      log.debug("Error checking group access", e);
+      return false;
+    }
+  }
+
+  private boolean checkWriteAccessViaPAT(final Project project) {
+    try {
+      final Boolean canPushCode = project.getSharedRunnersEnabled();
+      final Boolean canCreateMergeRequest = project.getMergeRequestsEnabled();
+
+      if (canPushCode != null || canCreateMergeRequest != null) {
+        log.debug(
+            "PAT has access to project {} (push: {}, MR: {})",
+            project.getId(),
+            canPushCode,
+            canCreateMergeRequest);
+        return true;
+      }
+
+      log.debug("Unable to verify PAT write access for project {}", project.getId());
+      return true;
+    } catch (final Exception e) {
+      log.debug(
+          "Error checking PAT capabilities for project {}, assuming write access",
+          project.getId(),
+          e);
+      return true;
+    }
   }
 }
