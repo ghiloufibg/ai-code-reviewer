@@ -52,7 +52,7 @@ final class GitLabInlineCommentFormattingTest {
     final String result = invokeFormatInlineComment(issue);
 
     assertThat(result).contains("**Confidence: 85%**");
-    assertThat(result).contains("```diff");
+    assertThat(result).contains("```suggestion:");
     assertThat(result).contains("if (user != null)");
   }
 
@@ -71,7 +71,7 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).doesNotContain("```diff");
+    assertThat(result).doesNotContain("```suggestion:");
     assertThat(result).contains("**Recommendation:**");
   }
 
@@ -89,7 +89,7 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).doesNotContain("```diff");
+    assertThat(result).doesNotContain("```suggestion:");
     assertThat(result).contains("**Recommendation:**");
   }
 
@@ -111,7 +111,7 @@ final class GitLabInlineCommentFormattingTest {
     assertThat(result).contains("issue (blocking), critical: Missing authentication check");
     assertThat(result).contains("**Recommendation:** Add authentication validation");
     assertThat(result).contains("**Confidence: 92%**");
-    assertThat(result).contains("```diff");
+    assertThat(result).contains("```suggestion:");
     assertThat(result).contains("if (!isAuthenticated(request))");
   }
 
@@ -130,7 +130,7 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("```diff");
+    assertThat(result).contains("```suggestion:");
     assertThat(result).endsWith("\n");
   }
 
@@ -165,7 +165,7 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("```diff");
+    assertThat(result).contains("```suggestion:");
     assertThat(result).contains("**Confidence: 70%**");
   }
 
