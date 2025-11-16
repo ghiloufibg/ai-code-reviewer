@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -17,6 +18,10 @@ import reactor.core.scheduler.Schedulers;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(
+    name = "features.fix-application.enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 public final class FixApplicationService {
 
   private final SCMPort scmPort;
