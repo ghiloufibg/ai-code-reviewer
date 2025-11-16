@@ -46,15 +46,14 @@ final class GitLabInlineCommentFormattingTest {
     issue.title = "Potential null pointer dereference";
     issue.suggestion = "Add null check before accessing the object";
     issue.confidenceScore = 0.85;
-    issue.suggestedFix = "if (user != null) {\n  user.getName();\n}";
+    issue.suggestedFix =
+        "```diff\n  String name = user.getName();\n+ if (user != null) {\n+   user.getName();\n+ }\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
     assertThat(result).contains("**Confidence: 85%**");
-    assertThat(result).contains("```suggestion");
-    assertThat(result).contains("if (user != null) {");
-    assertThat(result).contains("user.getName();");
-    assertThat(result).contains("}");
+    assertThat(result).contains("```diff");
+    assertThat(result).contains("if (user != null)");
   }
 
   @Test
@@ -67,11 +66,12 @@ final class GitLabInlineCommentFormattingTest {
     issue.title = "Consider using a more descriptive variable name";
     issue.suggestion = "Rename 'x' to 'userCount' for better clarity";
     issue.confidenceScore = 0.55;
-    issue.suggestedFix = "int userCount = getUserCount();";
+    issue.suggestedFix =
+        "```diff\n- int x = getUserCount();\n+ int userCount = getUserCount();\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).doesNotContain("```suggestion");
+    assertThat(result).doesNotContain("```diff");
     assertThat(result).contains("**Recommendation:**");
   }
 
@@ -89,7 +89,7 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).doesNotContain("```suggestion");
+    assertThat(result).doesNotContain("```diff");
     assertThat(result).contains("**Recommendation:**");
   }
 
@@ -104,14 +104,14 @@ final class GitLabInlineCommentFormattingTest {
     issue.suggestion = "Add authentication validation before processing the request";
     issue.confidenceScore = 0.92;
     issue.suggestedFix =
-        "if (!isAuthenticated(request)) {\n  throw new UnauthorizedException();\n}";
+        "```diff\n  processRequest(request);\n+ if (!isAuthenticated(request)) {\n+   throw new UnauthorizedException();\n+ }\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
     assertThat(result).contains("issue (blocking), critical: Missing authentication check");
     assertThat(result).contains("**Recommendation:** Add authentication validation");
     assertThat(result).contains("**Confidence: 92%**");
-    assertThat(result).contains("```suggestion");
+    assertThat(result).contains("```diff");
     assertThat(result).contains("if (!isAuthenticated(request))");
   }
 
@@ -125,12 +125,13 @@ final class GitLabInlineCommentFormattingTest {
     issue.title = "Resource leak";
     issue.suggestion = "Use try-with-resources";
     issue.confidenceScore = 0.88;
-    issue.suggestedFix = "try (InputStream is = new FileInputStream(file)) {\n  // process\n}";
+    issue.suggestedFix =
+        "```diff\n- InputStream is = new FileInputStream(file);\n+ try (InputStream is = new FileInputStream(file)) {\n+   // process\n+ }\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("```suggestion\n");
-    assertThat(result).endsWith("```\n");
+    assertThat(result).contains("```diff");
+    assertThat(result).endsWith("\n");
   }
 
   @Test
@@ -143,7 +144,7 @@ final class GitLabInlineCommentFormattingTest {
     issue.title = "Test issue";
     issue.suggestion = "Test suggestion";
     issue.confidenceScore = 0.73;
-    issue.suggestedFix = "fixed code";
+    issue.suggestedFix = "```diff\n- broken code\n+ fixed code\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
@@ -160,11 +161,11 @@ final class GitLabInlineCommentFormattingTest {
     issue.title = "Test issue";
     issue.suggestion = "Test suggestion";
     issue.confidenceScore = 0.70;
-    issue.suggestedFix = "fixed code";
+    issue.suggestedFix = "```diff\n- broken code\n+ fixed code\n```";
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("```suggestion");
+    assertThat(result).contains("```diff");
     assertThat(result).contains("**Confidence: 70%**");
   }
 

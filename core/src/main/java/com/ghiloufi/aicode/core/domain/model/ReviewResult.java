@@ -29,7 +29,6 @@ public class ReviewResult {
     public Double confidenceScore;
     public String confidenceExplanation;
     public String suggestedFix;
-    public String fixDiff;
 
     public boolean isHighConfidence() {
       return confidenceScore != null && confidenceScore >= 0.7;

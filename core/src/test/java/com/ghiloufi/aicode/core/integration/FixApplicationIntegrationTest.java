@@ -240,15 +240,7 @@ final class FixApplicationIntegrationTest {
     issue.confidenceScore = 0.95;
     issue.confidenceExplanation = "Clear security vulnerability with established pattern";
     issue.suggestedFix =
-        "PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");";
-    issue.fixDiff =
-        """
-        --- a/src/SecurityVulnerability.java
-        +++ b/src/SecurityVulnerability.java
-        @@ -10,1 +10,1 @@
-        -String query = "SELECT * FROM users WHERE id = " + userId;
-        +PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
-        """;
+        "```diff\n- String query = \"SELECT * FROM users WHERE id = \" + userId;\n+ PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");\n```";
 
     result.issues.add(issue);
     return result;
