@@ -68,16 +68,43 @@ public final class JsonReviewResultParser {
       if (issue.suggestedFix != null && !issue.suggestedFix.isBlank()) {
         try {
           final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.suggestedFix);
-          issue.suggestedFix = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
-          log.debug("Successfully decoded Base64 suggestedFix for issue: {}", issue.title);
+          final String decoded = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+          if (!isValidMarkdownDiff(decoded)) {
+            log.error(
+                "Issue '{}' at {}:{} has invalid suggestedFix content (not a markdown diff), discarding. Content preview: {}",
+                issue.title,
+                issue.file,
+                issue.start_line,
+                decoded.substring(0, Math.min(100, decoded.length())));
+            issue.suggestedFix = null;
+          } else {
+            issue.suggestedFix = decoded;
+            log.debug(
+                "Successfully decoded and validated Base64 suggestedFix for issue: {}",
+                issue.title);
+          }
         } catch (final IllegalArgumentException e) {
-          log.warn(
-              "Issue '{}' has suggestedFix that is not valid Base64, keeping as-is: {}",
+          log.error(
+              "Issue '{}' at {}:{} has suggestedFix that is not valid Base64, discarding: {}",
               issue.title,
+              issue.file,
+              issue.start_line,
               e.getMessage());
+          issue.suggestedFix = null;
         }
       }
     }
+  }
+
+  private boolean isValidMarkdownDiff(final String content) {
+    if (content == null || content.isBlank()) {
+      return false;
+    }
+
+    final String trimmed = content.trim();
+
+    return trimmed.startsWith("```diff") || trimmed.startsWith("```");
   }
 
   private void normalizeConfidenceScores(final ReviewResult result) {

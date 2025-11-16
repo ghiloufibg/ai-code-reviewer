@@ -167,6 +167,69 @@ public class PromptBuilder {
             5. NO JSON escaping needed - Base64 is always safe
             6. Only provide for confidence >= 0.7
 
+            ═══════════════════════════════════════════════════════════════════════
+            ❌ COMMON MISTAKES TO AVOID - THESE WILL BE REJECTED:
+            ═══════════════════════════════════════════════════════════════════════
+
+            ❌ WRONG #1 - Putting description/recommendation in suggestedFix:
+            {
+              "suggestion": "Add null check",
+              "suggestedFix": "Add null check before accessing user properties"  // ❌ WRONG!
+            }
+
+            ✅ CORRECT: Description goes in "suggestion", code diff goes in "suggestedFix":
+            {
+              "suggestion": "Add null check before accessing user properties",
+              "suggestedFix": "YGBgZGlmZgogIHB1YmxpYyBTdHJpbmcgZ2V0..."  // ✅ Base64-encoded diff
+            }
+
+            ❌ WRONG #2 - Not Base64 encoding:
+            {
+              "suggestedFix": "```diff\n- old code\n+ new code\n```"  // ❌ Plain text, not Base64!
+            }
+
+            ✅ CORRECT: Must be Base64-encoded:
+            {
+              "suggestedFix": "YGBgZGlmZgotIG9sZCBjb2RlCisgbmV3IGNvZGUKYGBg"  // ✅ Base64 encoded
+            }
+
+            ❌ WRONG #3 - Not using markdown diff format:
+            {
+              "suggestedFix": "aWYgKHVzZXIgIT0gbnVsbCkgcmV0dXJuICJVbmtub3duIjs="  // ❌ Just code, no diff markers!
+            }
+
+            ✅ CORRECT: Must include ```diff markers and +/- prefixes:
+            {
+              "suggestedFix": "YGBgZGlmZgogIHB1YmxpYyBTdHJpbmcgZ2V0VXNlck5hbWUoVXNlciB1c2VyKSB7CisgICBpZiAodXNlciA9PSBudWxsKSByZXR1cm4gIlVua25vd24iOwogICAgcmV0dXJuIHVzZXIuZ2V0TmFtZSgpOwogIH0KYGBg"
+            }
+
+            ❌ WRONG #4 - Mixing suggestion and suggestedFix content:
+            {
+              "suggestion": "YGBgZGlmZgotIG9sZCBjb2RlCisgbmV3IGNvZGUKYGBg",  // ❌ Diff in wrong field!
+              "suggestedFix": "Use parameterized queries"  // ❌ Description in wrong field!
+            }
+
+            ✅ CORRECT: Each field has its own purpose:
+            {
+              "suggestion": "Use parameterized queries to prevent SQL injection",  // Human description
+              "suggestedFix": "YGBgZGlmZgotIFN0cmluZyBxdWVyeSA9ICJTRU..."  // Base64 diff code
+            }
+
+            ═══════════════════════════════════════════════════════════════════════
+            VALIDATION: Your suggestedFix will be rejected if:
+            ═══════════════════════════════════════════════════════════════════════
+
+            ❌ It's not valid Base64 (contains spaces, newlines, or special chars)
+            ❌ After Base64 decoding, it doesn't start with ```diff or ```
+            ❌ It contains description text instead of code diff
+            ❌ It's missing +/- prefixes on changed lines
+
+            ✅ Valid suggestedFix checklist:
+            ✅ Is Base64-encoded string (only A-Z, a-z, 0-9, +, /, =)
+            ✅ When decoded, starts with ```diff or ```
+            ✅ Contains only code lines with +/- prefixes and context
+            ✅ No description or explanation text mixed in
+
             """;
 
   private static final String CONFIDENCE_SCORING_INSTRUCTIONS =

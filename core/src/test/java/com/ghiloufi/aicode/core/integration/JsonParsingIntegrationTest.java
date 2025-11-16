@@ -560,6 +560,158 @@ class JsonParsingIntegrationTest {
     }
   }
 
+  @Nested
+  @DisplayName("SuggestedFix Validation")
+  final class SuggestedFixValidation {
+
+    @Test
+    @DisplayName("should_discard_suggestedFix_when_containing_description_text_instead_of_diff")
+    final void should_discard_suggestedFix_when_containing_description_text() {
+      final String descriptionText = "Remove the redundant condition check for better performance";
+      final String base64Description =
+          java.util.Base64.getEncoder().encodeToString(descriptionText.getBytes());
+
+      final String jsonWithInvalidFix =
+          String.format(
+              """
+              {
+                "summary": "Code review completed",
+                "issues": [
+                  {
+                    "severity": "major",
+                    "title": "Redundant condition",
+                    "file": "FizzBuzz.java",
+                    "start_line": 16,
+                    "suggestion": "Remove redundant condition check",
+                    "confidenceScore": 0.85,
+                    "suggestedFix": "%s"
+                  }
+                ],
+                "non_blocking_notes": []
+              }
+              """,
+              base64Description);
+
+      final List<ReviewChunk> chunks = createChunksFromJson(jsonWithInvalidFix);
+
+      final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
+
+      assertThat(result).isNotNull();
+      assertThat(result.issues).hasSize(1);
+      assertThat(result.issues.get(0).suggestedFix).isNull();
+    }
+
+    @Test
+    @DisplayName("should_discard_suggestedFix_when_not_valid_base64")
+    final void should_discard_suggestedFix_when_not_valid_base64() {
+      final String jsonWithNonBase64Fix =
+          """
+          {
+            "summary": "Code review completed",
+            "issues": [
+              {
+                "severity": "critical",
+                "title": "Null pointer risk",
+                "file": "UserService.java",
+                "start_line": 42,
+                "suggestion": "Add null check",
+                "confidenceScore": 0.9,
+                "suggestedFix": "This is not Base64!@#$%"
+              }
+            ],
+            "non_blocking_notes": []
+          }
+          """;
+
+      final List<ReviewChunk> chunks = createChunksFromJson(jsonWithNonBase64Fix);
+
+      final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
+
+      assertThat(result).isNotNull();
+      assertThat(result.issues).hasSize(1);
+      assertThat(result.issues.get(0).suggestedFix).isNull();
+    }
+
+    @Test
+    @DisplayName("should_accept_valid_base64_encoded_markdown_diff")
+    final void should_accept_valid_base64_encoded_markdown_diff() {
+      final String validDiff =
+          "```diff\n  public String getName() {\n+   if (user == null) return \"Unknown\";\n    return user.getName();\n  }\n```";
+      final String base64ValidDiff =
+          java.util.Base64.getEncoder().encodeToString(validDiff.getBytes());
+
+      final String jsonWithValidFix =
+          String.format(
+              """
+              {
+                "summary": "Code review completed",
+                "issues": [
+                  {
+                    "severity": "critical",
+                    "title": "Null pointer risk",
+                    "file": "UserService.java",
+                    "start_line": 42,
+                    "suggestion": "Add null check before accessing user",
+                    "confidenceScore": 0.9,
+                    "suggestedFix": "%s"
+                  }
+                ],
+                "non_blocking_notes": []
+              }
+              """,
+              base64ValidDiff);
+
+      final List<ReviewChunk> chunks = createChunksFromJson(jsonWithValidFix);
+
+      final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
+
+      assertThat(result).isNotNull();
+      assertThat(result.issues).hasSize(1);
+      assertThat(result.issues.get(0).suggestedFix).isNotNull();
+      assertThat(result.issues.get(0).suggestedFix).contains("```diff");
+      assertThat(result.issues.get(0).suggestedFix).contains("if (user == null)");
+    }
+
+    @Test
+    @DisplayName("should_accept_markdown_diff_without_diff_keyword")
+    final void should_accept_markdown_diff_without_diff_keyword() {
+      final String validDiff =
+          "```\n- String query = \"SELECT * FROM users WHERE id = \" + userId;\n+ PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");\n```";
+      final String base64ValidDiff =
+          java.util.Base64.getEncoder().encodeToString(validDiff.getBytes());
+
+      final String jsonWithValidFix =
+          String.format(
+              """
+              {
+                "summary": "Code review completed",
+                "issues": [
+                  {
+                    "severity": "critical",
+                    "title": "SQL Injection vulnerability",
+                    "file": "QueryService.java",
+                    "start_line": 15,
+                    "suggestion": "Use prepared statements",
+                    "confidenceScore": 0.95,
+                    "suggestedFix": "%s"
+                  }
+                ],
+                "non_blocking_notes": []
+              }
+              """,
+              base64ValidDiff);
+
+      final List<ReviewChunk> chunks = createChunksFromJson(jsonWithValidFix);
+
+      final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
+
+      assertThat(result).isNotNull();
+      assertThat(result.issues).hasSize(1);
+      assertThat(result.issues.get(0).suggestedFix).isNotNull();
+      assertThat(result.issues.get(0).suggestedFix).startsWith("```");
+    }
+  }
+
   private List<ReviewChunk> createChunksFromJson(final String json) {
     return List.of(ReviewChunk.of(ReviewChunk.ChunkType.ANALYSIS, json));
   }
