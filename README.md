@@ -166,9 +166,49 @@ GITLAB_API_URL=https://gitlab.com/api/v4
 # LLM Provider - OpenAI
 OPENAI_API_KEY=sk-your-openai-api-key
 
+# Feature Flags (Optional)
+# EXPERIMENTAL: Automatic fix application via API (disabled by default)
+# Requires security hardening before production use
+# See: trackings/expert-panel-review-2025-01-16.md
+# features.fix-application.enabled=false
+
 # Logging
 LOG_LEVEL=DEBUG
 ```
+
+### ⚠️ **Experimental Features**
+
+#### **Automatic Fix Application API** (Disabled by Default)
+
+The system includes an **experimental API endpoint** for automatically applying AI-generated fixes directly to GitLab:
+
+```
+POST /api/v1/{provider}/{repositoryId}/change-requests/{changeRequestId}/issues/{issueId}/apply-fix
+```
+
+**Status:** 🔴 **EXPERIMENTAL - DISABLED BY DEFAULT**
+
+**Why disabled:**
+- Critical security blockers (code injection vulnerability)
+- Transaction safety issues (no compensating transactions)
+- Race condition risks (no optimistic locking)
+
+**Production-Ready Alternative:**
+The system already provides **GitLab native suggestions** in inline comments. Users can review and apply fixes with one click using GitLab's built-in "Apply suggestion" button. This approach:
+- ✅ Is production-ready today
+- ✅ Includes manual review for security
+- ✅ Handled by GitLab's robust transaction system
+- ✅ No race conditions or injection risks
+
+**To Enable (Development/Testing Only):**
+```yaml
+# application.yml
+features:
+  fix-application:
+    enabled: true  # ⚠️ Use only in development/testing
+```
+
+**Hardening Roadmap:** See `trackings/expert-panel-review-2025-01-16.md` for required security and reliability improvements before production use.
 
 ### **3. Build Project**
 ```bash

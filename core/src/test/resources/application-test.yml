@@ -1,0 +1,3 @@
+features:
+  fix-application:
+    enabled: true  # Enable for testing purposes
