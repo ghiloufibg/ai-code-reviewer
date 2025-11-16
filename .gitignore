@@ -20,6 +20,7 @@
 /.claude/*
 .env
 trackings/
+worktrees/
 
 # Compiled class files
 *.class
