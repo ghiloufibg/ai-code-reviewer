@@ -47,7 +47,7 @@ class SecurityAnalysisControllerTest {
     final MvcResult result =
         mockMvc
             .perform(
-                post("/api/security/analyze")
+                post("/api/v1/security/analyze")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())

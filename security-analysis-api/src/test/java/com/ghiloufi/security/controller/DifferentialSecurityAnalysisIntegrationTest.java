@@ -60,7 +60,7 @@ class DifferentialSecurityAnalysisIntegrationTest {
     final MvcResult result =
         mockMvc
             .perform(
-                post("/api/security/analyze-diff")
+                post("/api/v1/security/analyze-diff")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
@@ -88,7 +88,7 @@ class DifferentialSecurityAnalysisIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/security/analyze-diff")
+            post("/api/v1/security/analyze-diff")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidRequest)))
         .andExpect(status().isBadRequest());
@@ -132,7 +132,7 @@ class DifferentialSecurityAnalysisIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/security/analyze-diff")
+            post("/api/v1/security/analyze-diff")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
@@ -178,7 +178,7 @@ class DifferentialSecurityAnalysisIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/security/analyze-diff")
+            post("/api/v1/security/analyze-diff")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
@@ -220,7 +220,7 @@ class DifferentialSecurityAnalysisIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/security/analyze-diff")
+            post("/api/v1/security/analyze-diff")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
