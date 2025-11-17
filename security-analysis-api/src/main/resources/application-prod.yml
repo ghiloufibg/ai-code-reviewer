@@ -1,0 +1,16 @@
+logging:
+  level:
+    com.ghiloufi.security: INFO
+    org.springframework: WARN
+    edu.umd.cs.findbugs: WARN
+
+management:
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
