@@ -87,6 +87,17 @@ llm:
       circuit-breaker-failure-threshold: 50.0
       circuit-breaker-timeout: 30s
 
+# Feature Flags
+features:
+  fix-application:
+    enabled: false  # ⚠️ EXPERIMENTAL FEATURE - Disabled by default
+    # When enabled, allows automatic application of AI-generated fixes to GitLab
+    # Requires security hardening before production use
+    # See: trackings/expert-panel-review-2025-01-16.md for critical blockers
+    minimum-confidence-threshold: 0.7
+    max-concurrent-applications: 5
+    application-timeout-seconds: 30
+
 # Management endpoints.
 management:
   endpoints:
