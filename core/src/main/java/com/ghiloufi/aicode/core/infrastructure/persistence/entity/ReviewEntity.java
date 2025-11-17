@@ -22,6 +22,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 @Entity
 @Table(name = "reviews")
@@ -74,10 +76,12 @@ public class ReviewEntity {
   private String errorMessage;
 
   @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Fetch(FetchMode.SUBSELECT)
   @Builder.Default
   private List<ReviewIssueEntity> issues = new ArrayList<>();
 
   @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Fetch(FetchMode.SUBSELECT)
   @Builder.Default
   private List<ReviewNoteEntity> notes = new ArrayList<>();
 
