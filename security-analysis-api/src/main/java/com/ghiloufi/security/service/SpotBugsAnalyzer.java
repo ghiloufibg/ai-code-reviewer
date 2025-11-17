@@ -126,7 +126,7 @@ public class SpotBugsAnalyzer {
       findBugs.setDetectorFactoryCollection(detectorFactoryCollection);
 
       final UserPreferences userPreferences = UserPreferences.createDefaultUserPreferences();
-      userPreferences.setEffort(UserPreferences.EFFORT_MIN);
+      userPreferences.setEffort(UserPreferences.EFFORT_MAX);
       findBugs.setUserPreferences(userPreferences);
 
       findBugs.execute();
