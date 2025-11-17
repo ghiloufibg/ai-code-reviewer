@@ -119,14 +119,14 @@ public class SpotBugsAnalyzer {
       final FindBugs2 findBugs = new FindBugs2();
       findBugs.setProject(project);
       findBugs.setBugReporter(bugReporter);
+      findBugs.setRankThreshold(15);
 
       final DetectorFactoryCollection detectorFactoryCollection =
           DetectorFactoryCollection.instance();
       findBugs.setDetectorFactoryCollection(detectorFactoryCollection);
 
       final UserPreferences userPreferences = UserPreferences.createDefaultUserPreferences();
-      userPreferences.setEffort(UserPreferences.EFFORT_MAX);
-      userPreferences.enableAllDetectors(true);
+      userPreferences.setEffort(UserPreferences.EFFORT_MIN);
       findBugs.setUserPreferences(userPreferences);
 
       findBugs.execute();

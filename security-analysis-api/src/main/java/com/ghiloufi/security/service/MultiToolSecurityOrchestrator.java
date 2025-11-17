@@ -52,18 +52,30 @@ public class MultiToolSecurityOrchestrator {
     final List<Future<ToolAnalysisResult>> futures = new ArrayList<>();
 
     futures.add(
-        executorService.submit(
-            () -> {
-              try {
-                final SecurityAnalysisResponse response =
-                    spotBugsAnalyzer.analyze(
-                        request.code(), request.language(), request.filename());
-                return new ToolAnalysisResult("SpotBugs", response.findings());
-              } catch (final Exception e) {
-                logger.error("SpotBugs analysis failed", e);
-                return new ToolAnalysisResult("SpotBugs", List.of());
-              }
-            }));
+        CompletableFuture.supplyAsync(
+                () -> {
+                  try {
+                    final SecurityAnalysisResponse response =
+                        spotBugsAnalyzer.analyze(
+                            request.code(), request.language(), request.filename());
+                    return new ToolAnalysisResult("SpotBugs", response.findings());
+                  } catch (final Exception e) {
+                    logger.error("SpotBugs analysis failed", e);
+                    return new ToolAnalysisResult("SpotBugs", List.of());
+                  }
+                },
+                executorService)
+            .orTimeout(30, TimeUnit.SECONDS)
+            .exceptionally(
+                ex -> {
+                  if (ex.getCause() instanceof TimeoutException) {
+                    logger.warn("SpotBugs timed out after 30 seconds");
+                  } else {
+                    logger.error("SpotBugs analysis failed", ex);
+                  }
+                  return new ToolAnalysisResult("SpotBugs", List.of());
+                })
+            .toCompletableFuture());
 
     for (final SecurityToolAdapter adapter : additionalAdapters) {
       if (!adapter.isAvailable()) {
@@ -71,18 +83,32 @@ public class MultiToolSecurityOrchestrator {
         continue;
       }
 
+      final int timeoutSeconds = adapter.getTimeoutSeconds();
       futures.add(
-          executorService.submit(
-              () -> {
-                try {
-                  final List<SecurityFinding> findings =
-                      adapter.analyze(request.code(), request.filename());
-                  return new ToolAnalysisResult(adapter.getToolName(), findings);
-                } catch (final Exception e) {
-                  logger.error("Analysis failed for tool: {}", adapter.getToolName(), e);
-                  return new ToolAnalysisResult(adapter.getToolName(), List.of());
-                }
-              }));
+          CompletableFuture.supplyAsync(
+                  () -> {
+                    try {
+                      final List<SecurityFinding> findings =
+                          adapter.analyze(request.code(), request.filename());
+                      return new ToolAnalysisResult(adapter.getToolName(), findings);
+                    } catch (final Exception e) {
+                      logger.error("Analysis failed for tool: {}", adapter.getToolName(), e);
+                      return new ToolAnalysisResult(adapter.getToolName(), List.of());
+                    }
+                  },
+                  executorService)
+              .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
+              .exceptionally(
+                  ex -> {
+                    if (ex.getCause() instanceof TimeoutException) {
+                      logger.warn(
+                          "{} timed out after {} seconds", adapter.getToolName(), timeoutSeconds);
+                    } else {
+                      logger.error("Analysis failed for tool: {}", adapter.getToolName(), ex);
+                    }
+                    return new ToolAnalysisResult(adapter.getToolName(), List.of());
+                  })
+              .toCompletableFuture());
     }
 
     final List<SecurityFinding> allFindings = new ArrayList<>();
@@ -90,17 +116,15 @@ public class MultiToolSecurityOrchestrator {
 
     for (final Future<ToolAnalysisResult> future : futures) {
       try {
-        final ToolAnalysisResult result = future.get(60, TimeUnit.SECONDS);
+        final ToolAnalysisResult result = future.get();
         allFindings.addAll(result.findings());
         successfulTools.add(result.toolName());
 
         logger.debug(
             "Tool {} completed with {} findings", result.toolName(), result.findings().size());
 
-      } catch (final TimeoutException e) {
-        logger.warn("Tool analysis timed out after 60 seconds");
       } catch (final Exception e) {
-        logger.error("Error during tool analysis", e);
+        logger.debug("Tool analysis interrupted or failed", e);
       }
     }
 
