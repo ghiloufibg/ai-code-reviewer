@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/security")
+@RequestMapping("/api/v1/security")
 public class SecurityAnalysisController {
 
   private static final Logger logger = LoggerFactory.getLogger(SecurityAnalysisController.class);
@@ -57,7 +57,7 @@ public class SecurityAnalysisController {
   public ResponseEntity<SecurityAnalysisResponse> analyze(
       @Valid @RequestBody final SecurityAnalysisRequest request) {
     logger.warn(
-        "DEPRECATED: /api/security/analyze endpoint is deprecated. Please use /api/security/analyze-diff instead.");
+        "DEPRECATED: /api/v1/security/analyze endpoint is deprecated. Please use /api/v1/security/analyze-diff instead.");
     logger.info("Received security analysis request for file: {}", request.filename());
 
     final SecurityAnalysisResponse response = orchestrator.analyze(request);
