@@ -216,6 +216,12 @@ Enforce by default whenever possible:
 - Prefer immutable data structures (records, List.of(), Set.of(), Map.of())
 - Use defensive copying when returning mutable objects
 
+**EXCEPTION: Spring Configuration Classes**
+- Classes annotated with `@Configuration` MUST NOT be marked `final`
+- Spring requires non-final classes to create CGLIB proxies for bean methods
+- This applies to: `@Configuration`, `@ConfigurationProperties`
+- Example: `public class DangerousPatternsConfig` (NOT `public final class`)
+
 ### 6. NO DOCUMENTATION
 Code should be self-explanatory and production-ready:
 - NO Javadoc comments anywhere in codebase

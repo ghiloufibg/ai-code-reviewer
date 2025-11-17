@@ -1,0 +1,14 @@
+logging:
+  level:
+    com.ghiloufi.security: DEBUG
+    org.springframework: INFO
+    edu.umd.cs.findbugs: DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    enabled: true

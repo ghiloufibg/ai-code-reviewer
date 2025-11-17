@@ -41,7 +41,7 @@ services:
   ai-code-reviewer:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: api-gateway/Dockerfile
       no_cache: true
     container_name: ai-code-reviewer-dev
     restart: unless-stopped
@@ -93,6 +93,28 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    networks:
+      - ai-reviewer-network
+
+  security-analysis-api:
+    build:
+      context: .
+      dockerfile: security-analysis-api/Dockerfile
+      no_cache: true
+    container_name: security-analysis-api-dev
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      JAVA_OPTS: "-Xmx512m -XX:+UseZGC"
+      LOGGING_LEVEL_COM_GHILOUFI_SECURITY: "${LOG_LEVEL:-INFO}"
+    ports:
+      - "8082:8080"      # Security Analysis API
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
     networks:
       - ai-reviewer-network
 

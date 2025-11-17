@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: security-analysis-api
+
+logging:
+  level:
+    com.ghiloufi.security: INFO
+    org.springframework: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+security:
+  analysis:
+    multi-tool:
+      enabled: true
+    tools:
+      spotbugs:
+        enabled: true
+        timeout-seconds: 30
+      semgrep:
+        enabled: true
+        timeout-seconds: 10
+        config: "p/owasp-top-ten"
+      pmd:
+        enabled: true
+        timeout-seconds: 15
+        ruleset: "category/java/security.xml"
+      dependency-check:
+        enabled: true
+    deduplication:
+      enabled: true
+      strategy: KEEP_HIGHEST_SEVERITY
+    max-findings: 100
