@@ -11,6 +11,10 @@ public interface SecurityToolAdapter {
 
   List<SecurityFinding> analyze(String code, String filename);
 
+  default int getTimeoutSeconds() {
+    return 30;
+  }
+
   default boolean isAvailable() {
     try {
       getToolVersion();

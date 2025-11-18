@@ -45,7 +45,7 @@ security:
         enabled: true
         timeout-seconds: 30
       semgrep:
-        enabled: true
+        enabled: false  # Disabled for performance - causes 60s timeout bottleneck
         timeout-seconds: 10
         config: "p/owasp-top-ten"
       pmd:
