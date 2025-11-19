@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 final class CodeReviewControllerTest {
 
@@ -458,6 +459,11 @@ final class CodeReviewControllerTest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
+    }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
     }
   }
 }

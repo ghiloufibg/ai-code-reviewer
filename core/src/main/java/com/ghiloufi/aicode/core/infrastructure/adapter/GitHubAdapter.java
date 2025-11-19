@@ -221,4 +221,9 @@ public class GitHubAdapter implements SCMPort {
     return Mono.error(
         new UnsupportedOperationException("Write access check is not yet implemented for GitHub"));
   }
+
+  @Override
+  public Mono<List<String>> listRepositoryFiles() {
+    return Mono.just(List.of());
+  }
 }

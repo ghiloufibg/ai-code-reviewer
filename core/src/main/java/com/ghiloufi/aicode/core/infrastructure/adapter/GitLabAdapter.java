@@ -835,4 +835,9 @@ public class GitLabAdapter implements SCMPort {
       return true;
     }
   }
+
+  @Override
+  public Mono<List<String>> listRepositoryFiles() {
+    return Mono.just(List.of());
+  }
 }

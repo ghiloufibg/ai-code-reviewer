@@ -185,5 +185,10 @@ final class FixApplicationServiceTest {
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
     }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
+    }
   }
 }

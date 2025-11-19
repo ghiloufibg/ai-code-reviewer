@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
+import java.util.List;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -38,4 +39,6 @@ public interface SCMPort {
       String commitMessage);
 
   Mono<Boolean> hasWriteAccess(RepositoryIdentifier repo);
+
+  Mono<List<String>> listRepositoryFiles();
 }

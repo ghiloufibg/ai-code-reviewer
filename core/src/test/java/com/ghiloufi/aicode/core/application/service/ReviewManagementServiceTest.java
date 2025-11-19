@@ -489,6 +489,11 @@ final class ReviewManagementServiceTest {
     public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
       return Mono.just(true);
     }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
+    }
   }
 
   private static final class TestSCMProviderFactory extends SCMProviderFactory {
