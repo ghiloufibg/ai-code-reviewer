@@ -16,7 +16,7 @@ context-retrieval:
     max-diff-lines: 5000
 
   git-history:
-    enabled: false
+    enabled: true
     analysis-depth: 100
     co-change-threshold: 3
     confidence-minimum: 0.3

@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.infrastructure.persistence;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.domain.model.ReviewState.StateTransition;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewIssueEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewNoteEntity;
@@ -233,6 +234,20 @@ public class PostgresReviewRepository {
                   repositoryId, changeRequestId, provider)
               .map(entity -> StateTransition.now(entity.getStatus()));
         });
+  }
+
+  @Transactional(readOnly = true)
+  public Mono<UUID> findByRepositoryAndChangeRequest(
+      final String repositoryId, final int changeRequestNumber, final SourceProvider provider) {
+    return Mono.fromSupplier(
+        () ->
+            jpaRepository
+                .findByRepositoryIdAndChangeRequestIdAndProvider(
+                    repositoryId,
+                    String.valueOf(changeRequestNumber),
+                    provider.name().toLowerCase())
+                .map(ReviewEntity::getId)
+                .orElse(null));
   }
 
   @Scheduled(fixedRate = 3600000)

@@ -1,12 +1,12 @@
 package com.ghiloufi.aicode.core.application.service;
 
+import com.ghiloufi.aicode.core.application.service.audit.ContextAuditHolder;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import java.time.Duration;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -14,11 +14,25 @@ import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class AIReviewStreamingService {
 
   private final AIInteractionPort aiPort;
   private final PromptBuilder promptBuilder;
+  private final ContextAuditHolder contextAuditHolder;
+
+  public AIReviewStreamingService(
+      final AIInteractionPort aiPort,
+      final PromptBuilder promptBuilder,
+      final ContextAuditHolder contextAuditHolder) {
+    this.aiPort = aiPort;
+    this.promptBuilder = promptBuilder;
+    this.contextAuditHolder = contextAuditHolder;
+  }
+
+  public AIReviewStreamingService(
+      final AIInteractionPort aiPort, final PromptBuilder promptBuilder) {
+    this(aiPort, promptBuilder, null);
+  }
 
   public Flux<ReviewChunk> reviewCodeStreaming(
       final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
@@ -33,11 +47,15 @@ public class AIReviewStreamingService {
     return Mono.fromCallable(
             () -> promptBuilder.buildReviewPrompt(enrichedDiff, configWithLlmMetadata))
         .doOnNext(
-            prompt ->
-                log.debug(
-                    "Built review prompt: {} chars (context: {})",
-                    prompt.length(),
-                    enrichedDiff.hasContext()))
+            prompt -> {
+              log.debug(
+                  "Built review prompt: {} chars (context: {})",
+                  prompt.length(),
+                  enrichedDiff.hasContext());
+              if (enrichedDiff.hasContext() && contextAuditHolder != null) {
+                contextAuditHolder.setPromptText(prompt);
+              }
+            })
         .flatMapMany(aiPort::streamCompletion)
         .map(content -> ReviewChunk.of(ReviewChunk.ChunkType.ANALYSIS, content))
         .doOnNext(chunk -> log.debug("Received review chunk: {} chars", chunk.content().length()))

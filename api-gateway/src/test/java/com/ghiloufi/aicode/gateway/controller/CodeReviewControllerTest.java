@@ -48,7 +48,10 @@ final class CodeReviewControllerTest {
         new FixApplicationService(testSCMPort, mockRepository);
     final CodeReviewController controller =
         new CodeReviewController(
-            reviewManagementUseCase, Optional.of(fixApplicationService), sseFormatter, mockRepository);
+            reviewManagementUseCase,
+            Optional.of(fixApplicationService),
+            sseFormatter,
+            mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)
