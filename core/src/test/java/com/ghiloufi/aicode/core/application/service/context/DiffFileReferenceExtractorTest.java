@@ -7,6 +7,8 @@ import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitFileModification;
 import com.ghiloufi.aicode.core.domain.model.MatchReason;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,10 +18,12 @@ import org.junit.jupiter.api.Test;
 final class DiffFileReferenceExtractorTest {
 
   private DiffFileReferenceExtractor extractor;
+  private RepositoryIdentifier testRepo;
 
   @BeforeEach
   final void setUp() {
     extractor = new DiffFileReferenceExtractor();
+    testRepo = RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
   }
 
   @Test
@@ -44,7 +48,7 @@ final class DiffFileReferenceExtractorTest {
         new GitFileModification(
             "src/main/java/com/example/Service.java", "src/main/java/com/example/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -75,7 +79,7 @@ final class DiffFileReferenceExtractorTest {
             "src/main/java/com/example/Controller.java",
             "src/main/java/com/example/Controller.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -110,7 +114,7 @@ final class DiffFileReferenceExtractorTest {
         new GitFileModification(
             "src/main/java/com/example/Service.java", "src/main/java/com/example/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -134,7 +138,7 @@ final class DiffFileReferenceExtractorTest {
 
     final GitFileModification modification = new GitFileModification("README.md", "README.md");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -158,7 +162,7 @@ final class DiffFileReferenceExtractorTest {
     final GitFileModification modification =
         new GitFileModification("src/Service.java", "src/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 

@@ -8,6 +8,8 @@ import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitFileModification;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,7 +73,9 @@ final class MetadataBasedContextStrategyTest {
       final GitFileModification modification =
           new GitFileModification("src/service/UserService.java", "src/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
 
       final List<String> repositoryFiles =
           List.of(
@@ -116,7 +120,9 @@ final class MetadataBasedContextStrategyTest {
       final GitFileModification modification =
           new GitFileModification("src/service/UserService.java", "src/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
 
       final List<String> repositoryFiles =
           List.of("src/service/UserService.java", "src/service/UserRepository.java");
@@ -144,7 +150,9 @@ final class MetadataBasedContextStrategyTest {
       final GitFileModification modification =
           new GitFileModification("src/service/UserService.java", "src/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, "raw diff");
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
 
       when(mockSCMPort.listRepositoryFiles()).thenReturn(Mono.just(List.of()));
 
@@ -167,7 +175,9 @@ final class MetadataBasedContextStrategyTest {
       final GitFileModification modification =
           new GitFileModification("src/service/UserService.java", "src/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, "raw diff");
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
 
       when(mockSCMPort.listRepositoryFiles()).thenReturn(Mono.just(List.of()));
 
@@ -187,7 +197,9 @@ final class MetadataBasedContextStrategyTest {
       final GitFileModification modification =
           new GitFileModification("src/service/UserService.java", "src/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, "raw diff");
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
 
       when(mockSCMPort.listRepositoryFiles())
           .thenReturn(Mono.error(new RuntimeException("SCM error")));
@@ -225,7 +237,9 @@ final class MetadataBasedContextStrategyTest {
               "src/main/java/com/example/service/UserService.java",
               "src/main/java/com/example/service/UserService.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(gitDiff, rawDiff);
+      final RepositoryIdentifier repo =
+          RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
 
       final List<String> repositoryFiles =
           List.of(

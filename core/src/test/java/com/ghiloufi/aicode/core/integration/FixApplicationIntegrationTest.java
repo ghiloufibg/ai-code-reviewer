@@ -212,7 +212,9 @@ final class FixApplicationIntegrationTest {
         -String query = "SELECT * FROM users WHERE id = " + userId;
         +String query = "SELECT * FROM users WHERE id = " + userId;
         """;
-    return new DiffAnalysisBundle(gitDiffDocument, rawDiff);
+    final RepositoryIdentifier repo =
+        RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff);
   }
 
   private List<ReviewChunk> createSecurityIssueChunks() {
@@ -378,6 +380,25 @@ final class FixApplicationIntegrationTest {
     @Override
     public Mono<java.util.List<String>> listRepositoryFiles() {
       return Mono.just(java.util.List.of());
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsFor(
+            final RepositoryIdentifier repo,
+            final String filePath,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsSince(
+            final RepositoryIdentifier repo,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
     }
   }
 

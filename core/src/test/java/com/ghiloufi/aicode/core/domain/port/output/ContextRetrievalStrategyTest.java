@@ -6,6 +6,8 @@ import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -59,8 +61,10 @@ class ContextRetrievalStrategyTest {
   @Test
   void should_retrieve_context_reactively() {
     final ContextRetrievalStrategy strategy = new TestStrategy("test-strategy", 10);
+    final RepositoryIdentifier repo =
+        RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
     final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(new GitDiffDocument(List.of()), "diff content");
+        new DiffAnalysisBundle(repo, new GitDiffDocument(List.of()), "diff content");
 
     final Mono<ContextRetrievalResult> result = strategy.retrieveContext(bundle);
 

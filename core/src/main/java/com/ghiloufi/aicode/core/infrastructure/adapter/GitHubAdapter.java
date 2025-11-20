@@ -74,7 +74,7 @@ public class GitHubAdapter implements SCMPort {
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(structuredDiff, rawDiff);
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(
@@ -225,5 +225,26 @@ public class GitHubAdapter implements SCMPort {
   @Override
   public Mono<List<String>> listRepositoryFiles() {
     return Mono.just(List.of());
+  }
+
+  @Override
+  public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+      getCommitsFor(
+          final RepositoryIdentifier repo,
+          final String filePath,
+          final java.time.LocalDate since,
+          final int maxResults) {
+    return reactor.core.publisher.Flux.error(
+        new UnsupportedOperationException(
+            "Git history queries are not yet implemented for GitHub"));
+  }
+
+  @Override
+  public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+      getCommitsSince(
+          final RepositoryIdentifier repo, final java.time.LocalDate since, final int maxResults) {
+    return reactor.core.publisher.Flux.error(
+        new UnsupportedOperationException(
+            "Git history queries are not yet implemented for GitHub"));
   }
 }

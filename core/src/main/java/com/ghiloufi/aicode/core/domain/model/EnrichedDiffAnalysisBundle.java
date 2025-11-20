@@ -4,11 +4,13 @@ import java.util.Objects;
 import java.util.Optional;
 
 public record EnrichedDiffAnalysisBundle(
+    RepositoryIdentifier repositoryIdentifier,
     GitDiffDocument structuredDiff,
     String rawDiffText,
     Optional<ContextRetrievalResult> contextResult) {
 
   public EnrichedDiffAnalysisBundle {
+    Objects.requireNonNull(repositoryIdentifier, "Repository identifier cannot be null");
     Objects.requireNonNull(structuredDiff, "Structured diff cannot be null");
     Objects.requireNonNull(rawDiffText, "Raw diff text cannot be null");
     Objects.requireNonNull(contextResult, "Context result optional cannot be null");
@@ -19,17 +21,21 @@ public record EnrichedDiffAnalysisBundle(
   }
 
   public EnrichedDiffAnalysisBundle(final DiffAnalysisBundle originalBundle) {
-    this(originalBundle.structuredDiff(), originalBundle.rawDiffText(), Optional.empty());
+    this(
+        originalBundle.repositoryIdentifier(),
+        originalBundle.structuredDiff(),
+        originalBundle.rawDiffText(),
+        Optional.empty());
   }
 
   public EnrichedDiffAnalysisBundle withContext(final ContextRetrievalResult context) {
     Objects.requireNonNull(context, "Context cannot be null");
     return new EnrichedDiffAnalysisBundle(
-        this.structuredDiff, this.rawDiffText, Optional.of(context));
+        this.repositoryIdentifier, this.structuredDiff, this.rawDiffText, Optional.of(context));
   }
 
   public DiffAnalysisBundle toBasicBundle() {
-    return new DiffAnalysisBundle(structuredDiff, rawDiffText);
+    return new DiffAnalysisBundle(repositoryIdentifier, structuredDiff, rawDiffText);
   }
 
   public boolean hasContext() {

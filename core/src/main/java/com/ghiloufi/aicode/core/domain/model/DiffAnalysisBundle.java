@@ -2,9 +2,11 @@ package com.ghiloufi.aicode.core.domain.model;
 
 import java.util.Objects;
 
-public record DiffAnalysisBundle(GitDiffDocument structuredDiff, String rawDiffText) {
+public record DiffAnalysisBundle(
+    RepositoryIdentifier repositoryIdentifier, GitDiffDocument structuredDiff, String rawDiffText) {
 
   public DiffAnalysisBundle {
+    Objects.requireNonNull(repositoryIdentifier, "Le repository identifier ne peut pas être null");
     Objects.requireNonNull(structuredDiff, "Le diff structuré ne peut pas être null");
     Objects.requireNonNull(rawDiffText, "Le texte brut du diff ne peut pas être null");
 
