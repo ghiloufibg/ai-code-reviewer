@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public final class ContextOrchestrator {
+public class ContextOrchestrator {
 
   private final List<ContextRetrievalStrategy> strategies;
   private final ContextEnricher contextEnricher;

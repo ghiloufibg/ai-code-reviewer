@@ -1,6 +1,6 @@
 package com.ghiloufi.aicode.core.application.service;
 
-import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
@@ -21,14 +21,23 @@ public class AIReviewStreamingService {
   private final PromptBuilder promptBuilder;
 
   public Flux<ReviewChunk> reviewCodeStreaming(
-      final DiffAnalysisBundle diff, final ReviewConfiguration config) {
-    log.info("Starting AI code review for {} files", diff.getModifiedFileCount());
+      final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
+    log.info(
+        "Starting AI code review for {} files with {} context matches",
+        enrichedDiff.getModifiedFileCount(),
+        enrichedDiff.getContextMatchCount());
 
     final ReviewConfiguration configWithLlmMetadata =
         config.withLlmMetadata(aiPort.getProviderName(), aiPort.getModelName());
 
-    return Mono.fromCallable(() -> promptBuilder.buildReviewPrompt(diff, configWithLlmMetadata))
-        .doOnNext(prompt -> log.debug("Built review prompt: {} chars", prompt.length()))
+    return Mono.fromCallable(
+            () -> promptBuilder.buildReviewPrompt(enrichedDiff, configWithLlmMetadata))
+        .doOnNext(
+            prompt ->
+                log.debug(
+                    "Built review prompt: {} chars (context: {})",
+                    prompt.length(),
+                    enrichedDiff.hasContext()))
         .flatMapMany(aiPort::streamCompletion)
         .map(content -> ReviewChunk.of(ReviewChunk.ChunkType.ANALYSIS, content))
         .doOnNext(chunk -> log.debug("Received review chunk: {} chars", chunk.content().length()))

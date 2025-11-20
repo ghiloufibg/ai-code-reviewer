@@ -8,7 +8,6 @@ public record ContextMatch(
   public ContextMatch {
     Objects.requireNonNull(filePath, "File path cannot be null");
     Objects.requireNonNull(reason, "Reason cannot be null");
-    Objects.requireNonNull(evidence, "Evidence cannot be null");
 
     if (filePath.isBlank()) {
       throw new IllegalArgumentException("File path cannot be blank");

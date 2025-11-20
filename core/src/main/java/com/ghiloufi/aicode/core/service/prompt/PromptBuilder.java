@@ -1,6 +1,6 @@
 package com.ghiloufi.aicode.core.service.prompt;
 
-import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultSchema;
@@ -394,15 +394,16 @@ public class PromptBuilder {
             ═══════════════════════════════════════════════════════════════════════
             """;
 
-  public String buildReviewPrompt(final DiffAnalysisBundle diff, final ReviewConfiguration config) {
-    if (diff == null) {
-      throw new IllegalArgumentException("DiffAnalysisBundle cannot be null");
+  public String buildReviewPrompt(
+      final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
+    if (enrichedDiff == null) {
+      throw new IllegalArgumentException("EnrichedDiffAnalysisBundle cannot be null");
     }
     if (config == null) {
       throw new IllegalArgumentException("ReviewConfiguration cannot be null");
     }
 
-    final String formattedDiff = diffFormatter.formatDiff(diff.structuredDiff());
+    final String formattedDiff = diffFormatter.formatDiff(enrichedDiff.structuredDiff());
 
     final StringBuilder prompt = new StringBuilder();
     prompt.append(SYSTEM_PROMPT).append("\n\n");
@@ -414,6 +415,12 @@ public class PromptBuilder {
     prompt.append(formattedDiff);
     prompt.append("\n[/DIFF]\n");
 
+    if (enrichedDiff.hasContext()) {
+      prompt.append("\n[CONTEXT]\n");
+      prompt.append(formatContextMatches(enrichedDiff));
+      prompt.append("[/CONTEXT]\n");
+    }
+
     if (config.customInstructions() != null && !config.customInstructions().isBlank()) {
       prompt.append("\n[CUSTOM_INSTRUCTIONS]\n");
       prompt.append(config.customInstructions());
@@ -421,5 +428,39 @@ public class PromptBuilder {
     }
 
     return prompt.toString();
+  }
+
+  private String formatContextMatches(final EnrichedDiffAnalysisBundle enrichedDiff) {
+    final var contextResult = enrichedDiff.contextResult().orElseThrow();
+    final var matches = contextResult.matches();
+    final var metadata = contextResult.metadata();
+
+    final StringBuilder context = new StringBuilder();
+    context
+        .append("Relevant files identified by context analysis (")
+        .append(metadata.strategyName())
+        .append("):\n\n");
+
+    for (final var match : matches) {
+      context
+          .append("- ")
+          .append(match.filePath())
+          .append(" (confidence: ")
+          .append(String.format(java.util.Locale.US, "%.2f", match.confidence()))
+          .append(", reason: ")
+          .append(match.reason().getDescription())
+          .append(")\n");
+
+      if (match.evidence() != null && !match.evidence().isBlank()) {
+        context.append("  Evidence: ").append(match.evidence()).append("\n");
+      }
+    }
+
+    context.append("\n");
+    context
+        .append("These files may provide important context for understanding the changes.\n")
+        .append("Consider their relationships when reviewing the diff.\n");
+
+    return context.toString();
   }
 }

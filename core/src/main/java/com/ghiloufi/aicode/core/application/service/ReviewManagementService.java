@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.core.application.service;
 
+import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -30,6 +31,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final SCMProviderFactory scmProviderFactory;
   private final ReviewChunkAccumulator chunkAccumulator;
   private final PostgresReviewRepository reviewRepository;
+  private final ContextOrchestrator contextOrchestrator;
 
   @Override
   public Flux<ReviewChunk> streamReview(
@@ -48,7 +50,14 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     "Fetched diff: {} files, {} lines",
                     diff.getModifiedFileCount(),
                     diff.getTotalLineCount()))
-        .flatMapMany(diff -> aiReviewStreamingService.reviewCodeStreaming(diff, config))
+        .flatMap(contextOrchestrator::retrieveEnrichedContext)
+        .doOnSuccess(
+            enrichedDiff ->
+                log.debug(
+                    "Context enrichment complete: {} context matches",
+                    enrichedDiff.getContextMatchCount()))
+        .flatMapMany(
+            enrichedDiff -> aiReviewStreamingService.reviewCodeStreaming(enrichedDiff, config))
         .doOnNext(
             chunk ->
                 log.debug("Streaming chunk: {} - {} chars", chunk.type(), chunk.content().length()))
@@ -87,7 +96,14 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     "Fetched diff: {} files, {} lines",
                     diff.getModifiedFileCount(),
                     diff.getTotalLineCount()))
-        .flatMapMany(diff -> aiReviewStreamingService.reviewCodeStreaming(diff, config))
+        .flatMap(contextOrchestrator::retrieveEnrichedContext)
+        .doOnSuccess(
+            enrichedDiff ->
+                log.debug(
+                    "Context enrichment complete: {} context matches",
+                    enrichedDiff.getContextMatchCount()))
+        .flatMapMany(
+            enrichedDiff -> aiReviewStreamingService.reviewCodeStreaming(enrichedDiff, config))
         .doOnNext(
             chunk -> {
               accumulatedChunks.add(chunk);

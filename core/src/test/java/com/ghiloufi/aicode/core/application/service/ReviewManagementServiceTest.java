@@ -2,8 +2,10 @@ package com.ghiloufi.aicode.core.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
@@ -39,6 +41,7 @@ final class ReviewManagementServiceTest {
   private TestAIReviewStreamingService testAIReviewStreamingService;
   private TestReviewChunkAccumulator testReviewChunkAccumulator;
   private TestPostgresReviewRepository testReviewRepository;
+  private TestContextOrchestrator testContextOrchestrator;
 
   @BeforeEach
   final void setUp() {
@@ -47,12 +50,14 @@ final class ReviewManagementServiceTest {
     testAIReviewStreamingService = new TestAIReviewStreamingService();
     testReviewChunkAccumulator = new TestReviewChunkAccumulator();
     testReviewRepository = new TestPostgresReviewRepository();
+    testContextOrchestrator = new TestContextOrchestrator();
     reviewManagementService =
         new ReviewManagementService(
             testAIReviewStreamingService,
             scmProviderFactory,
             testReviewChunkAccumulator,
-            testReviewRepository);
+            testReviewRepository,
+            testContextOrchestrator);
   }
 
   @Test
@@ -551,7 +556,7 @@ final class ReviewManagementServiceTest {
 
     @Override
     public Flux<ReviewChunk> reviewCodeStreaming(
-        final DiffAnalysisBundle diff, final ReviewConfiguration config) {
+        final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
       if (shouldFail) {
         return Flux.error(new RuntimeException("Streaming failed"));
       }
@@ -652,6 +657,19 @@ final class ReviewManagementServiceTest {
     @Override
     public Mono<Optional<ReviewState.StateTransition>> getState(final String reviewId) {
       return Mono.just(Optional.empty());
+    }
+  }
+
+  private static final class TestContextOrchestrator extends ContextOrchestrator {
+
+    TestContextOrchestrator() {
+      super(List.of(), null, null);
+    }
+
+    @Override
+    public Mono<EnrichedDiffAnalysisBundle> retrieveEnrichedContext(
+        final DiffAnalysisBundle diffBundle) {
+      return Mono.just(new EnrichedDiffAnalysisBundle(diffBundle));
     }
   }
 }
