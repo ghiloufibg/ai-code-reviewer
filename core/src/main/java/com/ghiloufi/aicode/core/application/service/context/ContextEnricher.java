@@ -1,0 +1,94 @@
+package com.ghiloufi.aicode.core.application.service.context;
+
+import com.ghiloufi.aicode.core.domain.model.ContextMatch;
+import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
+import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
+import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.MatchReason;
+import java.time.Duration;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.springframework.stereotype.Component;
+
+@Component
+public final class ContextEnricher {
+
+  public EnrichedDiffAnalysisBundle mergeResults(
+      final DiffAnalysisBundle diffBundle, final List<ContextRetrievalResult> strategyResults) {
+
+    if (strategyResults.isEmpty()) {
+      return new EnrichedDiffAnalysisBundle(diffBundle);
+    }
+
+    final List<ContextMatch> mergedMatches = deduplicateMatches(strategyResults);
+
+    final ContextRetrievalMetadata mergedMetadata = mergeMetadata(strategyResults);
+
+    final ContextRetrievalResult combinedResult =
+        new ContextRetrievalResult(mergedMatches, mergedMetadata);
+
+    return new EnrichedDiffAnalysisBundle(
+        diffBundle.repositoryIdentifier(),
+        diffBundle.structuredDiff(),
+        diffBundle.rawDiffText(),
+        Optional.of(combinedResult));
+  }
+
+  private List<ContextMatch> deduplicateMatches(final List<ContextRetrievalResult> results) {
+    final Map<String, ContextMatch> uniqueMatches = new LinkedHashMap<>();
+
+    for (final ContextRetrievalResult result : results) {
+      for (final ContextMatch match : result.matches()) {
+        final String filePath = match.filePath();
+
+        if (!uniqueMatches.containsKey(filePath)) {
+          uniqueMatches.put(filePath, match);
+        } else {
+          final ContextMatch existing = uniqueMatches.get(filePath);
+          if (match.confidence() > existing.confidence()) {
+            uniqueMatches.put(filePath, match);
+          }
+        }
+      }
+    }
+
+    return uniqueMatches.values().stream()
+        .sorted(Comparator.comparingDouble(ContextMatch::confidence).reversed())
+        .toList();
+  }
+
+  private ContextRetrievalMetadata mergeMetadata(final List<ContextRetrievalResult> results) {
+    final List<String> strategyNames =
+        results.stream().map(r -> r.metadata().strategyName()).toList();
+
+    final Duration totalDuration =
+        results.stream()
+            .map(r -> r.metadata().executionTime())
+            .reduce(Duration.ZERO, Duration::plus);
+
+    final int totalCandidates =
+        results.stream().mapToInt(r -> r.metadata().totalCandidates()).sum();
+
+    final int highConfidenceCount =
+        results.stream().mapToInt(r -> r.metadata().highConfidenceCount()).sum();
+
+    final Map<MatchReason, Integer> combinedReasons = new LinkedHashMap<>();
+    for (final ContextRetrievalResult result : results) {
+      result
+          .metadata()
+          .reasonDistribution()
+          .forEach((reason, count) -> combinedReasons.merge(reason, count, Integer::sum));
+    }
+
+    return new ContextRetrievalMetadata(
+        String.join("+", strategyNames),
+        totalDuration,
+        totalCandidates,
+        highConfidenceCount,
+        combinedReasons);
+  }
+}
