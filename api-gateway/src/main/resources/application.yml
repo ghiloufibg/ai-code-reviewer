@@ -87,6 +87,18 @@ llm:
       circuit-breaker-failure-threshold: 50.0
       circuit-breaker-timeout: 30s
 
+# Context Retrieval Configuration
+context-retrieval:
+  enabled: true
+  strategy-timeout-seconds: 5
+  enabled-strategies:
+    - metadata-based
+    - git-history
+  rollout:
+    percentage: 100
+    skip-large-diffs: true
+    max-diff-lines: 5000
+
 # Feature Flags
 features:
   fix-application:

@@ -415,7 +415,7 @@ public class PromptBuilder {
     prompt.append(formattedDiff);
     prompt.append("\n[/DIFF]\n");
 
-    if (enrichedDiff.hasContext()) {
+    if (enrichedDiff.hasContext() && enrichedDiff.getContextMatchCount() > 0) {
       prompt.append("\n[CONTEXT]\n");
       prompt.append(formatContextMatches(enrichedDiff));
       prompt.append("[/CONTEXT]\n");

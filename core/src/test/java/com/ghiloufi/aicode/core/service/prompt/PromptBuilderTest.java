@@ -213,9 +213,10 @@ class PromptBuilderTest {
 
       final List<ContextMatch> matches =
           List.of(
-              new ContextMatch("FileA.java", MatchReason.GIT_COCHANGE_HIGH, 0.9, null),
+              new ContextMatch(
+                  "FileA.java", MatchReason.GIT_COCHANGE_HIGH, 0.9, "frequently changed together"),
               new ContextMatch("FileB.java", MatchReason.SIBLING_FILE, 0.7, "same package"),
-              new ContextMatch("FileC.java", MatchReason.DIRECT_IMPORT, 0.95, null));
+              new ContextMatch("FileC.java", MatchReason.DIRECT_IMPORT, 0.95, "imported in Test"));
 
       final ContextRetrievalMetadata metadata =
           new ContextRetrievalMetadata(

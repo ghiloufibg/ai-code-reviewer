@@ -19,6 +19,7 @@ import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ final class CodeReviewControllerTest {
         new FixApplicationService(testSCMPort, mockRepository);
     final CodeReviewController controller =
         new CodeReviewController(
-            reviewManagementUseCase, fixApplicationService, sseFormatter, mockRepository);
+            reviewManagementUseCase, Optional.of(fixApplicationService), sseFormatter, mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)
