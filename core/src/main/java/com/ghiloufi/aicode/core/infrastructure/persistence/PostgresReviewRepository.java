@@ -49,22 +49,26 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
-          final Optional<ReviewEntity> existingWithIssues =
-              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+          final Optional<ReviewEntity> existing =
+              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProvider(
                   repositoryId, changeRequestId, provider);
-          if (existingWithIssues.isPresent()) {
-            jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
-                repositoryId, changeRequestId, provider);
-          }
 
           final ReviewEntity entity;
-          if (existingWithIssues.isPresent()) {
-            entity = existingWithIssues.get();
-            entity.setSummary(result.summary);
-            entity.setLlmProvider(result.llmProvider);
-            entity.setLlmModel(result.llmModel);
-            entity.setRawLlmResponse(result.rawLlmResponse);
-            updateIssuesAndNotes(entity, result);
+          if (existing.isPresent()) {
+            jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+                repositoryId, changeRequestId, provider);
+            final ReviewEntity entityWithBothCollections =
+                jpaRepository
+                    .findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
+                        repositoryId, changeRequestId, provider)
+                    .orElseThrow();
+
+            entityWithBothCollections.setSummary(result.summary);
+            entityWithBothCollections.setLlmProvider(result.llmProvider);
+            entityWithBothCollections.setLlmModel(result.llmModel);
+            entityWithBothCollections.setRawLlmResponse(result.rawLlmResponse);
+            updateIssuesAndNotes(entityWithBothCollections, result);
+            entity = entityWithBothCollections;
           } else {
             entity = convertToEntity(reviewId, result);
           }
@@ -167,8 +171,11 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
-          jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
-              repositoryId, changeRequestId, provider);
+          jpaRepository
+              .findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+                  repositoryId, changeRequestId, provider)
+              .orElseThrow(() -> new IllegalArgumentException("Review not found: " + reviewId));
+
           final ReviewEntity entity =
               jpaRepository
                   .findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
