@@ -19,6 +19,7 @@ import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -35,14 +36,15 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final ContextAuditService contextAuditService;
   private final ContextAuditHolder contextAuditHolder;
 
+  @Autowired
   public ReviewManagementService(
       final AIReviewStreamingService aiReviewStreamingService,
       final SCMProviderFactory scmProviderFactory,
       final ReviewChunkAccumulator chunkAccumulator,
       final PostgresReviewRepository reviewRepository,
       final ContextOrchestrator contextOrchestrator,
-      final ContextAuditService contextAuditService,
-      final ContextAuditHolder contextAuditHolder) {
+      @Autowired(required = false) final ContextAuditService contextAuditService,
+      @Autowired(required = false) final ContextAuditHolder contextAuditHolder) {
     this.aiReviewStreamingService = aiReviewStreamingService;
     this.scmProviderFactory = scmProviderFactory;
     this.chunkAccumulator = chunkAccumulator;

@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -24,11 +25,12 @@ public class ContextOrchestrator {
   private final ContextRetrievalConfig config;
   private final ContextAuditHolder contextAuditHolder;
 
+  @Autowired
   public ContextOrchestrator(
       final List<ContextRetrievalStrategy> strategies,
       final ContextEnricher contextEnricher,
       final ContextRetrievalConfig config,
-      final ContextAuditHolder contextAuditHolder) {
+      @Autowired(required = false) final ContextAuditHolder contextAuditHolder) {
     this.strategies = strategies;
     this.contextEnricher = contextEnricher;
     this.config = config;

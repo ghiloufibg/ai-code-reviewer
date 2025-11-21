@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,10 +21,11 @@ public class AIReviewStreamingService {
   private final PromptBuilder promptBuilder;
   private final ContextAuditHolder contextAuditHolder;
 
+  @Autowired
   public AIReviewStreamingService(
       final AIInteractionPort aiPort,
       final PromptBuilder promptBuilder,
-      final ContextAuditHolder contextAuditHolder) {
+      @Autowired(required = false) final ContextAuditHolder contextAuditHolder) {
     this.aiPort = aiPort;
     this.promptBuilder = promptBuilder;
     this.contextAuditHolder = contextAuditHolder;
