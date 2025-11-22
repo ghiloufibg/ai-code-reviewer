@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class GitLabDiffBuilder {
 
-  public final String buildRawDiff(final List<Diff> diffs) {
+  public String buildRawDiff(final List<Diff> diffs) {
     final StringBuilder rawDiff = new StringBuilder();
 
     for (final Diff diff : diffs) {

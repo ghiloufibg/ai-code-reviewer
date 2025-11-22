@@ -5,7 +5,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
 @Entity
 @Table(name = "context_retrieval_sessions")
 public class ContextRetrievalSessionEntity {
@@ -20,15 +23,19 @@ public class ContextRetrievalSessionEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Setter
   @Column(name = "total_execution_time_ms", nullable = false)
   private Long totalExecutionTimeMs;
 
+  @Setter
   @Column(name = "strategies_executed", nullable = false)
   private Integer strategiesExecuted;
 
+  @Setter
   @Column(name = "strategies_succeeded", nullable = false)
   private Integer strategiesSucceeded;
 
+  @Setter
   @Column(name = "strategies_failed", nullable = false)
   private Integer strategiesFailed;
 
@@ -94,88 +101,8 @@ public class ContextRetrievalSessionEntity {
     this.promptSizeBytes = promptSizeBytes;
   }
 
-  public UUID getId() {
-    return id;
-  }
-
-  public UUID getReviewId() {
-    return reviewId;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public Long getTotalExecutionTimeMs() {
-    return totalExecutionTimeMs;
-  }
-
-  public Integer getStrategiesExecuted() {
-    return strategiesExecuted;
-  }
-
-  public Integer getStrategiesSucceeded() {
-    return strategiesSucceeded;
-  }
-
-  public Integer getStrategiesFailed() {
-    return strategiesFailed;
-  }
-
-  public Integer getDiffFileCount() {
-    return diffFileCount;
-  }
-
-  public Integer getDiffLineCount() {
-    return diffLineCount;
-  }
-
-  public Integer getTotalMatches() {
-    return totalMatches;
-  }
-
-  public Integer getHighConfidenceMatches() {
-    return highConfidenceMatches;
-  }
-
-  public Boolean getContextEnabled() {
-    return contextEnabled;
-  }
-
-  public Boolean getSkippedDueToSize() {
-    return skippedDueToSize;
-  }
-
-  public String getPromptText() {
-    return promptText;
-  }
-
-  public Integer getPromptSizeBytes() {
-    return promptSizeBytes;
-  }
-
-  public List<ContextStrategyExecutionEntity> getStrategyExecutions() {
-    return strategyExecutions;
-  }
-
   public void addStrategyExecution(final ContextStrategyExecutionEntity execution) {
     strategyExecutions.add(execution);
     execution.setSession(this);
-  }
-
-  public void setTotalExecutionTimeMs(final Long totalExecutionTimeMs) {
-    this.totalExecutionTimeMs = totalExecutionTimeMs;
-  }
-
-  public void setStrategiesExecuted(final Integer strategiesExecuted) {
-    this.strategiesExecuted = strategiesExecuted;
-  }
-
-  public void setStrategiesSucceeded(final Integer strategiesSucceeded) {
-    this.strategiesSucceeded = strategiesSucceeded;
-  }
-
-  public void setStrategiesFailed(final Integer strategiesFailed) {
-    this.strategiesFailed = strategiesFailed;
   }
 }

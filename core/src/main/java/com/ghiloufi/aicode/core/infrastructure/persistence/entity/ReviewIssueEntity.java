@@ -58,10 +58,10 @@ public class ReviewIssueEntity {
   @Builder.Default
   private boolean inlineCommentPosted = false;
 
-  @Column(name = "scm_comment_id", length = 255)
+  @Column(name = "scm_comment_id")
   private String scmCommentId;
 
-  @Column(name = "fallback_reason", length = 255)
+  @Column(name = "fallback_reason")
   private String fallbackReason;
 
   @Column(name = "position_metadata", columnDefinition = "TEXT")

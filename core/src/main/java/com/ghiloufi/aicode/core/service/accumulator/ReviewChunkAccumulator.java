@@ -94,11 +94,7 @@ public class ReviewChunkAccumulator {
     final int openBraceIndex = trimmed.indexOf('{');
     final int closeBraceIndex = trimmed.lastIndexOf('}');
 
-    if (openBraceIndex >= 0 && closeBraceIndex > openBraceIndex) {
-      return true;
-    }
-
-    return false;
+    return openBraceIndex >= 0 && closeBraceIndex > openBraceIndex;
   }
 
   private void logAccumulatedReviewSummary(final ReviewResult result) {

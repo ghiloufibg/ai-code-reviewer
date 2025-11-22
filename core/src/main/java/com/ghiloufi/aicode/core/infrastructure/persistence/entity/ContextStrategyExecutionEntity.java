@@ -6,7 +6,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
 @Entity
 @Table(name = "context_strategy_executions")
 public class ContextStrategyExecutionEntity {
@@ -15,6 +18,7 @@ public class ContextStrategyExecutionEntity {
   @Column(name = "id", nullable = false)
   private UUID id;
 
+  @Setter
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "session_id", nullable = false)
   private ContextRetrievalSessionEntity session;
@@ -81,66 +85,6 @@ public class ContextStrategyExecutionEntity {
     this.errorMessage = errorMessage;
     this.startedAt = startedAt;
     this.completedAt = completedAt;
-  }
-
-  public UUID getId() {
-    return id;
-  }
-
-  public ContextRetrievalSessionEntity getSession() {
-    return session;
-  }
-
-  public void setSession(final ContextRetrievalSessionEntity session) {
-    this.session = session;
-  }
-
-  public String getStrategyName() {
-    return strategyName;
-  }
-
-  public Integer getExecutionOrder() {
-    return executionOrder;
-  }
-
-  public ExecutionStatus getStatus() {
-    return status;
-  }
-
-  public Long getExecutionTimeMs() {
-    return executionTimeMs;
-  }
-
-  public Integer getTotalCandidates() {
-    return totalCandidates;
-  }
-
-  public Integer getMatchesFound() {
-    return matchesFound;
-  }
-
-  public Integer getHighConfidenceCount() {
-    return highConfidenceCount;
-  }
-
-  public String getErrorMessage() {
-    return errorMessage;
-  }
-
-  public Instant getStartedAt() {
-    return startedAt;
-  }
-
-  public Instant getCompletedAt() {
-    return completedAt;
-  }
-
-  public List<ContextMatchEntity> getMatches() {
-    return matches;
-  }
-
-  public List<ContextReasonDistributionEntity> getReasonDistribution() {
-    return reasonDistribution;
   }
 
   public void addMatch(final ContextMatchEntity match) {

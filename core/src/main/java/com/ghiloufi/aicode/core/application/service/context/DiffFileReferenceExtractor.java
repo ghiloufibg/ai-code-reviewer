@@ -65,12 +65,6 @@ public final class DiffFileReferenceExtractor {
   }
 
   private String convertToFilePath(final String reference) {
-    final String className = extractClassName(reference);
     return reference.replace('.', '/') + ".java";
-  }
-
-  private String extractClassName(final String reference) {
-    final int lastDot = reference.lastIndexOf('.');
-    return lastDot >= 0 ? reference.substring(lastDot + 1) : reference;
   }
 }

@@ -94,7 +94,7 @@ public final class EnhancedPathAnalyzer {
     final Path parent1 = path1.getParent();
     final Path parent2 = path2.getParent();
 
-    return parent1 != null && parent2 != null && parent1.equals(parent2);
+    return parent1 != null && parent1.equals(parent2);
   }
 
   private boolean isRelatedLayer(final String file1, final String file2) {

@@ -1,5 +1,8 @@
 package com.ghiloufi.aicode.core.domain.model;
 
+import lombok.Getter;
+
+@Getter
 public enum MatchReason {
   FILE_REFERENCE(0.80, "Referenced in diff content"),
   SIBLING_FILE(0.75, "Same directory, related name"),
@@ -20,13 +23,5 @@ public enum MatchReason {
   MatchReason(final double baseConfidence, final String description) {
     this.baseConfidence = baseConfidence;
     this.description = description;
-  }
-
-  public double getBaseConfidence() {
-    return baseConfidence;
-  }
-
-  public String getDescription() {
-    return description;
   }
 }

@@ -113,24 +113,21 @@ public class ContextMapper {
     final int highConfidenceMatches =
         hasContext ? enrichedDiff.contextResult().get().getHighConfidenceMatches().size() : 0;
 
-    final ContextRetrievalSessionEntity session =
-        new ContextRetrievalSessionEntity(
-            UUID.randomUUID(),
-            reviewId,
-            Instant.now(),
-            0L,
-            0,
-            0,
-            0,
-            enrichedDiff.getModifiedFileCount(),
-            enrichedDiff.getTotalLineCount(),
-            totalMatches,
-            highConfidenceMatches,
-            hasContext,
-            false,
-            promptText,
-            promptText.getBytes().length);
-
-    return session;
+    return new ContextRetrievalSessionEntity(
+        UUID.randomUUID(),
+        reviewId,
+        Instant.now(),
+        0L,
+        0,
+        0,
+        0,
+        enrichedDiff.getModifiedFileCount(),
+        enrichedDiff.getTotalLineCount(),
+        totalMatches,
+        highConfidenceMatches,
+        hasContext,
+        false,
+        promptText,
+        promptText.getBytes().length);
   }
 }

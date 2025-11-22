@@ -2,7 +2,10 @@ package com.ghiloufi.aicode.core.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
 @Entity
 @Table(
     name = "context_reason_distribution",
@@ -15,6 +18,7 @@ public class ContextReasonDistributionEntity {
   @Column(name = "id", nullable = false)
   private UUID id;
 
+  @Setter
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "strategy_execution_id", nullable = false)
   private ContextStrategyExecutionEntity strategyExecution;
@@ -33,25 +37,5 @@ public class ContextReasonDistributionEntity {
     this.id = id;
     this.matchReason = matchReason;
     this.count = count;
-  }
-
-  public UUID getId() {
-    return id;
-  }
-
-  public ContextStrategyExecutionEntity getStrategyExecution() {
-    return strategyExecution;
-  }
-
-  public void setStrategyExecution(final ContextStrategyExecutionEntity strategyExecution) {
-    this.strategyExecution = strategyExecution;
-  }
-
-  public MatchReasonEnum getMatchReason() {
-    return matchReason;
-  }
-
-  public Integer getCount() {
-    return count;
   }
 }

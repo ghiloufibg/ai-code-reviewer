@@ -26,10 +26,6 @@ public record GitHubReviewRequest(
     Optional.ofNullable(repo)
         .filter(r -> !r.isBlank())
         .orElseThrow(() -> new IllegalArgumentException("Repository name cannot be null or blank"));
-
-    if (pullRequestNumber <= 0) {
-      throw new IllegalArgumentException("Pull request number must be positive");
-    }
   }
 
   @Override

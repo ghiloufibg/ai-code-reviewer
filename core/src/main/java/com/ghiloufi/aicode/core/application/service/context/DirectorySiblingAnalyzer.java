@@ -34,7 +34,7 @@ public final class DirectorySiblingAnalyzer {
         final Path repositoryPath = Paths.get(repositoryFile);
         final Path repositoryDirectory = repositoryPath.getParent();
 
-        if (repositoryDirectory != null && modifiedDirectory.equals(repositoryDirectory)) {
+        if (modifiedDirectory.equals(repositoryDirectory)) {
           matches.add(createSiblingMatch(modifiedFile, repositoryFile));
         }
       }

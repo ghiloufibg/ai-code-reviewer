@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class GitHubDiffBuilder {
 
-  public final String buildRawDiff(final List<GHPullRequestFileDetail> files) {
+  public String buildRawDiff(final List<GHPullRequestFileDetail> files) {
     final StringBuilder rawDiff = new StringBuilder();
 
     for (final GHPullRequestFileDetail file : files) {

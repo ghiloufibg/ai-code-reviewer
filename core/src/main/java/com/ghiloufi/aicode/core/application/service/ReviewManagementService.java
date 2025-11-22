@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@SuppressWarnings("LoggingSimilarMessage")
 @Service
 @Slf4j
 public class ReviewManagementService implements ReviewManagementUseCase {

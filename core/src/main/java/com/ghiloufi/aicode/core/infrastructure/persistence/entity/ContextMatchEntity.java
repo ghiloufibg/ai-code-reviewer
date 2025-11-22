@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
 @Entity
 @Table(name = "context_matches")
 public class ContextMatchEntity {
@@ -13,6 +16,7 @@ public class ContextMatchEntity {
   @Column(name = "id", nullable = false)
   private UUID id;
 
+  @Setter
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "strategy_execution_id", nullable = false)
   private ContextStrategyExecutionEntity strategyExecution;
@@ -58,45 +62,5 @@ public class ContextMatchEntity {
     this.isHighConfidence = isHighConfidence;
     this.includedInPrompt = includedInPrompt;
     this.createdAt = createdAt;
-  }
-
-  public UUID getId() {
-    return id;
-  }
-
-  public ContextStrategyExecutionEntity getStrategyExecution() {
-    return strategyExecution;
-  }
-
-  public void setStrategyExecution(final ContextStrategyExecutionEntity strategyExecution) {
-    this.strategyExecution = strategyExecution;
-  }
-
-  public String getFilePath() {
-    return filePath;
-  }
-
-  public MatchReasonEnum getMatchReason() {
-    return matchReason;
-  }
-
-  public BigDecimal getConfidence() {
-    return confidence;
-  }
-
-  public String getEvidence() {
-    return evidence;
-  }
-
-  public Boolean getIsHighConfidence() {
-    return isHighConfidence;
-  }
-
-  public Boolean getIncludedInPrompt() {
-    return includedInPrompt;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
   }
 }

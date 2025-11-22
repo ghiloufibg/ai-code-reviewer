@@ -18,10 +18,7 @@ import reactor.core.scheduler.Schedulers;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-    name = "features.fix-application.enabled",
-    havingValue = "true",
-    matchIfMissing = false)
+@ConditionalOnProperty(name = "features.fix-application.enabled", havingValue = "true")
 public final class FixApplicationService {
 
   private final SCMPort scmPort;

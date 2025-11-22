@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class GitLabMergeRequestMapper {
 
-  public final MergeRequestSummary toMergeRequestSummary(final MergeRequest mergeRequest) {
+  public MergeRequestSummary toMergeRequestSummary(final MergeRequest mergeRequest) {
     return new MergeRequestSummary(
         extractMergeRequestNumber(mergeRequest),
         mergeRequest.getTitle(),

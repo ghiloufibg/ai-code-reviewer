@@ -21,10 +21,6 @@ public record GitLabReviewRequest(
     Optional.ofNullable(projectId)
         .filter(id -> !id.isBlank())
         .orElseThrow(() -> new IllegalArgumentException("Project ID cannot be null or blank"));
-
-    if (mergeRequestIid <= 0) {
-      throw new IllegalArgumentException("Merge request IID must be positive");
-    }
   }
 
   @Override

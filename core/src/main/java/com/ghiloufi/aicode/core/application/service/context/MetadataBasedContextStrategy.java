@@ -63,9 +63,8 @@ public final class MetadataBasedContextStrategy implements ContextRetrievalStrat
   private List<ContextMatch> collectAllMatches(
       final DiffAnalysisBundle diffBundle, final List<String> repositoryFiles) {
 
-    final List<ContextMatch> allMatches = new ArrayList<>();
-
-    allMatches.addAll(referenceExtractor.extractReferences(diffBundle));
+    final List<ContextMatch> allMatches =
+        new ArrayList<>(referenceExtractor.extractReferences(diffBundle));
 
     final List<GitFileModification> modifiedFiles = diffBundle.structuredDiff().files;
     allMatches.addAll(siblingAnalyzer.analyzeSiblings(modifiedFiles, repositoryFiles));
