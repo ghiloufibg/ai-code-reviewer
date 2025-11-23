@@ -1,7 +1,5 @@
 package com.ghiloufi.aicode.core.application.service;
 
-import com.ghiloufi.aicode.core.application.service.audit.ContextAuditHolder;
-import com.ghiloufi.aicode.core.application.service.audit.ContextAuditService;
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
@@ -19,7 +17,6 @@ import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,26 +31,6 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final ReviewChunkAccumulator chunkAccumulator;
   private final PostgresReviewRepository reviewRepository;
   private final ContextOrchestrator contextOrchestrator;
-  private final ContextAuditService contextAuditService;
-  private final ContextAuditHolder contextAuditHolder;
-
-  @Autowired
-  public ReviewManagementService(
-      final AIReviewStreamingService aiReviewStreamingService,
-      final SCMProviderFactory scmProviderFactory,
-      final ReviewChunkAccumulator chunkAccumulator,
-      final PostgresReviewRepository reviewRepository,
-      final ContextOrchestrator contextOrchestrator,
-      @Autowired(required = false) final ContextAuditService contextAuditService,
-      @Autowired(required = false) final ContextAuditHolder contextAuditHolder) {
-    this.aiReviewStreamingService = aiReviewStreamingService;
-    this.scmProviderFactory = scmProviderFactory;
-    this.chunkAccumulator = chunkAccumulator;
-    this.reviewRepository = reviewRepository;
-    this.contextOrchestrator = contextOrchestrator;
-    this.contextAuditService = contextAuditService;
-    this.contextAuditHolder = contextAuditHolder;
-  }
 
   public ReviewManagementService(
       final AIReviewStreamingService aiReviewStreamingService,
@@ -61,14 +38,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
       final ReviewChunkAccumulator chunkAccumulator,
       final PostgresReviewRepository reviewRepository,
       final ContextOrchestrator contextOrchestrator) {
-    this(
-        aiReviewStreamingService,
-        scmProviderFactory,
-        chunkAccumulator,
-        reviewRepository,
-        contextOrchestrator,
-        null,
-        null);
+    this.aiReviewStreamingService = aiReviewStreamingService;
+    this.scmProviderFactory = scmProviderFactory;
+    this.chunkAccumulator = chunkAccumulator;
+    this.reviewRepository = reviewRepository;
+    this.contextOrchestrator = contextOrchestrator;
   }
 
   @Override
@@ -195,13 +169,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                               return reviewRepository.save(reviewId, result);
                             }))
                     .doOnSuccess(
-                        v -> {
-                          log.info(
-                              "Review saved to database for {}/{}",
-                              repository.getDisplayName(),
-                              changeRequest.getDisplayName());
-                          auditContextRetrievalIfApplicable(repository, changeRequest);
-                        })
+                        v ->
+                            log.info(
+                                "Review saved to database for {}/{}",
+                                repository.getDisplayName(),
+                                changeRequest.getDisplayName()))
                     .doOnError(
                         error ->
                             log.error(
@@ -285,13 +257,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                   return reviewRepository.save(reviewId, reviewResult);
                 }))
         .doOnSuccess(
-            v -> {
-              log.info(
-                  "Review saved to database for {}/{}",
-                  repository.getDisplayName(),
-                  changeRequest.getDisplayName());
-              auditContextRetrievalIfApplicable(repository, changeRequest);
-            })
+            v ->
+                log.info(
+                    "Review saved to database for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName()))
         .doOnError(
             error ->
                 log.error(
@@ -314,51 +284,4 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .doOnError(error -> log.error("Failed to fetch repositories for: {}", provider, error));
   }
 
-  private void auditContextRetrievalIfApplicable(
-      final RepositoryIdentifier repository, final ChangeRequestIdentifier changeRequest) {
-    if (contextAuditHolder == null || contextAuditService == null) {
-      return;
-    }
-
-    if (!contextAuditHolder.hasContext()) {
-      log.debug("Skipping context audit - no context was retrieved");
-      return;
-    }
-
-    try {
-      final String reviewIdString =
-          repository.getDisplayName()
-              + "_"
-              + changeRequest.getNumber()
-              + "_"
-              + repository.getProvider().name().toLowerCase();
-
-      reviewRepository
-          .findByRepositoryAndChangeRequest(
-              repository.getDisplayName(), changeRequest.getNumber(), repository.getProvider())
-          .doOnSuccess(
-              reviewUuid -> {
-                if (reviewUuid != null) {
-                  log.debug("Auditing context retrieval for review UUID: {}", reviewUuid);
-                  contextAuditService.auditContextRetrieval(
-                      reviewUuid,
-                      contextAuditHolder.getEnrichedDiff(),
-                      contextAuditHolder.getPromptText(),
-                      contextAuditHolder.getStrategyResults());
-                  contextAuditHolder.clear();
-                } else {
-                  log.warn("Could not find review UUID for audit: {}", reviewIdString);
-                }
-              })
-          .doOnError(
-              error -> log.error("Failed to audit context retrieval for {}", reviewIdString, error))
-          .subscribe();
-    } catch (final Exception error) {
-      log.error(
-          "Unexpected error during context audit for {}/{}",
-          repository.getDisplayName(),
-          changeRequest.getDisplayName(),
-          error);
-    }
-  }
 }

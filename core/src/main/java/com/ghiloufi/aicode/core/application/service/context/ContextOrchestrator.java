@@ -1,6 +1,5 @@
 package com.ghiloufi.aicode.core.application.service.context;
 
-import com.ghiloufi.aicode.core.application.service.audit.ContextAuditHolder;
 import com.ghiloufi.aicode.core.config.ContextRetrievalConfig;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
@@ -11,7 +10,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,25 +21,14 @@ public class ContextOrchestrator {
   private final List<ContextRetrievalStrategy> strategies;
   private final ContextEnricher contextEnricher;
   private final ContextRetrievalConfig config;
-  private final ContextAuditHolder contextAuditHolder;
-
-  @Autowired
-  public ContextOrchestrator(
-      final List<ContextRetrievalStrategy> strategies,
-      final ContextEnricher contextEnricher,
-      final ContextRetrievalConfig config,
-      @Autowired(required = false) final ContextAuditHolder contextAuditHolder) {
-    this.strategies = strategies;
-    this.contextEnricher = contextEnricher;
-    this.config = config;
-    this.contextAuditHolder = contextAuditHolder;
-  }
 
   public ContextOrchestrator(
       final List<ContextRetrievalStrategy> strategies,
       final ContextEnricher contextEnricher,
       final ContextRetrievalConfig config) {
-    this(strategies, contextEnricher, config, null);
+    this.strategies = strategies;
+    this.contextEnricher = contextEnricher;
+    this.config = config;
   }
 
   public Mono<EnrichedDiffAnalysisBundle> retrieveEnrichedContext(
@@ -80,9 +67,6 @@ public class ContextOrchestrator {
                     "Context retrieval complete: {} matches from {} strategies",
                     enriched.getContextMatchCount(),
                     enriched.contextResult().get().metadata().strategyName());
-                if (contextAuditHolder != null) {
-                  contextAuditHolder.setEnrichedDiff(enriched);
-                }
               }
             })
         .defaultIfEmpty(new EnrichedDiffAnalysisBundle(diffBundle));
