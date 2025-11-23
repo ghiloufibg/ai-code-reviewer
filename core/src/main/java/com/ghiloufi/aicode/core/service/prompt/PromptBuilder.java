@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.service.prompt;
 
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
+import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultSchema;
 import java.util.Objects;
@@ -395,17 +396,38 @@ public class PromptBuilder {
             """;
 
   public String buildReviewPrompt(
-      final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
+      final EnrichedDiffAnalysisBundle enrichedDiff,
+      final ReviewConfiguration config,
+      final TicketBusinessContext ticketContext) {
     if (enrichedDiff == null) {
       throw new IllegalArgumentException("EnrichedDiffAnalysisBundle cannot be null");
     }
     if (config == null) {
       throw new IllegalArgumentException("ReviewConfiguration cannot be null");
     }
+    if (ticketContext == null) {
+      throw new IllegalArgumentException("TicketBusinessContext cannot be null");
+    }
+
+    final String ticketContextFormatted = ticketContext.formatForPrompt();
+
+    return buildFullPrompt(enrichedDiff, config, ticketContextFormatted);
+  }
+
+  private String buildFullPrompt(
+      final EnrichedDiffAnalysisBundle enrichedDiff,
+      final ReviewConfiguration config,
+      final String ticketContext) {
 
     final String formattedDiff = diffFormatter.formatDiff(enrichedDiff.structuredDiff());
 
     final StringBuilder prompt = new StringBuilder();
+
+    if (!ticketContext.isBlank()) {
+      prompt.append(ticketContext);
+      prompt.append("\n");
+    }
+
     prompt.append(SYSTEM_PROMPT).append("\n\n");
     prompt.append("[REPO]\n");
     prompt.append("language: ").append(config.programmingLanguage()).append("\n");
@@ -427,11 +449,20 @@ public class PromptBuilder {
       prompt.append("\n[/CUSTOM_INSTRUCTIONS]\n");
     }
 
+    if (!ticketContext.isBlank()) {
+      prompt.append("\n[REVIEW_FOCUS]\n");
+      prompt.append("─────────────────────────────────────────────────────────────\n");
+      prompt.append("1. Verify code implements business requirements from ticket\n");
+      prompt.append("2. Check code against ticket description expectations\n");
+      prompt.append("3. Validate security and quality standards\n");
+      prompt.append("[/REVIEW_FOCUS]\n");
+    }
+
     return prompt.toString();
   }
 
   private String formatContextMatches(final EnrichedDiffAnalysisBundle enrichedDiff) {
-    final var contextResult = enrichedDiff.contextResult().orElseThrow();
+    final var contextResult = enrichedDiff.contextResult();
     final var matches = contextResult.matches();
     final var metadata = contextResult.metadata();
 

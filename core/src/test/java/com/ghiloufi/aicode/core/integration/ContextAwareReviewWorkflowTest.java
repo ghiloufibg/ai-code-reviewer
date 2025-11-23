@@ -55,7 +55,7 @@ final class ContextAwareReviewWorkflowTest {
 
     final GitDiffDocument parsedDiff = diffParser.parse(mediumPRDiff);
     final DiffAnalysisBundle diffBundle =
-        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff);
+        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null, null);
 
     final Mono<EnrichedDiffAnalysisBundle> enrichedMono =
         contextOrchestrator.retrieveEnrichedContext(diffBundle);
@@ -68,7 +68,10 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(4);
 
               final String prompt =
-                  promptBuilder.buildReviewPrompt(enrichedBundle, ReviewConfiguration.defaults());
+                  promptBuilder.buildReviewPrompt(
+                      enrichedBundle,
+                      ReviewConfiguration.defaults(),
+                      TicketBusinessContext.empty());
 
               assertThat(prompt).contains("[CONTEXT]");
               assertThat(prompt)
@@ -107,7 +110,8 @@ final class ContextAwareReviewWorkflowTest {
     final String largePRDiff = loadDiffFromClasspath("diff-samples/large-pr.diff");
 
     final GitDiffDocument parsedDiff = diffParser.parse(largePRDiff);
-    final DiffAnalysisBundle diffBundle = new DiffAnalysisBundle(testRepo, parsedDiff, largePRDiff);
+    final DiffAnalysisBundle diffBundle =
+        new DiffAnalysisBundle(testRepo, parsedDiff, largePRDiff, null, null);
 
     final ContextRetrievalConfig configWithLowLimit =
         new ContextRetrievalConfig(
@@ -130,7 +134,10 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(0);
 
               final String prompt =
-                  promptBuilder.buildReviewPrompt(enrichedBundle, ReviewConfiguration.defaults());
+                  promptBuilder.buildReviewPrompt(
+                      enrichedBundle,
+                      ReviewConfiguration.defaults(),
+                      TicketBusinessContext.empty());
 
               assertThat(prompt).doesNotContain("[CONTEXT]");
               assertThat(prompt).contains("[DIFF]");
@@ -147,7 +154,7 @@ final class ContextAwareReviewWorkflowTest {
 
     final GitDiffDocument parsedDiff = diffParser.parse(mediumPRDiff);
     final DiffAnalysisBundle diffBundle =
-        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff);
+        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null, null);
 
     final TestContextRetrievalStrategy emptyStrategy = new TestContextRetrievalStrategy();
     emptyStrategy.setMatchesToReturn(List.of());
@@ -172,7 +179,10 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(0);
 
               final String prompt =
-                  promptBuilder.buildReviewPrompt(enrichedBundle, ReviewConfiguration.defaults());
+                  promptBuilder.buildReviewPrompt(
+                      enrichedBundle,
+                      ReviewConfiguration.defaults(),
+                      TicketBusinessContext.empty());
 
               assertThat(prompt).doesNotContain("[CONTEXT]");
               assertThat(prompt).contains("[DIFF]");

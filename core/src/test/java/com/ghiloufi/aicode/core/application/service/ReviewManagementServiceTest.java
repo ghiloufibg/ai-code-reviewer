@@ -384,7 +384,7 @@ final class ReviewManagementServiceTest {
     final String rawDiff = "--- a/file.java\n+++ b/file.java\n@@ -1,1 +1,1 @@\n-old\n+new";
     final RepositoryIdentifier repo =
         RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff);
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null, null);
   }
 
   private static final class TestSCMPort implements SCMPort {
@@ -543,7 +543,7 @@ final class ReviewManagementServiceTest {
     private boolean shouldFail = false;
 
     TestAIReviewStreamingService() {
-      super(null, null);
+      super(null, null, null);
     }
 
     final void setChunks(final List<ReviewChunk> chunks) {

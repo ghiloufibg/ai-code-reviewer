@@ -3,7 +3,11 @@ package com.ghiloufi.aicode.core.domain.model;
 import java.util.Objects;
 
 public record DiffAnalysisBundle(
-    RepositoryIdentifier repositoryIdentifier, GitDiffDocument structuredDiff, String rawDiffText) {
+    RepositoryIdentifier repositoryIdentifier,
+    GitDiffDocument structuredDiff,
+    String rawDiffText,
+    String mergeRequestTitle,
+    String mergeRequestDescription) {
 
   public DiffAnalysisBundle {
     Objects.requireNonNull(repositoryIdentifier, "Le repository identifier ne peut pas être null");

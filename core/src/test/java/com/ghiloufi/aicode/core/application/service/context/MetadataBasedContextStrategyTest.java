@@ -75,7 +75,7 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       final List<String> repositoryFiles =
           List.of(
@@ -122,7 +122,7 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       final List<String> repositoryFiles =
           List.of("src/service/UserService.java", "src/service/UserRepository.java");
@@ -152,7 +152,8 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
+      final DiffAnalysisBundle bundle =
+          new DiffAnalysisBundle(repo, gitDiff, "raw diff", null, null);
 
       when(mockSCMPort.listRepositoryFiles()).thenReturn(Mono.just(List.of()));
 
@@ -177,7 +178,8 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
+      final DiffAnalysisBundle bundle =
+          new DiffAnalysisBundle(repo, gitDiff, "raw diff", null, null);
 
       when(mockSCMPort.listRepositoryFiles()).thenReturn(Mono.just(List.of()));
 
@@ -199,7 +201,8 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, "raw diff");
+      final DiffAnalysisBundle bundle =
+          new DiffAnalysisBundle(repo, gitDiff, "raw diff", null, null);
 
       when(mockSCMPort.listRepositoryFiles())
           .thenReturn(Mono.error(new RuntimeException("SCM error")));
@@ -239,7 +242,7 @@ final class MetadataBasedContextStrategyTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final RepositoryIdentifier repo =
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       final List<String> repositoryFiles =
           List.of(

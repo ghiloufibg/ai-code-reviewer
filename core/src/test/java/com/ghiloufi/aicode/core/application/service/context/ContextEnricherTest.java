@@ -36,7 +36,7 @@ final class ContextEnricherTest {
         new GitFileModification("src/Test.java", "src/Test.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
 
-    testBundle = new DiffAnalysisBundle(repo, gitDiff, "diff content");
+    testBundle = new DiffAnalysisBundle(repo, gitDiff, "diff content", null, null);
   }
 
   @Nested
@@ -86,7 +86,7 @@ final class ContextEnricherTest {
       assertThat(enriched.hasContext()).isTrue();
       assertThat(enriched.getContextMatchCount()).isEqualTo(3);
 
-      final List<ContextMatch> finalMatches = enriched.contextResult().get().matches();
+      final List<ContextMatch> finalMatches = enriched.contextResult().matches();
 
       final ContextMatch fileA =
           finalMatches.stream().filter(m -> m.filePath().equals("FileA.java")).findFirst().get();
@@ -121,7 +121,7 @@ final class ContextEnricherTest {
       assertThat(enriched.getContextMatchCount()).isEqualTo(3);
 
       final List<String> filePaths =
-          enriched.contextResult().get().matches().stream().map(ContextMatch::filePath).toList();
+          enriched.contextResult().matches().stream().map(ContextMatch::filePath).toList();
 
       assertThat(filePaths).containsExactlyInAnyOrder("FileA.java", "FileB.java", "FileC.java");
     }
@@ -144,7 +144,7 @@ final class ContextEnricherTest {
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
       final List<Double> confidences =
-          enriched.contextResult().get().matches().stream().map(ContextMatch::confidence).toList();
+          enriched.contextResult().matches().stream().map(ContextMatch::confidence).toList();
 
       assertThat(confidences).containsExactly(0.9, 0.7, 0.5);
     }
@@ -169,7 +169,7 @@ final class ContextEnricherTest {
 
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
-      assertThat(enriched.contextResult().get().metadata().strategyName())
+      assertThat(enriched.contextResult().metadata().strategyName())
           .isEqualTo("metadata-based+git-history");
     }
 
@@ -188,7 +188,7 @@ final class ContextEnricherTest {
 
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
-      assertThat(enriched.contextResult().get().metadata().executionTime())
+      assertThat(enriched.contextResult().metadata().executionTime())
           .isEqualTo(Duration.ofMillis(350));
     }
 
@@ -207,7 +207,7 @@ final class ContextEnricherTest {
 
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
-      assertThat(enriched.contextResult().get().metadata().totalCandidates()).isEqualTo(20);
+      assertThat(enriched.contextResult().metadata().totalCandidates()).isEqualTo(20);
     }
 
     @Test
@@ -225,7 +225,7 @@ final class ContextEnricherTest {
 
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
-      assertThat(enriched.contextResult().get().metadata().highConfidenceCount()).isEqualTo(9);
+      assertThat(enriched.contextResult().metadata().highConfidenceCount()).isEqualTo(9);
     }
 
     @Test
@@ -250,7 +250,7 @@ final class ContextEnricherTest {
       final EnrichedDiffAnalysisBundle enriched = contextEnricher.mergeResults(testBundle, results);
 
       final Map<MatchReason, Integer> combinedReasons =
-          enriched.contextResult().get().metadata().reasonDistribution();
+          enriched.contextResult().metadata().reasonDistribution();
 
       assertThat(combinedReasons).containsEntry(MatchReason.DIRECT_IMPORT, 5);
       assertThat(combinedReasons).containsEntry(MatchReason.SIBLING_FILE, 2);
@@ -278,8 +278,7 @@ final class ContextEnricherTest {
 
       assertThat(enriched.hasContext()).isTrue();
       assertThat(enriched.getContextMatchCount()).isEqualTo(1);
-      assertThat(enriched.contextResult().get().metadata().strategyName())
-          .isEqualTo("metadata-based");
+      assertThat(enriched.contextResult().metadata().strategyName()).isEqualTo("metadata-based");
     }
   }
 }

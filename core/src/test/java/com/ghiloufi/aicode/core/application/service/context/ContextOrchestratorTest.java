@@ -73,7 +73,7 @@ final class ContextOrchestratorTest {
     modification.diffHunkBlocks.add(hunk);
 
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    return new DiffAnalysisBundle(repo, gitDiff, "diff content");
+    return new DiffAnalysisBundle(repo, gitDiff, "diff content", null, null);
   }
 
   @Nested
@@ -174,7 +174,7 @@ final class ContextOrchestratorTest {
               enriched -> {
                 assertThat(enriched.hasContext()).isTrue();
                 assertThat(enriched.getContextMatchCount()).isEqualTo(2);
-                assertThat(enriched.contextResult().get().metadata().strategyName())
+                assertThat(enriched.contextResult().metadata().strategyName())
                     .isEqualTo("metadata-based+git-history");
               })
           .verifyComplete();
@@ -219,7 +219,7 @@ final class ContextOrchestratorTest {
               enriched -> {
                 assertThat(enriched.hasContext()).isTrue();
                 assertThat(enriched.getContextMatchCount()).isEqualTo(1);
-                assertThat(enriched.contextResult().get().metadata().strategyName())
+                assertThat(enriched.contextResult().metadata().strategyName())
                     .isEqualTo("git-history");
               })
           .verifyComplete();
@@ -285,7 +285,7 @@ final class ContextOrchestratorTest {
           .assertNext(
               enriched -> {
                 assertThat(enriched.hasContext()).isTrue();
-                assertThat(enriched.contextResult().get().metadata().strategyName())
+                assertThat(enriched.contextResult().metadata().strategyName())
                     .isEqualTo("git-history");
               })
           .verifyComplete();
@@ -384,7 +384,7 @@ final class ContextOrchestratorTest {
           .assertNext(
               enriched -> {
                 if (enriched.hasContext()) {
-                  assertThat(enriched.contextResult().get().metadata().strategyName())
+                  assertThat(enriched.contextResult().metadata().strategyName())
                       .contains("metadata-based")
                       .contains("git-history")
                       .contains("low-priority");

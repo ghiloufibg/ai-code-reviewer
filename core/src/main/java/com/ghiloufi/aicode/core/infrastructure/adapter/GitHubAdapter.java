@@ -67,6 +67,9 @@ public class GitHubAdapter implements SCMPort {
               final GHRepository ghRepository = gitHub.getRepository(ghRepo.getDisplayName());
               final GHPullRequest pullRequest = ghRepository.getPullRequest(prId.number());
 
+              final String prTitle = pullRequest.getTitle();
+              final String prBody = pullRequest.getBody();
+
               final List<GHPullRequestFileDetail> files = pullRequest.listFiles().toList();
               final String rawDiff = diffBuilder.buildRawDiff(files);
 
@@ -74,7 +77,7 @@ public class GitHubAdapter implements SCMPort {
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff);
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, prTitle, prBody);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(

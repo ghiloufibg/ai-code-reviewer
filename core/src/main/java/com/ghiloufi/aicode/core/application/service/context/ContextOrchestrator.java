@@ -66,7 +66,7 @@ public class ContextOrchestrator {
                 log.info(
                     "Context retrieval complete: {} matches from {} strategies",
                     enriched.getContextMatchCount(),
-                    enriched.contextResult().get().metadata().strategyName());
+                    enriched.contextResult().metadata().strategyName());
               }
             })
         .defaultIfEmpty(new EnrichedDiffAnalysisBundle(diffBundle));

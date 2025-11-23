@@ -1,19 +1,20 @@
 package com.ghiloufi.aicode.core.domain.model;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public record EnrichedDiffAnalysisBundle(
     RepositoryIdentifier repositoryIdentifier,
     GitDiffDocument structuredDiff,
     String rawDiffText,
-    Optional<ContextRetrievalResult> contextResult) {
+    ContextRetrievalResult contextResult,
+    String mergeRequestTitle,
+    String mergeRequestDescription) {
 
   public EnrichedDiffAnalysisBundle {
     Objects.requireNonNull(repositoryIdentifier, "Repository identifier cannot be null");
     Objects.requireNonNull(structuredDiff, "Structured diff cannot be null");
     Objects.requireNonNull(rawDiffText, "Raw diff text cannot be null");
-    Objects.requireNonNull(contextResult, "Context result optional cannot be null");
+    Objects.requireNonNull(contextResult, "Context result cannot be null");
 
     if (rawDiffText.trim().isEmpty()) {
       throw new IllegalArgumentException("Raw diff text cannot be empty");
@@ -25,21 +26,46 @@ public record EnrichedDiffAnalysisBundle(
         originalBundle.repositoryIdentifier(),
         originalBundle.structuredDiff(),
         originalBundle.rawDiffText(),
-        Optional.empty());
+        ContextRetrievalResult.empty(),
+        originalBundle.mergeRequestTitle(),
+        originalBundle.mergeRequestDescription());
+  }
+
+  public EnrichedDiffAnalysisBundle(
+      final DiffAnalysisBundle originalBundle,
+      final String mergeRequestTitle,
+      final String mergeRequestDescription) {
+    this(
+        originalBundle.repositoryIdentifier(),
+        originalBundle.structuredDiff(),
+        originalBundle.rawDiffText(),
+        ContextRetrievalResult.empty(),
+        mergeRequestTitle,
+        mergeRequestDescription);
   }
 
   public EnrichedDiffAnalysisBundle withContext(final ContextRetrievalResult context) {
     Objects.requireNonNull(context, "Context cannot be null");
     return new EnrichedDiffAnalysisBundle(
-        this.repositoryIdentifier, this.structuredDiff, this.rawDiffText, Optional.of(context));
+        this.repositoryIdentifier,
+        this.structuredDiff,
+        this.rawDiffText,
+        context,
+        this.mergeRequestTitle,
+        this.mergeRequestDescription);
   }
 
   public DiffAnalysisBundle toBasicBundle() {
-    return new DiffAnalysisBundle(repositoryIdentifier, structuredDiff, rawDiffText);
+    return new DiffAnalysisBundle(
+        repositoryIdentifier,
+        structuredDiff,
+        rawDiffText,
+        mergeRequestTitle,
+        mergeRequestDescription);
   }
 
   public boolean hasContext() {
-    return contextResult.isPresent();
+    return !contextResult.isEmpty();
   }
 
   public int getTotalLineCount() {
@@ -51,7 +77,7 @@ public record EnrichedDiffAnalysisBundle(
   }
 
   public int getContextMatchCount() {
-    return contextResult.map(ContextRetrievalResult::getTotalMatches).orElse(0);
+    return contextResult.getTotalMatches();
   }
 
   public String getSummary() {

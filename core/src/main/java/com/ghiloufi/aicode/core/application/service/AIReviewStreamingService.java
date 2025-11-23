@@ -9,7 +9,6 @@ import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
@@ -17,11 +16,15 @@ public class AIReviewStreamingService {
 
   private final AIInteractionPort aiPort;
   private final PromptBuilder promptBuilder;
+  private final TicketContextExtractor ticketContextExtractor;
 
   public AIReviewStreamingService(
-      final AIInteractionPort aiPort, final PromptBuilder promptBuilder) {
+      final AIInteractionPort aiPort,
+      final PromptBuilder promptBuilder,
+      final TicketContextExtractor ticketContextExtractor) {
     this.aiPort = aiPort;
     this.promptBuilder = promptBuilder;
+    this.ticketContextExtractor = ticketContextExtractor;
   }
 
   public Flux<ReviewChunk> reviewCodeStreaming(
@@ -34,8 +37,19 @@ public class AIReviewStreamingService {
     final ReviewConfiguration configWithLlmMetadata =
         config.withLlmMetadata(aiPort.getProviderName(), aiPort.getModelName());
 
-    return Mono.fromCallable(
-            () -> promptBuilder.buildReviewPrompt(enrichedDiff, configWithLlmMetadata))
+    return ticketContextExtractor
+        .extractFromMergeRequest(
+            enrichedDiff.mergeRequestTitle(), enrichedDiff.mergeRequestDescription())
+        .map(
+            ticketContext -> {
+              if (ticketContext.isEmpty()) {
+                log.debug("No ticket context found");
+              } else {
+                log.debug("Ticket context extracted: {}", ticketContext.ticketId());
+              }
+              return promptBuilder.buildReviewPrompt(
+                  enrichedDiff, configWithLlmMetadata, ticketContext);
+            })
         .doOnNext(
             prompt ->
                 log.debug(
