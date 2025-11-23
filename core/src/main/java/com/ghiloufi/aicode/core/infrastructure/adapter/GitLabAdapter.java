@@ -84,18 +84,22 @@ public class GitLabAdapter implements SCMPort {
                       .getMergeRequestChanges(projectIdOrPath, (long) mrId.iid());
 
               final List<Diff> diffs = mergeRequestWithChanges.getChanges();
+              final String mrTitle = mergeRequestWithChanges.getTitle();
+              final String mrDescription = mergeRequestWithChanges.getDescription();
+
               log.debug(
-                  "Fetched {} diffs for {}/MR!{}",
+                  "Fetched {} diffs for {}/MR!{} - Title: {}",
                   diffs.size(),
                   gitLabRepo.projectId(),
-                  mrId.iid());
+                  mrId.iid(),
+                  mrTitle);
 
               final String rawDiff = diffBuilder.buildRawDiff(diffs);
               final GitDiffDocument structuredDiff = diffParser.parse(rawDiff);
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff);
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, mrTitle, mrDescription);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(

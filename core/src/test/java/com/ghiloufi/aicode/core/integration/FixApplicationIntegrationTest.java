@@ -221,7 +221,7 @@ final class FixApplicationIntegrationTest {
         """;
     final RepositoryIdentifier repo =
         RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff);
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null, null);
   }
 
   private List<ReviewChunk> createSecurityIssueChunks() {
@@ -414,7 +414,7 @@ final class FixApplicationIntegrationTest {
     private List<ReviewChunk> reviewChunks = List.of();
 
     TestAIReviewStreamingService() {
-      super(null, null);
+      super(null, null, null);
     }
 
     final void setReviewChunks(final List<ReviewChunk> chunks) {

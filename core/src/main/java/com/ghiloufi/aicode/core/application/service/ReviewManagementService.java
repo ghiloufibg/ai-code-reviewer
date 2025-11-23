@@ -283,5 +283,4 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .doOnComplete(() -> log.info("Completed fetching repositories for: {}", provider))
         .doOnError(error -> log.error("Failed to fetch repositories for: {}", provider, error));
   }
-
 }

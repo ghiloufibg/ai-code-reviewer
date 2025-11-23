@@ -25,7 +25,7 @@ final class DiffAnalysisBundleTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       assertThat(bundle.repositoryIdentifier()).isEqualTo(repo);
       assertThat(bundle.structuredDiff()).isEqualTo(gitDiff);
@@ -40,7 +40,7 @@ final class DiffAnalysisBundleTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      assertThatThrownBy(() -> new DiffAnalysisBundle(null, gitDiff, rawDiff))
+      assertThatThrownBy(() -> new DiffAnalysisBundle(null, gitDiff, rawDiff, null, null))
           .isInstanceOf(NullPointerException.class);
     }
 
@@ -51,7 +51,7 @@ final class DiffAnalysisBundleTest {
           RepositoryIdentifier.create(SourceProvider.GITLAB, "test-owner/test-repo");
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, null, rawDiff))
+      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, null, rawDiff, null, null))
           .isInstanceOf(NullPointerException.class);
     }
 
@@ -64,7 +64,7 @@ final class DiffAnalysisBundleTest {
           new GitFileModification("src/Test.java", "src/Test.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
 
-      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, null))
+      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, null, null, null))
           .isInstanceOf(NullPointerException.class);
     }
 
@@ -77,7 +77,7 @@ final class DiffAnalysisBundleTest {
           new GitFileModification("src/Test.java", "src/Test.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
 
-      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, ""))
+      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, "", null, null))
           .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -90,7 +90,7 @@ final class DiffAnalysisBundleTest {
           new GitFileModification("src/Test.java", "src/Test.java");
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
 
-      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, "   "))
+      assertThatThrownBy(() -> new DiffAnalysisBundle(repo, gitDiff, "   ", null, null))
           .isInstanceOf(IllegalArgumentException.class);
     }
   }
@@ -114,7 +114,7 @@ final class DiffAnalysisBundleTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       assertThat(bundle.getTotalLineCount()).isEqualTo(2);
     }
@@ -130,7 +130,7 @@ final class DiffAnalysisBundleTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(mod1, mod2));
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       assertThat(bundle.getModifiedFileCount()).isEqualTo(2);
     }
@@ -149,7 +149,7 @@ final class DiffAnalysisBundleTest {
       final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
       final String rawDiff = "diff --git a/src/Test.java b/src/Test.java";
 
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null, null);
 
       assertThat(bundle.getSummary()).contains("1 fichier(s)");
       assertThat(bundle.getSummary()).contains("1 ligne(s)");
