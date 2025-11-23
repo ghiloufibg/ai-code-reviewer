@@ -19,12 +19,14 @@ import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 final class CodeReviewControllerTest {
 
@@ -46,7 +48,10 @@ final class CodeReviewControllerTest {
         new FixApplicationService(testSCMPort, mockRepository);
     final CodeReviewController controller =
         new CodeReviewController(
-            reviewManagementUseCase, fixApplicationService, sseFormatter, mockRepository);
+            reviewManagementUseCase,
+            Optional.of(fixApplicationService),
+            sseFormatter,
+            mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)
@@ -458,6 +463,30 @@ final class CodeReviewControllerTest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
+    }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsFor(
+            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
+            final String filePath,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsSince(
+            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
     }
   }
 }

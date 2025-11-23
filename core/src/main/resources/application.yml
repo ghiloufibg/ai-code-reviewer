@@ -4,6 +4,24 @@ core:
     timeout-minutes: 10
     enable-caching: true
 
+context-retrieval:
+  enabled: true
+  strategy-timeout-seconds: 5
+  enabled-strategies:
+    - metadata-based
+    - git-history
+  rollout:
+    percentage: 100
+    skip-large-diffs: true
+    max-diff-lines: 5000
+
+  git-history:
+    enabled: true
+    analysis-depth: 100
+    co-change-threshold: 3
+    confidence-minimum: 0.3
+    time-window-days: 90
+
 logging:
   level:
     com.ghiloufi.aicode.core: DEBUG

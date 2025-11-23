@@ -21,13 +21,4 @@ public class SCMRateLimitException extends SCMException {
     this.resetTime = resetTime;
     this.remainingRequests = remainingRequests;
   }
-
-  public SCMRateLimitException(
-      final String message,
-      final SourceProvider provider,
-      final String operationContext,
-      final Instant resetTime,
-      final int remainingRequests) {
-    this(message, provider, operationContext, resetTime, remainingRequests, null);
-  }
 }

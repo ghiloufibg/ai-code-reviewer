@@ -95,7 +95,7 @@ public class GitLabAdapter implements SCMPort {
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(structuredDiff, rawDiff);
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(
@@ -834,5 +834,148 @@ public class GitLabAdapter implements SCMPort {
           e);
       return true;
     }
+  }
+
+  @Override
+  public Mono<List<String>> listRepositoryFiles() {
+    return Mono.just(List.of());
+  }
+
+  @Override
+  public Flux<CommitInfo> getCommitsFor(
+      final RepositoryIdentifier repo,
+      final String filePath,
+      final java.time.LocalDate since,
+      final int maxResults) {
+    return Flux.defer(
+            () -> {
+              try {
+                final GitLabRepositoryId gitLabRepo =
+                    identifierValidator.validateGitLabRepository(repo);
+
+                log.debug(
+                    "Fetching commits for file {} in project {} since {}",
+                    filePath,
+                    gitLabRepo.projectId(),
+                    since);
+
+                final Object projectIdOrPath = gitLabRepo.projectId();
+                final java.util.Date sinceDate =
+                    java.util.Date.from(
+                        since.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+
+                final List<org.gitlab4j.api.models.Commit> commits =
+                    gitLabApi
+                        .getCommitsApi()
+                        .getCommits(projectIdOrPath, null, sinceDate, null, filePath);
+
+                log.debug("Found {} commits for file {}", commits.size(), filePath);
+
+                return Flux.fromIterable(commits)
+                    .take(maxResults)
+                    .map(this::mapGitLabCommitToCommitInfo);
+
+              } catch (final GitLabApiException e) {
+                final GitLabRepositoryId gitLabRepo =
+                    identifierValidator.validateGitLabRepository(repo);
+                log.error(
+                    "Failed to fetch commits for file {} in project {}",
+                    filePath,
+                    gitLabRepo.projectId(),
+                    e);
+                return Flux.error(
+                    new SCMException(
+                        "Failed to fetch commit history for file: " + filePath,
+                        SourceProvider.GITLAB,
+                        "getCommitsFor",
+                        e));
+              }
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  @Override
+  public Flux<CommitInfo> getCommitsSince(
+      final RepositoryIdentifier repo, final java.time.LocalDate since, final int maxResults) {
+    return Flux.defer(
+            () -> {
+              try {
+                final GitLabRepositoryId gitLabRepo =
+                    identifierValidator.validateGitLabRepository(repo);
+
+                log.debug(
+                    "Fetching commits for project {} since {}", gitLabRepo.projectId(), since);
+
+                final Object projectIdOrPath = gitLabRepo.projectId();
+                final java.util.Date sinceDate =
+                    java.util.Date.from(
+                        since.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+
+                final List<org.gitlab4j.api.models.Commit> commits =
+                    gitLabApi.getCommitsApi().getCommits(projectIdOrPath, null, sinceDate, null);
+
+                log.debug("Found {} commits since {}", commits.size(), since);
+
+                return Flux.fromIterable(commits)
+                    .take(maxResults)
+                    .flatMap(commit -> fetchCommitWithChangedFiles(projectIdOrPath, commit));
+
+              } catch (final GitLabApiException e) {
+                final GitLabRepositoryId gitLabRepo =
+                    identifierValidator.validateGitLabRepository(repo);
+                log.error("Failed to fetch commits for project {}", gitLabRepo.projectId(), e);
+                return Flux.error(
+                    new SCMException(
+                        "Failed to fetch commit history",
+                        SourceProvider.GITLAB,
+                        "getCommitsSince",
+                        e));
+              }
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private Mono<CommitInfo> fetchCommitWithChangedFiles(
+      final Object projectIdOrPath, final org.gitlab4j.api.models.Commit commit) {
+    return Mono.fromCallable(
+            () -> {
+              try {
+                final List<org.gitlab4j.api.models.Diff> diffs =
+                    gitLabApi.getCommitsApi().getDiff(projectIdOrPath, commit.getId());
+
+                final List<String> changedFiles =
+                    diffs != null
+                        ? diffs.stream()
+                            .map(org.gitlab4j.api.models.Diff::getNewPath)
+                            .filter(path -> path != null && !path.isEmpty())
+                            .toList()
+                        : List.of();
+
+                return new CommitInfo(
+                    commit.getId(),
+                    commit.getMessage() != null ? commit.getMessage() : "",
+                    commit.getAuthorName() != null ? commit.getAuthorName() : "Unknown",
+                    commit.getCommittedDate() != null
+                        ? commit.getCommittedDate().toInstant()
+                        : java.time.Instant.now(),
+                    changedFiles);
+
+              } catch (final GitLabApiException e) {
+                log.warn("Failed to fetch diff for commit {}, using partial data", commit.getId());
+                return mapGitLabCommitToCommitInfo(commit);
+              }
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private CommitInfo mapGitLabCommitToCommitInfo(final org.gitlab4j.api.models.Commit commit) {
+    return new CommitInfo(
+        commit.getId(),
+        commit.getMessage() != null ? commit.getMessage() : "",
+        commit.getAuthorName() != null ? commit.getAuthorName() : "Unknown",
+        commit.getCommittedDate() != null
+            ? commit.getCommittedDate().toInstant()
+            : java.time.Instant.now(),
+        List.of());
   }
 }

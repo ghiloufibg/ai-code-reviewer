@@ -20,13 +20,4 @@ public class SCMResourceNotFoundException extends SCMException {
     this.resourceType = resourceType;
     this.resourceId = resourceId;
   }
-
-  public SCMResourceNotFoundException(
-      final String message,
-      final SourceProvider provider,
-      final String operationContext,
-      final String resourceType,
-      final String resourceId) {
-    this(message, provider, operationContext, resourceType, resourceId, null);
-  }
 }

@@ -12,7 +12,7 @@ public final class ReviewSummaryFormatter {
   private static final int SUMMARY_PREVIEW_LENGTH = 200;
   private static final int SEPARATOR_LINE_LENGTH = 80;
 
-  public final String formatSummary(final ReviewResult result) {
+  public String formatSummary(final ReviewResult result) {
     final StringBuilder summary = new StringBuilder();
 
     summary.append("\n").append("=".repeat(SEPARATOR_LINE_LENGTH)).append("\n");

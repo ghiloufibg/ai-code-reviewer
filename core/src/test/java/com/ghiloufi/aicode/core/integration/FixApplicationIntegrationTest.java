@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.application.service.AIReviewStreamingService;
 import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.application.service.ReviewManagementService;
+import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
@@ -57,9 +59,14 @@ final class FixApplicationIntegrationTest {
             com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
                 .class);
 
+    final TestContextOrchestrator testContextOrchestrator = new TestContextOrchestrator();
     reviewManagementService =
         new ReviewManagementService(
-            testAIService, scmFactory, testChunkAccumulator, testReviewRepository);
+            testAIService,
+            scmFactory,
+            testChunkAccumulator,
+            testReviewRepository,
+            testContextOrchestrator);
 
     fixApplicationService = new FixApplicationService(testGitLabPort, mockRepository);
   }
@@ -212,7 +219,9 @@ final class FixApplicationIntegrationTest {
         -String query = "SELECT * FROM users WHERE id = " + userId;
         +String query = "SELECT * FROM users WHERE id = " + userId;
         """;
-    return new DiffAnalysisBundle(gitDiffDocument, rawDiff);
+    final RepositoryIdentifier repo =
+        RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff);
   }
 
   private List<ReviewChunk> createSecurityIssueChunks() {
@@ -374,6 +383,30 @@ final class FixApplicationIntegrationTest {
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
     }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsFor(
+            final RepositoryIdentifier repo,
+            final String filePath,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsSince(
+            final RepositoryIdentifier repo,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
   }
 
   private static final class TestAIReviewStreamingService extends AIReviewStreamingService {
@@ -390,7 +423,7 @@ final class FixApplicationIntegrationTest {
 
     @Override
     public Flux<ReviewChunk> reviewCodeStreaming(
-        final DiffAnalysisBundle diff, final ReviewConfiguration config) {
+        final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
       return Flux.fromIterable(reviewChunks);
     }
 
@@ -457,6 +490,19 @@ final class FixApplicationIntegrationTest {
     @Override
     public Mono<Void> save(final String id, final ReviewResult reviewResult) {
       return Mono.empty();
+    }
+  }
+
+  private static final class TestContextOrchestrator extends ContextOrchestrator {
+
+    TestContextOrchestrator() {
+      super(List.of(), null, null);
+    }
+
+    @Override
+    public Mono<EnrichedDiffAnalysisBundle> retrieveEnrichedContext(
+        final DiffAnalysisBundle diffBundle) {
+      return Mono.just(new EnrichedDiffAnalysisBundle(diffBundle));
     }
   }
 }

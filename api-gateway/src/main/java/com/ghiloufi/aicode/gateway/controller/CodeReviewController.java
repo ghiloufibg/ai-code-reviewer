@@ -36,7 +36,7 @@ import reactor.core.publisher.Mono;
 public class CodeReviewController {
 
   private final ReviewManagementUseCase reviewManagementUseCase;
-  private final FixApplicationService fixApplicationService;
+  private final Optional<FixApplicationService> fixApplicationService;
   private final SSEFormatter sseFormatter;
   private final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
       reviewIssueRepository;
@@ -419,7 +419,12 @@ public class CodeReviewController {
         changeRequest.getClass().getSimpleName());
 
     return fixApplicationService
-        .applyFixByIssueId(repository, changeRequest, issueId)
+        .map(service -> service.applyFixByIssueId(repository, changeRequest, issueId))
+        .orElseGet(
+            () ->
+                Mono.error(
+                    new UnsupportedOperationException(
+                        "Fix application feature is disabled. Enable it in configuration: features.fix-application.enabled=true")))
         .map(
             commitResult ->
                 Map.<String, Object>of(
@@ -513,8 +518,19 @@ public class CodeReviewController {
         ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
 
     return fixApplicationService
-        .applyFix(
-            repository, changeRequest, request.filePath(), request.fixDiff(), request.issueTitle())
+        .map(
+            service ->
+                service.applyFix(
+                    repository,
+                    changeRequest,
+                    request.filePath(),
+                    request.fixDiff(),
+                    request.issueTitle()))
+        .orElseGet(
+            () ->
+                Mono.error(
+                    new UnsupportedOperationException(
+                        "Fix application feature is disabled. Enable it in configuration: features.fix-application.enabled=true")))
         .map(
             commitResult ->
                 Map.<String, Object>of(

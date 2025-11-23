@@ -11,7 +11,7 @@ public final class ReviewResultFormatter {
   private static final String ISSUES_SECTION_TEMPLATE = "## 🔴 Issues Found (%d)\n\n";
   private static final String NOTES_SECTION_TEMPLATE = "## 📝 Suggestions & Notes (%d)\n\n";
 
-  public final String format(final ReviewResult reviewResult) {
+  public String format(final ReviewResult reviewResult) {
     final StringBuilder builder = new StringBuilder();
     builder.append(HEADER);
 

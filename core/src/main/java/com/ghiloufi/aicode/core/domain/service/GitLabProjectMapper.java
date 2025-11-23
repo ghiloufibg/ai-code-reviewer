@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class GitLabProjectMapper {
 
-  public final RepositoryInfo toRepositoryInfo(final Project project) {
+  public RepositoryInfo toRepositoryInfo(final Project project) {
     return new RepositoryInfo(
         project.getPathWithNamespace(),
         project.getName(),

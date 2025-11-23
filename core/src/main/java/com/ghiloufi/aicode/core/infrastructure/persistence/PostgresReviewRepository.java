@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.infrastructure.persistence;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.domain.model.ReviewState.StateTransition;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewIssueEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewNoteEntity;
@@ -48,22 +49,18 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
-          final Optional<ReviewEntity> existingWithIssues =
-              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
+          final Optional<ReviewEntity> existing =
+              jpaRepository.findByRepositoryIdAndChangeRequestIdAndProvider(
                   repositoryId, changeRequestId, provider);
-          if (existingWithIssues.isPresent()) {
-            jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
-                repositoryId, changeRequestId, provider);
-          }
 
           final ReviewEntity entity;
-          if (existingWithIssues.isPresent()) {
-            entity = existingWithIssues.get();
-            entity.setSummary(result.summary);
-            entity.setLlmProvider(result.llmProvider);
-            entity.setLlmModel(result.llmModel);
-            entity.setRawLlmResponse(result.rawLlmResponse);
-            updateIssuesAndNotes(entity, result);
+          if (existing.isPresent()) {
+            final ReviewEntity existingEntity = existing.get();
+            jpaRepository.delete(existingEntity);
+            jpaRepository.flush();
+
+            entity = convertToEntity(reviewId, result);
+            entity.setCreatedAt(existingEntity.getCreatedAt());
           } else {
             entity = convertToEntity(reviewId, result);
           }
@@ -71,49 +68,6 @@ public class PostgresReviewRepository {
           jpaRepository.save(entity);
           log.debug("Saved review: {} with state: PENDING", reviewId);
         });
-  }
-
-  private void updateIssuesAndNotes(final ReviewEntity entity, final ReviewResult result) {
-    entity.getIssues().clear();
-    entity.getNotes().clear();
-
-    if (result.issues != null) {
-      result.issues.forEach(
-          issue -> {
-            final ReviewIssueEntity issueEntity =
-                ReviewIssueEntity.builder()
-                    .filePath(issue.file)
-                    .startLine(issue.start_line)
-                    .severity(issue.severity)
-                    .title(issue.title)
-                    .suggestion(issue.suggestion)
-                    .inlineCommentPosted(
-                        issue.inlineCommentPosted != null && issue.inlineCommentPosted)
-                    .scmCommentId(issue.scmCommentId)
-                    .fallbackReason(issue.fallbackReason)
-                    .positionMetadata(issue.positionMetadata)
-                    .build();
-            entity.addIssue(issueEntity);
-          });
-    }
-
-    if (result.non_blocking_notes != null) {
-      result.non_blocking_notes.forEach(
-          note -> {
-            final ReviewNoteEntity noteEntity =
-                ReviewNoteEntity.builder()
-                    .filePath(note.file)
-                    .lineNumber(note.line)
-                    .note(note.note)
-                    .inlineCommentPosted(
-                        note.inlineCommentPosted != null && note.inlineCommentPosted)
-                    .scmCommentId(note.scmCommentId)
-                    .fallbackReason(note.fallbackReason)
-                    .positionMetadata(note.positionMetadata)
-                    .build();
-            entity.addNote(noteEntity);
-          });
-    }
   }
 
   @Transactional(readOnly = true)
@@ -166,53 +120,21 @@ public class PostgresReviewRepository {
           final String changeRequestId = extractChangeRequestId(reviewId);
           final String provider = extractProvider(reviewId);
 
-          jpaRepository.findByRepositoryIdAndChangeRequestIdAndProviderWithIssues(
-              repositoryId, changeRequestId, provider);
-          final ReviewEntity entity =
+          final ReviewEntity existingEntity =
               jpaRepository
-                  .findByRepositoryIdAndChangeRequestIdAndProviderWithNotes(
+                  .findByRepositoryIdAndChangeRequestIdAndProvider(
                       repositoryId, changeRequestId, provider)
                   .orElseThrow(() -> new IllegalArgumentException("Review not found: " + reviewId));
 
-          entity.setSummary(result.summary);
-          entity.setLlmProvider(result.llmProvider);
-          entity.setLlmModel(result.llmModel);
-          entity.setRawLlmResponse(result.rawLlmResponse);
+          jpaRepository.delete(existingEntity);
+          jpaRepository.flush();
+
+          final ReviewEntity entity = convertToEntity(reviewId, result);
+          entity.setCreatedAt(existingEntity.getCreatedAt());
           entity.setStatus(newState);
 
           if (newState.isTerminal()) {
             entity.setCompletedAt(Instant.now());
-          }
-
-          entity.getIssues().clear();
-          entity.getNotes().clear();
-
-          if (result.issues != null) {
-            result.issues.forEach(
-                issue -> {
-                  final ReviewIssueEntity issueEntity =
-                      ReviewIssueEntity.builder()
-                          .filePath(issue.file)
-                          .startLine(issue.start_line)
-                          .severity(issue.severity)
-                          .title(issue.title)
-                          .suggestion(issue.suggestion)
-                          .build();
-                  entity.addIssue(issueEntity);
-                });
-          }
-
-          if (result.non_blocking_notes != null) {
-            result.non_blocking_notes.forEach(
-                note -> {
-                  final ReviewNoteEntity noteEntity =
-                      ReviewNoteEntity.builder()
-                          .filePath(note.file)
-                          .lineNumber(note.line)
-                          .note(note.note)
-                          .build();
-                  entity.addNote(noteEntity);
-                });
           }
 
           jpaRepository.save(entity);
@@ -233,6 +155,20 @@ public class PostgresReviewRepository {
                   repositoryId, changeRequestId, provider)
               .map(entity -> StateTransition.now(entity.getStatus()));
         });
+  }
+
+  @Transactional(readOnly = true)
+  public Mono<UUID> findByRepositoryAndChangeRequest(
+      final String repositoryId, final int changeRequestNumber, final SourceProvider provider) {
+    return Mono.fromSupplier(
+        () ->
+            jpaRepository
+                .findByRepositoryIdAndChangeRequestIdAndProvider(
+                    repositoryId,
+                    String.valueOf(changeRequestNumber),
+                    provider.name().toLowerCase())
+                .map(ReviewEntity::getId)
+                .orElse(null));
   }
 
   @Scheduled(fixedRate = 3600000)

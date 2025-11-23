@@ -27,12 +27,4 @@ public class SCMProviderFactory {
         .orElseThrow(
             () -> new UnsupportedOperationException("Provider not registered: " + provider));
   }
-
-  public List<SourceProvider> getEnabledProviders() {
-    return List.copyOf(providers.keySet());
-  }
-
-  public boolean isProviderAvailable(final SourceProvider provider) {
-    return providers.containsKey(provider);
-  }
 }

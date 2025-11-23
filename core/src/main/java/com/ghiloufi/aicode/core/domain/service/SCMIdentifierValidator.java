@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 @Service
 public final class SCMIdentifierValidator {
 
-  public final GitLabRepositoryId validateGitLabRepository(final RepositoryIdentifier repo) {
+  public GitLabRepositoryId validateGitLabRepository(final RepositoryIdentifier repo) {
     if (!(repo instanceof GitLabRepositoryId gitLabRepo)) {
       throw new IllegalArgumentException(
           "Expected GitLab repository ID, got: " + repo.getClass().getSimpleName());
@@ -14,8 +14,7 @@ public final class SCMIdentifierValidator {
     return gitLabRepo;
   }
 
-  public final MergeRequestId validateGitLabChangeRequest(
-      final ChangeRequestIdentifier changeRequest) {
+  public MergeRequestId validateGitLabChangeRequest(final ChangeRequestIdentifier changeRequest) {
     if (!(changeRequest instanceof MergeRequestId mrId)) {
       throw new IllegalArgumentException(
           "Expected Merge Request ID, got: " + changeRequest.getClass().getSimpleName());
@@ -23,7 +22,7 @@ public final class SCMIdentifierValidator {
     return mrId;
   }
 
-  public final GitHubRepositoryId validateGitHubRepository(final RepositoryIdentifier repo) {
+  public GitHubRepositoryId validateGitHubRepository(final RepositoryIdentifier repo) {
     if (!(repo instanceof GitHubRepositoryId gitHubRepo)) {
       throw new IllegalArgumentException(
           "Expected GitHub repository ID, got: " + repo.getClass().getSimpleName());
@@ -31,8 +30,7 @@ public final class SCMIdentifierValidator {
     return gitHubRepo;
   }
 
-  public final PullRequestId validateGitHubChangeRequest(
-      final ChangeRequestIdentifier changeRequest) {
+  public PullRequestId validateGitHubChangeRequest(final ChangeRequestIdentifier changeRequest) {
     if (!(changeRequest instanceof PullRequestId prId)) {
       throw new IllegalArgumentException(
           "Expected Pull Request ID, got: " + changeRequest.getClass().getSimpleName());

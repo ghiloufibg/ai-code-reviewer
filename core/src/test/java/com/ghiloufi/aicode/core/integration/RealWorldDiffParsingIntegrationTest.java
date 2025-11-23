@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.nio.charset.StandardCharsets;
@@ -18,11 +20,13 @@ final class RealWorldDiffParsingIntegrationTest {
 
   private UnifiedDiffParser diffParser;
   private DiffFormatter diffFormatter;
+  private RepositoryIdentifier testRepo;
 
   @BeforeEach
   final void setUp() {
     diffParser = new UnifiedDiffParser();
     diffFormatter = new DiffFormatter();
+    testRepo = RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
   }
 
   @Nested
@@ -86,7 +90,7 @@ final class RealWorldDiffParsingIntegrationTest {
       final String rawDiff = loadDiffFromClasspath("diff-samples/medium-pr.diff");
 
       final GitDiffDocument parsedDiff = diffParser.parse(rawDiff);
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(parsedDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff);
 
       assertThat(bundle).isNotNull();
       assertThat(bundle.structuredDiff()).isEqualTo(parsedDiff);
@@ -171,7 +175,7 @@ final class RealWorldDiffParsingIntegrationTest {
       final String rawDiff = loadDiffFromClasspath("diff-samples/large-pr.diff");
 
       final GitDiffDocument parsedDiff = diffParser.parse(rawDiff);
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(parsedDiff, rawDiff);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff);
 
       assertThat(bundle).isNotNull();
       assertThat(bundle.structuredDiff()).isEqualTo(parsedDiff);

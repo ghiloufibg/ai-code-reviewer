@@ -2,8 +2,10 @@ package com.ghiloufi.aicode.core.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
@@ -39,6 +41,7 @@ final class ReviewManagementServiceTest {
   private TestAIReviewStreamingService testAIReviewStreamingService;
   private TestReviewChunkAccumulator testReviewChunkAccumulator;
   private TestPostgresReviewRepository testReviewRepository;
+  private TestContextOrchestrator testContextOrchestrator;
 
   @BeforeEach
   final void setUp() {
@@ -47,12 +50,14 @@ final class ReviewManagementServiceTest {
     testAIReviewStreamingService = new TestAIReviewStreamingService();
     testReviewChunkAccumulator = new TestReviewChunkAccumulator();
     testReviewRepository = new TestPostgresReviewRepository();
+    testContextOrchestrator = new TestContextOrchestrator();
     reviewManagementService =
         new ReviewManagementService(
             testAIReviewStreamingService,
             scmProviderFactory,
             testReviewChunkAccumulator,
-            testReviewRepository);
+            testReviewRepository,
+            testContextOrchestrator);
   }
 
   @Test
@@ -377,7 +382,9 @@ final class ReviewManagementServiceTest {
   private DiffAnalysisBundle createTestDiffAnalysisBundle() {
     final GitDiffDocument gitDiffDocument = new GitDiffDocument(List.of());
     final String rawDiff = "--- a/file.java\n+++ b/file.java\n@@ -1,1 +1,1 @@\n-old\n+new";
-    return new DiffAnalysisBundle(gitDiffDocument, rawDiff);
+    final RepositoryIdentifier repo =
+        RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff);
   }
 
   private static final class TestSCMPort implements SCMPort {
@@ -489,6 +496,30 @@ final class ReviewManagementServiceTest {
     public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
       return Mono.just(true);
     }
+
+    @Override
+    public Mono<java.util.List<String>> listRepositoryFiles() {
+      return Mono.just(java.util.List.of());
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsFor(
+            final RepositoryIdentifier repo,
+            final String filePath,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
+        getCommitsSince(
+            final RepositoryIdentifier repo,
+            final java.time.LocalDate since,
+            final int maxResults) {
+      return reactor.core.publisher.Flux.empty();
+    }
   }
 
   private static final class TestSCMProviderFactory extends SCMProviderFactory {
@@ -525,7 +556,7 @@ final class ReviewManagementServiceTest {
 
     @Override
     public Flux<ReviewChunk> reviewCodeStreaming(
-        final DiffAnalysisBundle diff, final ReviewConfiguration config) {
+        final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
       if (shouldFail) {
         return Flux.error(new RuntimeException("Streaming failed"));
       }
@@ -626,6 +657,19 @@ final class ReviewManagementServiceTest {
     @Override
     public Mono<Optional<ReviewState.StateTransition>> getState(final String reviewId) {
       return Mono.just(Optional.empty());
+    }
+  }
+
+  private static final class TestContextOrchestrator extends ContextOrchestrator {
+
+    TestContextOrchestrator() {
+      super(List.of(), null, null);
+    }
+
+    @Override
+    public Mono<EnrichedDiffAnalysisBundle> retrieveEnrichedContext(
+        final DiffAnalysisBundle diffBundle) {
+      return Mono.just(new EnrichedDiffAnalysisBundle(diffBundle));
     }
   }
 }
