@@ -73,12 +73,17 @@ services:
       LLM_PROVIDERS_OPENAI_DEFAULT_MODEL: "${LLM_MODEL:-gpt-4o-mini}"
       LLM_PROVIDERS_OPENAI_API_KEY: "${LLM_API_KEY}"
 
+      # Ticket System Configuration - Jira (enabled by default for dev)
+      TICKET_SYSTEM_JIRA_ENABLED: "true"
+      TICKET_SYSTEM_JIRA_BASE_URL: "${JIRA_BASE_URL:-http://host.docker.internal:8080}"
+      TICKET_SYSTEM_JIRA_TOKEN: "${JIRA_TOKEN}"
+
       # Application Configuration (more verbose logging for dev)
       LOGGING_LEVEL_COM_GHILOUFI_AICODE: "${LOG_LEVEL:-DEBUG}"
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "DEBUG"
 
-      # JVM Options for development
-      JAVA_OPTS: "-Xmx1024m -Xms512m"
+      # JVM Options for development (with remote debugging enabled)
+      JAVA_OPTS: "-Xmx1024m -Xms512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     ports:
       - "8081:8080"      # AI Code Reviewer API
       - "5005:5005"      # Remote debugging port

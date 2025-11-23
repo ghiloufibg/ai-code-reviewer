@@ -99,6 +99,13 @@ context-retrieval:
     skip-large-diffs: true
     max-diff-lines: 5000
 
+# Ticket System Configuration
+ticket-system:
+  jira:
+    enabled: true
+    base-url: ${JIRA_BASE_URL:http://localhost:8080}
+    token: ${JIRA_TOKEN:}
+
 # Feature Flags
 features:
   fix-application:

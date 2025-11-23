@@ -15,6 +15,7 @@ import com.ghiloufi.aicode.core.domain.model.MatchReason;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
+import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import java.time.Duration;
 import java.util.List;
@@ -49,11 +50,12 @@ class PromptBuilderTest {
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
     final String rawDiff = "--- a/src/Test.java\n+++ b/src/Test.java\n@@ -10,2 +10,3 @@";
 
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, rawDiff);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, rawDiff, null, null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+    final String prompt =
+        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
     assertThat(prompt).contains("FILE: src/Test.java");
     assertThat(prompt).contains("10   │   context");
@@ -71,11 +73,13 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw diff text");
+    final DiffAnalysisBundle bundle =
+        new DiffAnalysisBundle(testRepo, diff, "raw diff text", null, null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+    final String prompt =
+        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
     assertThat(prompt).contains("50   │   line 50");
     assertThat(prompt).contains("51   │ + added line 51");
@@ -92,11 +96,12 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw");
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+    final String prompt =
+        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
     assertThat(prompt).contains("code review assistant");
     assertThat(prompt).contains("[REPO]");
@@ -112,7 +117,7 @@ class PromptBuilderTest {
   void should_throw_exception_when_diff_bundle_is_null() {
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(null, config))
+    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(null, config, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("EnrichedDiffAnalysisBundle cannot be null");
   }
@@ -126,10 +131,10 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw");
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
 
-    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(enrichedBundle, null))
+    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(enrichedBundle, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ReviewConfiguration cannot be null");
   }
@@ -147,11 +152,12 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
       final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+      final String prompt =
+          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
       assertThat(prompt).doesNotContain("[CONTEXT]");
       assertThat(prompt).doesNotContain("[/CONTEXT]");
@@ -167,7 +173,7 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
 
       final List<ContextMatch> matches =
           List.of(
@@ -185,7 +191,8 @@ class PromptBuilderTest {
           new EnrichedDiffAnalysisBundle(bundle).withContext(contextResult);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+      final String prompt =
+          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
       assertThat(prompt).contains("[CONTEXT]");
       assertThat(prompt).contains("[/CONTEXT]");
@@ -209,7 +216,7 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw");
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
 
       final List<ContextMatch> matches =
           List.of(
@@ -227,7 +234,8 @@ class PromptBuilderTest {
           new EnrichedDiffAnalysisBundle(bundle).withContext(contextResult);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config);
+      final String prompt =
+          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
       assertThat(prompt).contains("metadata-based+git-history");
       assertThat(prompt).contains("FileA.java");
