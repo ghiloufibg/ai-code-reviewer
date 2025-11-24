@@ -165,6 +165,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                                 changeRequest.getDisplayName(),
                                 error))
                     .then(
+                        Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
+                    .then(
                         Mono.defer(
                             () -> {
                               final String reviewId =
