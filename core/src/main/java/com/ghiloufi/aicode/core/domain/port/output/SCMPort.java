@@ -22,6 +22,9 @@ public interface SCMPort {
   Mono<Void> publishReview(
       RepositoryIdentifier repo, ChangeRequestIdentifier changeRequest, ReviewResult reviewResult);
 
+  Mono<Void> publishSummaryComment(
+      RepositoryIdentifier repo, ChangeRequestIdentifier changeRequest, String summaryComment);
+
   Mono<Boolean> isChangeRequestOpen(
       RepositoryIdentifier repo, ChangeRequestIdentifier changeRequest);
 

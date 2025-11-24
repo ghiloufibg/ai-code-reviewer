@@ -1,6 +1,7 @@
 package com.ghiloufi.aicode.core.application.service;
 
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
+import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -11,6 +12,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
@@ -31,18 +33,24 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final ReviewChunkAccumulator chunkAccumulator;
   private final PostgresReviewRepository reviewRepository;
   private final ContextOrchestrator contextOrchestrator;
+  private final SummaryCommentProperties summaryCommentProperties;
+  private final SummaryCommentFormatter summaryCommentFormatter;
 
   public ReviewManagementService(
       final AIReviewStreamingService aiReviewStreamingService,
       final SCMProviderFactory scmProviderFactory,
       final ReviewChunkAccumulator chunkAccumulator,
       final PostgresReviewRepository reviewRepository,
-      final ContextOrchestrator contextOrchestrator) {
+      final ContextOrchestrator contextOrchestrator,
+      final SummaryCommentProperties summaryCommentProperties,
+      final SummaryCommentFormatter summaryCommentFormatter) {
     this.aiReviewStreamingService = aiReviewStreamingService;
     this.scmProviderFactory = scmProviderFactory;
     this.chunkAccumulator = chunkAccumulator;
     this.reviewRepository = reviewRepository;
     this.contextOrchestrator = contextOrchestrator;
+    this.summaryCommentProperties = summaryCommentProperties;
+    this.summaryCommentFormatter = summaryCommentFormatter;
   }
 
   @Override
@@ -157,6 +165,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                                 changeRequest.getDisplayName(),
                                 error))
                     .then(
+                        Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
+                    .then(
                         Mono.defer(
                             () -> {
                               final String reviewId =
@@ -244,6 +254,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error))
+        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, reviewResult)))
         .then(
             Mono.defer(
                 () -> {
@@ -269,6 +280,48 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error));
+  }
+
+  private Mono<Void> publishSummaryComment(
+      final RepositoryIdentifier repository,
+      final ChangeRequestIdentifier changeRequest,
+      final ReviewResult reviewResult) {
+    if (!summaryCommentProperties.isEnabled()) {
+      log.debug("Summary comment feature is disabled, skipping");
+      return Mono.empty();
+    }
+
+    log.info(
+        "Publishing summary comment for {}/{}",
+        repository.getDisplayName(),
+        changeRequest.getDisplayName());
+
+    final String summaryComment = summaryCommentFormatter.formatSummaryComment(reviewResult);
+    final SCMPort scmPort = scmProviderFactory.getProvider(repository.getProvider());
+
+    return scmPort
+        .publishSummaryComment(repository, changeRequest, summaryComment)
+        .doOnSuccess(
+            v ->
+                log.info(
+                    "Summary comment published for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName()))
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to publish summary comment for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName(),
+                    error))
+        .onErrorResume(
+            error -> {
+              log.warn(
+                  "Summary comment publication failed, continuing with review process for {}/{}",
+                  repository.getDisplayName(),
+                  changeRequest.getDisplayName());
+              return Mono.empty();
+            });
   }
 
   @Override

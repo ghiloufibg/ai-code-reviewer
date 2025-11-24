@@ -11,6 +11,7 @@ import com.ghiloufi.aicode.core.exception.JsonValidationException;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import com.ghiloufi.aicode.core.service.prompt.JsonReviewResultParser;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultValidator;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -569,7 +570,7 @@ class JsonParsingIntegrationTest {
     final void should_discard_suggestedFix_when_containing_description_text() {
       final String descriptionText = "Remove the redundant condition check for better performance";
       final String base64Description =
-          java.util.Base64.getEncoder().encodeToString(descriptionText.getBytes());
+          Base64.getEncoder().encodeToString(descriptionText.getBytes());
 
       final String jsonWithInvalidFix =
           String.format(
@@ -637,8 +638,7 @@ class JsonParsingIntegrationTest {
     final void should_accept_valid_base64_encoded_markdown_diff() {
       final String validDiff =
           "```diff\n  public String getName() {\n+   if (user == null) return \"Unknown\";\n    return user.getName();\n  }\n```";
-      final String base64ValidDiff =
-          java.util.Base64.getEncoder().encodeToString(validDiff.getBytes());
+      final String base64ValidDiff = Base64.getEncoder().encodeToString(validDiff.getBytes());
 
       final String jsonWithValidFix =
           String.format(
@@ -677,8 +677,7 @@ class JsonParsingIntegrationTest {
     final void should_accept_markdown_diff_without_diff_keyword() {
       final String validDiff =
           "```\n- String query = \"SELECT * FROM users WHERE id = \" + userId;\n+ PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");\n```";
-      final String base64ValidDiff =
-          java.util.Base64.getEncoder().encodeToString(validDiff.getBytes());
+      final String base64ValidDiff = Base64.getEncoder().encodeToString(validDiff.getBytes());
 
       final String jsonWithValidFix =
           String.format(

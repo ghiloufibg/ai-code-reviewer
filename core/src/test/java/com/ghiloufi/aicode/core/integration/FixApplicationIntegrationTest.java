@@ -7,6 +7,7 @@ import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.application.service.ReviewManagementService;
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
+import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
@@ -25,6 +26,7 @@ import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,13 +62,22 @@ final class FixApplicationIntegrationTest {
                 .class);
 
     final TestContextOrchestrator testContextOrchestrator = new TestContextOrchestrator();
+
+    final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
+        new com.ghiloufi.aicode.core.config.SummaryCommentProperties(false, true, true);
+    final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
+        new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
+            summaryCommentProperties);
+
     reviewManagementService =
         new ReviewManagementService(
             testAIService,
             scmFactory,
             testChunkAccumulator,
             testReviewRepository,
-            testContextOrchestrator);
+            testContextOrchestrator,
+            summaryCommentProperties,
+            summaryCommentFormatter);
 
     fixApplicationService = new FixApplicationService(testGitLabPort, mockRepository);
   }
@@ -359,6 +370,14 @@ final class FixApplicationIntegrationTest {
     }
 
     @Override
+    public Mono<Void> publishSummaryComment(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final String summaryComment) {
+      return Mono.empty();
+    }
+
+    @Override
     public Mono<Boolean> isChangeRequestOpen(
         final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
       return Mono.just(true);
@@ -385,27 +404,23 @@ final class FixApplicationIntegrationTest {
     }
 
     @Override
-    public Mono<java.util.List<String>> listRepositoryFiles() {
-      return Mono.just(java.util.List.of());
+    public Mono<List<String>> listRepositoryFiles() {
+      return Mono.just(List.of());
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsFor(
-            final RepositoryIdentifier repo,
-            final String filePath,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsFor(
+        final RepositoryIdentifier repo,
+        final String filePath,
+        final LocalDate since,
+        final int maxResults) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsSince(
-            final RepositoryIdentifier repo,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsSince(
+        final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
+      return Flux.empty();
     }
   }
 
