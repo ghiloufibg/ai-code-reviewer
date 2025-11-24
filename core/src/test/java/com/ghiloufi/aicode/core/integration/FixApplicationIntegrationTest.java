@@ -60,13 +60,22 @@ final class FixApplicationIntegrationTest {
                 .class);
 
     final TestContextOrchestrator testContextOrchestrator = new TestContextOrchestrator();
+
+    final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
+        new com.ghiloufi.aicode.core.config.SummaryCommentProperties();
+    final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
+        new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
+            summaryCommentProperties);
+
     reviewManagementService =
         new ReviewManagementService(
             testAIService,
             scmFactory,
             testChunkAccumulator,
             testReviewRepository,
-            testContextOrchestrator);
+            testContextOrchestrator,
+            summaryCommentProperties,
+            summaryCommentFormatter);
 
     fixApplicationService = new FixApplicationService(testGitLabPort, mockRepository);
   }

@@ -51,13 +51,22 @@ final class ReviewManagementServiceTest {
     testReviewChunkAccumulator = new TestReviewChunkAccumulator();
     testReviewRepository = new TestPostgresReviewRepository();
     testContextOrchestrator = new TestContextOrchestrator();
+
+    final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
+        new com.ghiloufi.aicode.core.config.SummaryCommentProperties();
+    final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
+        new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
+            summaryCommentProperties);
+
     reviewManagementService =
         new ReviewManagementService(
             testAIReviewStreamingService,
             scmProviderFactory,
             testReviewChunkAccumulator,
             testReviewRepository,
-            testContextOrchestrator);
+            testContextOrchestrator,
+            summaryCommentProperties,
+            summaryCommentFormatter);
   }
 
   @Test
