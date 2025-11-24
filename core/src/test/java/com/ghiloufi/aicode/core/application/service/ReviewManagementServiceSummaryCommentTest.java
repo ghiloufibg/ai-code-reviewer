@@ -21,37 +21,39 @@ import reactor.test.StepVerifier;
 
 final class ReviewManagementServiceSummaryCommentTest {
 
-  private ReviewManagementService reviewManagementService;
   private TestSCMPort testSCMPort;
-  private SummaryCommentProperties summaryCommentProperties;
-  private SummaryCommentFormatter summaryCommentFormatter;
 
   @BeforeEach
   void setUp() {
     testSCMPort = new TestSCMPort();
+  }
+
+  private ReviewManagementService createReviewManagementService(
+      final SummaryCommentProperties summaryCommentProperties) {
     final SCMProviderFactory scmProviderFactory = new TestSCMProviderFactory(testSCMPort);
     final AIReviewStreamingService aiReviewStreamingService = new TestAIReviewStreamingService();
     final ReviewChunkAccumulator chunkAccumulator = new TestReviewChunkAccumulator();
     final PostgresReviewRepository reviewRepository = new TestPostgresReviewRepository();
     final ContextOrchestrator contextOrchestrator = new TestContextOrchestrator();
+    final SummaryCommentFormatter summaryCommentFormatter =
+        new SummaryCommentFormatter(summaryCommentProperties);
 
-    summaryCommentProperties = new SummaryCommentProperties();
-    summaryCommentFormatter = new SummaryCommentFormatter(summaryCommentProperties);
-
-    reviewManagementService =
-        new ReviewManagementService(
-            aiReviewStreamingService,
-            scmProviderFactory,
-            chunkAccumulator,
-            reviewRepository,
-            contextOrchestrator,
-            summaryCommentProperties,
-            summaryCommentFormatter);
+    return new ReviewManagementService(
+        aiReviewStreamingService,
+        scmProviderFactory,
+        chunkAccumulator,
+        reviewRepository,
+        contextOrchestrator,
+        summaryCommentProperties,
+        summaryCommentFormatter);
   }
 
   @Test
   void should_publish_summary_comment_when_feature_enabled() {
-    summaryCommentProperties.setEnabled(true);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(true, true, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
     final ChangeRequestIdentifier changeRequest = new MergeRequestId(1);
@@ -70,7 +72,10 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   @Test
   void should_not_publish_summary_comment_when_feature_disabled() {
-    summaryCommentProperties.setEnabled(false);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(false, true, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
     final ChangeRequestIdentifier changeRequest = new MergeRequestId(1);
@@ -87,7 +92,10 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   @Test
   void should_continue_review_process_when_summary_comment_fails() {
-    summaryCommentProperties.setEnabled(true);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(true, true, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
     testSCMPort.setShouldFailSummaryComment(true);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
@@ -105,8 +113,10 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   @Test
   void should_include_statistics_in_summary_when_enabled() {
-    summaryCommentProperties.setEnabled(true);
-    summaryCommentProperties.setIncludeStatistics(true);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(true, true, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
     final ChangeRequestIdentifier changeRequest = new MergeRequestId(1);
@@ -124,8 +134,10 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   @Test
   void should_exclude_statistics_in_summary_when_disabled() {
-    summaryCommentProperties.setEnabled(true);
-    summaryCommentProperties.setIncludeStatistics(false);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(true, false, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
     final ChangeRequestIdentifier changeRequest = new MergeRequestId(1);
@@ -142,8 +154,10 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   @Test
   void should_include_severity_breakdown_when_enabled() {
-    summaryCommentProperties.setEnabled(true);
-    summaryCommentProperties.setIncludeSeverityBreakdown(true);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(true, true, true);
+    final ReviewManagementService reviewManagementService =
+        createReviewManagementService(summaryCommentProperties);
 
     final RepositoryIdentifier repository = new GitLabRepositoryId("test/repo");
     final ChangeRequestIdentifier changeRequest = new MergeRequestId(1);

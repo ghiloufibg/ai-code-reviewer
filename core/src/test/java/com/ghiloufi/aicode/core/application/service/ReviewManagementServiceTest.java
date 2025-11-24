@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
+import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
@@ -22,6 +23,7 @@ import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +55,7 @@ final class ReviewManagementServiceTest {
     testContextOrchestrator = new TestContextOrchestrator();
 
     final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
-        new com.ghiloufi.aicode.core.config.SummaryCommentProperties();
+        new com.ghiloufi.aicode.core.config.SummaryCommentProperties(false, true, true);
     final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
         new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
             summaryCommentProperties);
@@ -515,27 +517,23 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
-    public Mono<java.util.List<String>> listRepositoryFiles() {
-      return Mono.just(java.util.List.of());
+    public Mono<List<String>> listRepositoryFiles() {
+      return Mono.just(List.of());
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsFor(
-            final RepositoryIdentifier repo,
-            final String filePath,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsFor(
+        final RepositoryIdentifier repo,
+        final String filePath,
+        final LocalDate since,
+        final int maxResults) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsSince(
-            final RepositoryIdentifier repo,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsSince(
+        final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
+      return Flux.empty();
     }
   }
 
@@ -544,7 +542,7 @@ final class ReviewManagementServiceTest {
     private final SCMPort scmPort;
 
     TestSCMProviderFactory(final SCMPort scmPort) {
-      super(java.util.List.of(scmPort));
+      super(List.of(scmPort));
       this.scmPort = scmPort;
     }
 

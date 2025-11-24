@@ -3,15 +3,20 @@ package com.ghiloufi.aicode.core.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
+import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -20,16 +25,12 @@ final class FixApplicationServiceTest {
 
   private FixApplicationService fixApplicationService;
   private TestSCMPort testSCMPort;
-  private com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
-      mockRepository;
+  private ReviewIssueRepository mockRepository;
 
   @BeforeEach
   void setUp() {
     testSCMPort = new TestSCMPort();
-    mockRepository =
-        org.mockito.Mockito.mock(
-            com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
-                .class);
+    mockRepository = Mockito.mock(ReviewIssueRepository.class);
     fixApplicationService = new FixApplicationService(testSCMPort, mockRepository);
   }
 
@@ -195,27 +196,23 @@ final class FixApplicationServiceTest {
     }
 
     @Override
-    public Mono<java.util.List<String>> listRepositoryFiles() {
-      return Mono.just(java.util.List.of());
+    public Mono<List<String>> listRepositoryFiles() {
+      return Mono.just(List.of());
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsFor(
-            final RepositoryIdentifier repo,
-            final String filePath,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsFor(
+        final RepositoryIdentifier repo,
+        final String filePath,
+        final LocalDate since,
+        final int maxResults) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsSince(
-            final RepositoryIdentifier repo,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsSince(
+        final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
+      return Flux.empty();
     }
   }
 }

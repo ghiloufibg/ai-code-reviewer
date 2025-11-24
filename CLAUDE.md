@@ -199,6 +199,9 @@ Code must be easy to read and understand:
 - Keep methods short and focused (ideally under 20 lines)
 - Proper indentation and spacing
 - Clear control flow without deeply nested structures
+- **NEVER use fully qualified class names in code** (e.g., `java.util.List`, `reactor.core.publisher.Flux`)
+- Always add proper import statements at the top of the file instead
+- Exception: Only use fully qualified names to resolve naming conflicts between different packages
 
 ### 4. PRODUCTION-READY
 Code must be robust and maintainable:

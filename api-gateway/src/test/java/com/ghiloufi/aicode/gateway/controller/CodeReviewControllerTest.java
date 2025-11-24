@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
+import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
+import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
+import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
@@ -18,6 +21,7 @@ import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -342,7 +346,7 @@ final class CodeReviewControllerTest {
     private List<MergeRequestSummary> mergeRequests = List.of();
     private List<RepositoryInfo> repositories = List.of();
     private RepositoryIdentifier capturedRepository;
-    private com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier capturedChangeRequest;
+    private ChangeRequestIdentifier capturedChangeRequest;
     private boolean shouldFailPublish = false;
 
     final void setMergeRequests(final List<MergeRequestSummary> mergeRequests) {
@@ -361,42 +365,37 @@ final class CodeReviewControllerTest {
       return capturedRepository;
     }
 
-    final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier getCapturedChangeRequest() {
+    final ChangeRequestIdentifier getCapturedChangeRequest() {
       return capturedChangeRequest;
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.ReviewChunk>
-        streamReview(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repository,
-            final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<ReviewChunk> streamReview(
+        final RepositoryIdentifier repository, final ChangeRequestIdentifier changeRequest) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.ReviewChunk>
-        streamAndPublishReview(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repository,
-            final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<ReviewChunk> streamAndPublishReview(
+        final RepositoryIdentifier repository, final ChangeRequestIdentifier changeRequest) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishReview(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repository,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
-        final com.ghiloufi.aicode.core.domain.model.ReviewResult reviewResult) {
+    public Mono<Void> publishReview(
+        final RepositoryIdentifier repository,
+        final ChangeRequestIdentifier changeRequest,
+        final ReviewResult reviewResult) {
       this.capturedRepository = repository;
       this.capturedChangeRequest = changeRequest;
       if (shouldFailPublish) {
-        return reactor.core.publisher.Mono.error(new RuntimeException("Publish failed"));
+        return Mono.error(new RuntimeException("Publish failed"));
       }
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public Flux<MergeRequestSummary> getOpenChangeRequests(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repository) {
+    public Flux<MergeRequestSummary> getOpenChangeRequests(final RepositoryIdentifier repository) {
       this.capturedRepository = repository;
       return Flux.fromIterable(mergeRequests);
     }
@@ -410,44 +409,51 @@ final class CodeReviewControllerTest {
   private static final class TestSCMPort implements SCMPort {
 
     @Override
-    public reactor.core.publisher.Mono<CommitResult> applyFix(
+    public Mono<CommitResult> applyFix(
         final RepositoryIdentifier repo,
         final String branchName,
         final String filePath,
         final String fixDiff,
         final String commitMessage) {
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
-      return reactor.core.publisher.Mono.just(true);
+    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
+      return Mono.just(true);
     }
 
     @Override
-    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle>
-        getDiff(final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Mono.empty();
+    public Mono<DiffAnalysisBundle> getDiff(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishReview(
+    public Mono<Void> publishReview(
         final RepositoryIdentifier repo,
         final ChangeRequestIdentifier changeRequest,
         final ReviewResult reviewResult) {
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Boolean> isChangeRequestOpen(
+    public Mono<Void> publishSummaryComment(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final String summaryComment) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<Boolean> isChangeRequestOpen(
         final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Mono.just(true);
+      return Mono.just(true);
     }
 
     @Override
-    public reactor.core.publisher.Mono<RepositoryInfo> getRepository(
-        final RepositoryIdentifier repo) {
-      return reactor.core.publisher.Mono.empty();
+    public Mono<RepositoryInfo> getRepository(final RepositoryIdentifier repo) {
+      return Mono.empty();
     }
 
     @Override
@@ -466,27 +472,23 @@ final class CodeReviewControllerTest {
     }
 
     @Override
-    public Mono<java.util.List<String>> listRepositoryFiles() {
-      return Mono.just(java.util.List.of());
+    public Mono<List<String>> listRepositoryFiles() {
+      return Mono.just(List.of());
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsFor(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-            final String filePath,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsFor(
+        final RepositoryIdentifier repo,
+        final String filePath,
+        final LocalDate since,
+        final int maxResults) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-        getCommitsSince(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-            final java.time.LocalDate since,
-            final int maxResults) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<CommitInfo> getCommitsSince(
+        final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
+      return Flux.empty();
     }
   }
 }

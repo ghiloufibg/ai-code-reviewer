@@ -4,25 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 final class SummaryCommentFormatterTest {
 
-  private SummaryCommentProperties config;
-  private SummaryCommentFormatter formatter;
-
-  @BeforeEach
-  void setUp() {
-    config = new SummaryCommentProperties();
-    config.setEnabled(true);
-    config.setIncludeStatistics(true);
-    config.setIncludeSeverityBreakdown(true);
-    formatter = new SummaryCommentFormatter(config);
+  private SummaryCommentFormatter createFormatter(
+      final boolean includeStatistics, final boolean includeSeverityBreakdown) {
+    final SummaryCommentProperties config =
+        new SummaryCommentProperties(true, includeStatistics, includeSeverityBreakdown);
+    return new SummaryCommentFormatter(config);
   }
 
   @Test
   void should_format_summary_with_header() {
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = createReviewWithSummary("Test summary");
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -33,6 +28,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_return_no_summary_message_when_summary_is_null() {
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = new ReviewResult();
     result.summary = null;
 
@@ -44,6 +40,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_return_no_summary_message_when_summary_is_blank() {
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = new ReviewResult();
     result.summary = "   ";
 
@@ -54,7 +51,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_include_statistics_when_enabled() {
-    config.setIncludeStatistics(true);
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = createReviewWithIssuesAndNotes();
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -67,7 +64,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_exclude_statistics_when_disabled() {
-    config.setIncludeStatistics(false);
+    final SummaryCommentFormatter formatter = createFormatter(false, true);
     final ReviewResult result = createReviewWithIssuesAndNotes();
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -78,7 +75,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_include_severity_breakdown_when_enabled() {
-    config.setIncludeSeverityBreakdown(true);
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = createReviewWithSeverityVariety();
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -91,7 +88,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_exclude_severity_breakdown_when_disabled() {
-    config.setIncludeSeverityBreakdown(false);
+    final SummaryCommentFormatter formatter = createFormatter(true, false);
     final ReviewResult result = createReviewWithSeverityVariety();
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -102,7 +99,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_not_include_severity_breakdown_when_no_issues() {
-    config.setIncludeSeverityBreakdown(true);
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = createReviewWithSummary("Summary only");
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -112,6 +109,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_include_footer_with_inline_comment_reference() {
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = createReviewWithSummary("Test summary");
 
     final String formatted = formatter.formatSummaryComment(result);
@@ -123,6 +121,7 @@ final class SummaryCommentFormatterTest {
 
   @Test
   void should_count_unique_files_correctly() {
+    final SummaryCommentFormatter formatter = createFormatter(true, true);
     final ReviewResult result = new ReviewResult();
     result.summary = "Test";
 

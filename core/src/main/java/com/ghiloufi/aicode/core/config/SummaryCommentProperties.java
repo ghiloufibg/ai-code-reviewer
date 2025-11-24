@@ -1,19 +1,23 @@
 package com.ghiloufi.aicode.core.config;
 
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @Getter
-@Setter
-@Configuration
 @ConfigurationProperties(prefix = "features.summary-comment")
-public class SummaryCommentProperties {
+public final class SummaryCommentProperties {
 
-  private boolean enabled = false;
+  private final boolean enabled;
+  private final boolean includeStatistics;
+  private final boolean includeSeverityBreakdown;
 
-  private boolean includeStatistics = true;
-
-  private boolean includeSeverityBreakdown = true;
+  public SummaryCommentProperties(
+      @DefaultValue("false") final boolean enabled,
+      @DefaultValue("true") final boolean includeStatistics,
+      @DefaultValue("true") final boolean includeSeverityBreakdown) {
+    this.enabled = enabled;
+    this.includeStatistics = includeStatistics;
+    this.includeSeverityBreakdown = includeSeverityBreakdown;
+  }
 }
