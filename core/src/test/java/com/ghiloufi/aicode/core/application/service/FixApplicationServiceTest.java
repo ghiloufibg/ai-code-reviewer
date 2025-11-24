@@ -158,6 +158,14 @@ final class FixApplicationServiceTest {
     }
 
     @Override
+    public Mono<Void> publishSummaryComment(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final String summaryComment) {
+      return Mono.empty();
+    }
+
+    @Override
     public Mono<Boolean> isChangeRequestOpen(
         final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
       return Mono.empty();

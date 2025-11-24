@@ -448,6 +448,14 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
+    public reactor.core.publisher.Mono<Void> publishSummaryComment(
+        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
+        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
+        final String summaryComment) {
+      return reactor.core.publisher.Mono.empty();
+    }
+
+    @Override
     public reactor.core.publisher.Mono<Boolean> isChangeRequestOpen(
         final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
         final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {

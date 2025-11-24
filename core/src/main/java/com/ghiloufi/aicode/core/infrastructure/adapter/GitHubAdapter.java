@@ -125,6 +125,15 @@ public class GitHubAdapter implements SCMPort {
   }
 
   @Override
+  public Mono<Void> publishSummaryComment(
+      final RepositoryIdentifier repo,
+      final ChangeRequestIdentifier changeRequest,
+      final String summaryComment) {
+    log.warn("Summary comment feature not yet implemented for GitHub");
+    return Mono.empty();
+  }
+
+  @Override
   public Mono<Boolean> isChangeRequestOpen(
       final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
     return Mono.fromCallable(

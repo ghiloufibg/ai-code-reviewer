@@ -167,6 +167,49 @@ public class GitLabAdapter implements SCMPort {
   }
 
   @Override
+  public Mono<Void> publishSummaryComment(
+      final RepositoryIdentifier repo,
+      final ChangeRequestIdentifier changeRequest,
+      final String summaryComment) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+              final MergeRequestId mrId =
+                  identifierValidator.validateGitLabChangeRequest(changeRequest);
+
+              log.debug(
+                  "Publishing summary comment for {}/MR!{}", gitLabRepo.projectId(), mrId.iid());
+
+              final Object projectIdOrPath = gitLabRepo.projectId();
+              gitLabApi
+                  .getNotesApi()
+                  .createMergeRequestNote(
+                      projectIdOrPath, (long) mrId.iid(), summaryComment, null, null);
+
+              log.debug(
+                  "Summary comment published for {}/MR!{}", gitLabRepo.projectId(), mrId.iid());
+
+              return null;
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .then()
+        .doOnSuccess(
+            unused ->
+                log.info(
+                    "Summary comment published for {}/MR!{}",
+                    repo.getDisplayName(),
+                    changeRequest.getNumber()))
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to publish summary comment for {}/MR!{}",
+                    repo.getDisplayName(),
+                    changeRequest.getNumber(),
+                    error));
+  }
+
+  @Override
   public Mono<Boolean> isChangeRequestOpen(
       final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
     return Mono.fromCallable(
