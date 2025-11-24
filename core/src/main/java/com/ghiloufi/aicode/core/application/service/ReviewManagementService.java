@@ -252,9 +252,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error))
-        .then(
-            Mono.defer(
-                () -> publishSummaryCommentIfEnabled(repository, changeRequest, reviewResult)))
+        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, reviewResult)))
         .then(
             Mono.defer(
                 () -> {
@@ -282,7 +280,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     error));
   }
 
-  private Mono<Void> publishSummaryCommentIfEnabled(
+  private Mono<Void> publishSummaryComment(
       final RepositoryIdentifier repository,
       final ChangeRequestIdentifier changeRequest,
       final ReviewResult reviewResult) {
