@@ -210,12 +210,34 @@ features:
 
 **Hardening Roadmap:** See `trackings/expert-panel-review-2025-01-16.md` for required security and reliability improvements before production use.
 
-### **3. Build Project**
+### **3. Install Git Hooks**
+
+This repository includes a pre-commit hook to prevent commits with AI assistant references.
+
+**Automatic Installation (Recommended):**
+```bash
+git config core.hooksPath .githooks
+```
+
+**Manual Installation:**
+```bash
+cp .githooks/commit-msg .git/hooks/commit-msg
+chmod +x .git/hooks/commit-msg
+```
+
+The hook will automatically reject commits containing references to:
+- Claude Code, ChatGPT, Copilot, or other AI assistants
+- "Generated with" or "Co-Authored-By" AI attributions
+- AI tool emojis (🤖) or brand names
+
+**Why?** This ensures professional commit history without AI tool attributions.
+
+### **4. Build Project**
 ```bash
 mvn clean install
 ```
 
-### **4. Run with Docker Compose**
+### **5. Run with Docker Compose**
 
 **Production Mode:**
 ```bash
@@ -231,7 +253,7 @@ make dev
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-### **5. Run Locally (without Docker)**
+### **6. Run Locally (without Docker)**
 
 Start PostgreSQL:
 ```bash

@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# Pre-commit hook to prevent commits with AI assistant references
+# This hook checks commit messages for references to AI tools like Claude Code, ChatGPT, etc.
+#
+# Installation:
+#   cp .githooks/commit-msg .git/hooks/commit-msg
+#   chmod +x .git/hooks/commit-msg
+#
+# Or configure Git to use this hooks directory:
+#   git config core.hooksPath .githooks
+#
+
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+
+# Define patterns to block (case-insensitive)
+forbidden_patterns=(
+    "claude code"
+    "claude"
+    "chatgpt"
+    "copilot"
+    "github copilot"
+    "ai assistant"
+    "generated with"
+    "co-authored-by:.*claude"
+    "🤖"
+    "anthropic"
+    "openai"
+)
+
+# Check commit message against forbidden patterns
+for pattern in "${forbidden_patterns[@]}"; do
+    if echo "$commit_msg" | grep -iE "$pattern" > /dev/null 2>&1; then
+        echo "❌ ERROR: Commit message contains AI assistant reference!"
+        echo ""
+        echo "Forbidden pattern detected: '$pattern'"
+        echo ""
+        echo "Your commit message:"
+        echo "---"
+        echo "$commit_msg"
+        echo "---"
+        echo ""
+        echo "Please remove all references to AI assistants from your commit message."
+        echo "This includes: Claude, ChatGPT, Copilot, 'Generated with', Co-Authored-By AI, etc."
+        echo ""
+        exit 1
+    fi
+done
+
+# All checks passed
+exit 0
