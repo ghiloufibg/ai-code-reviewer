@@ -199,9 +199,45 @@ Code must be easy to read and understand:
 - Keep methods short and focused (ideally under 20 lines)
 - Proper indentation and spacing
 - Clear control flow without deeply nested structures
-- **NEVER use fully qualified class names in code** (e.g., `java.util.List`, `reactor.core.publisher.Flux`)
+
+**CRITICAL: No Fully Qualified Names (FQN)**
+- **NEVER use fully qualified class names in code** - this is ugly and reduces readability
 - Always add proper import statements at the top of the file instead
-- Exception: Only use fully qualified names to resolve naming conflicts between different packages
+- This applies to ALL code: production, tests, annotations, and configuration
+
+**Prohibited Examples:**
+```java
+// ❌ WRONG - Ugly FQN usage
+java.util.List<String> items = new java.util.ArrayList<>();
+reactor.core.publisher.Flux<Data> flux = reactor.core.publisher.Flux.empty();
+@SpringBootTest(classes = {com.example.config.AppConfig.class})
+new com.example.service.MyService();
+
+// ✅ CORRECT - Use imports
+import java.util.List;
+import java.util.ArrayList;
+import reactor.core.publisher.Flux;
+import com.example.config.AppConfig;
+import com.example.service.MyService;
+
+List<String> items = new ArrayList<>();
+Flux<Data> flux = Flux.empty();
+@SpringBootTest(classes = {AppConfig.class})
+new MyService();
+```
+
+**Exception:** Only use FQN to resolve naming conflicts between different packages:
+```java
+// ✅ Acceptable - Resolving naming conflict
+import java.util.Date;
+java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
+```
+
+**Enforcement:**
+- Review all code for FQN before committing
+- Check annotations (especially `@SpringBootTest`, `@Import`, etc.)
+- Check object instantiations and static method calls
+- Check generic type parameters
 
 ### 4. PRODUCTION-READY
 Code must be robust and maintainable:
@@ -225,7 +261,69 @@ Enforce by default whenever possible:
 - This applies to: `@Configuration`, `@ConfigurationProperties`
 - Example: `public class DangerousPatternsConfig` (NOT `public final class`)
 
-### 6. NO DOCUMENTATION
+### 6. LOMBOK ANNOTATIONS
+
+**CRITICAL: Use Lombok annotations to reduce boilerplate code.**
+
+Lombok is included in the project dependencies and MUST be used whenever applicable:
+
+**Required Annotations:**
+- `@Getter` - Replace manual getter methods on classes with final fields
+- `@RequiredArgsConstructor` - Replace manual constructors that only assign final fields
+- `@Slf4j` - Replace manual `private static final Logger logger = LoggerFactory.getLogger(...)` declarations
+- `@NonNull` - Add null checks to constructor parameters when null validation is required
+
+**Usage Guidelines:**
+- **Spring Components**: Use `@RequiredArgsConstructor` + `@Slf4j` for `@Service`, `@Component`, `@Repository` classes
+- **Configuration Properties**: Use `@Getter` but keep explicit constructor for `@ConfigurationProperties` classes (Spring needs `@Name`/`@DefaultValue` annotations on constructor parameters)
+- **Null Safety**: Add `@NonNull` on fields that must not be null (Lombok generates null-check in constructor)
+- **Logger Naming**: `@Slf4j` generates `log` field (not `logger`), use `log.info()`, `log.debug()`, etc.
+
+**Examples:**
+```java
+// ✅ CORRECT - Spring Service with Lombok
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class MyService {
+  @NonNull private final DependencyA dependencyA;
+  private final DependencyB dependencyB;
+
+  public void doWork() {
+    log.info("Working...");
+  }
+}
+
+// ❌ WRONG - Manual boilerplate
+@Service
+public class MyService {
+  private static final Logger logger = LoggerFactory.getLogger(MyService.class);
+  private final DependencyA dependencyA;
+  private final DependencyB dependencyB;
+
+  public MyService(DependencyA dependencyA, DependencyB dependencyB) {
+    this.dependencyA = Objects.requireNonNull(dependencyA);
+    this.dependencyB = dependencyB;
+  }
+}
+
+// ✅ CORRECT - ConfigurationProperties with Lombok @Getter
+@Getter
+@ConfigurationProperties(prefix = "my.config")
+public final class MyConfigProperties {
+  private final String value;
+
+  public MyConfigProperties(@DefaultValue("default") String value) {
+    this.value = value;
+  }
+}
+```
+
+**Test Considerations:**
+- When testing null validation with `@NonNull`, expect message containing field name (e.g., `"factory"`)
+- Lombok's null-check message format: `"fieldName is marked non-null but is null"`
+
+### 7. NO DOCUMENTATION
 Code should be self-explanatory and production-ready:
 - NO Javadoc comments anywhere in codebase
 - NO inline comments in production code
@@ -233,7 +331,7 @@ Code should be self-explanatory and production-ready:
 - Code clarity replaces documentation need
 - Names and structure convey intent
 
-### 7. SIMPLICITY AND NO OVER-ENGINEERING
+### 8. SIMPLICITY AND NO OVER-ENGINEERING
 
 **CRITICAL: Keep code simple, clean, and clear.**
 
@@ -260,7 +358,7 @@ Code should be self-explanatory and production-ready:
 - ✅ Simple conditionals over design patterns
 - ✅ Composition over complex inheritance hierarchies
 
-### 8. CODE FORMATTING
+### 9. CODE FORMATTING
 
 **CRITICAL: Google Java Style is mandatory.**
 

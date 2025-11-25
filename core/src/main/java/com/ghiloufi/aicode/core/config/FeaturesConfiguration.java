@@ -4,5 +4,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({SummaryCommentProperties.class, FixApplicationProperties.class})
+@EnableConfigurationProperties({
+  SummaryCommentProperties.class,
+  FixApplicationProperties.class,
+  PromptProperties.class,
+  OptimizedPromptProperties.class,
+  PromptVariantProperties.class
+})
 public class FeaturesConfiguration {}

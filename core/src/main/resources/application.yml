@@ -1,3 +1,12 @@
+spring:
+  config:
+    import:
+      - classpath:application-prompts.yml
+      - classpath:application-prompts-optimized.yml
+
+prompts:
+  variant: OPTIMIZED
+
 core:
   review:
     max-retries: 3

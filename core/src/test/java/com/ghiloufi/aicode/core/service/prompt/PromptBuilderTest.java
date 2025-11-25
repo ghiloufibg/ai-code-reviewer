@@ -3,6 +3,8 @@ package com.ghiloufi.aicode.core.service.prompt;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.ghiloufi.aicode.core.config.FeaturesConfiguration;
+import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
 import com.ghiloufi.aicode.core.domain.model.ContextMatch;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
@@ -24,18 +26,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 @DisplayName("PromptBuilder Tests")
+@SpringBootTest(
+    classes = {
+      FeaturesConfiguration.class,
+      PromptTemplateService.class,
+      PromptPropertiesFactory.class
+    })
 class PromptBuilderTest {
 
   private PromptBuilder promptBuilder;
   private DiffFormatter diffFormatter;
+  @Autowired private PromptTemplateService promptTemplateService;
   private RepositoryIdentifier testRepo;
 
   @BeforeEach
   void setUp() {
     diffFormatter = new DiffFormatter();
-    promptBuilder = new PromptBuilder(diffFormatter);
+    promptBuilder = new PromptBuilder(diffFormatter, promptTemplateService);
     testRepo = RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
   }
 
@@ -103,7 +114,7 @@ class PromptBuilderTest {
     final String prompt =
         promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
 
-    assertThat(prompt).contains("code review assistant");
+    assertThat(prompt).containsAnyOf("code review assistant", "Senior software engineer");
     assertThat(prompt).contains("[REPO]");
     assertThat(prompt).contains("language: Java");
     assertThat(prompt).contains("focus: COMPREHENSIVE");
