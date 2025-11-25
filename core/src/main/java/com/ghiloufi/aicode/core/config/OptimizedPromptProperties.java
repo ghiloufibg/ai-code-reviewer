@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.boot.context.properties.bind.Name;
 
 @Getter
-@ConfigurationProperties(prefix = "prompts.review")
-public final class PromptProperties {
+@ConfigurationProperties(prefix = "prompts.review-optimized")
+public final class OptimizedPromptProperties {
 
   private final String system;
   private final String fixGeneration;
@@ -15,7 +15,7 @@ public final class PromptProperties {
   private final String schema;
   private final String outputRequirements;
 
-  public PromptProperties(
+  public OptimizedPromptProperties(
       @DefaultValue("") final String system,
       @Name("fix-generation") @DefaultValue("") final String fixGeneration,
       @DefaultValue("") final String confidence,

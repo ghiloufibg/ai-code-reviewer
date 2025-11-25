@@ -5,11 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.application.service.context.ContextEnricher;
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.config.ContextRetrievalConfig;
+import com.ghiloufi.aicode.core.config.OptimizedPromptProperties;
+import com.ghiloufi.aicode.core.config.PromptProperties;
+import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
+import com.ghiloufi.aicode.core.config.PromptVariantProperties;
+import com.ghiloufi.aicode.core.config.PromptVariantProperties.Variant;
 import com.ghiloufi.aicode.core.domain.model.*;
 import com.ghiloufi.aicode.core.domain.port.output.ContextRetrievalStrategy;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
+import com.ghiloufi.aicode.core.service.prompt.PromptTemplateService;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -32,7 +38,17 @@ final class ContextAwareReviewWorkflowTest {
   @BeforeEach
   final void setUp() {
     diffParser = new UnifiedDiffParser();
-    promptBuilder = new PromptBuilder(new DiffFormatter());
+    final PromptProperties currentProperties =
+        new PromptProperties(
+            "test system", "test fix", "test confidence", "test schema", "test output");
+    final OptimizedPromptProperties optimizedProperties =
+        new OptimizedPromptProperties(
+            "test system", "test fix", "test confidence", "test schema", "test output");
+    final PromptVariantProperties variantProperties = new PromptVariantProperties(Variant.CURRENT);
+    final PromptPropertiesFactory factory =
+        new PromptPropertiesFactory(variantProperties, currentProperties, optimizedProperties);
+    final PromptTemplateService promptTemplateService = new PromptTemplateService(factory);
+    promptBuilder = new PromptBuilder(new DiffFormatter(), promptTemplateService);
 
     final TestContextRetrievalStrategy testStrategy = new TestContextRetrievalStrategy();
     final ContextEnricher contextEnricher = new ContextEnricher();

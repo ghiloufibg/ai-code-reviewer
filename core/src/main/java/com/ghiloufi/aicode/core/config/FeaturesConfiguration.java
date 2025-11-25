@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
   SummaryCommentProperties.class,
   FixApplicationProperties.class,
-  PromptProperties.class
+  PromptProperties.class,
+  OptimizedPromptProperties.class,
+  PromptVariantProperties.class
 })
 public class FeaturesConfiguration {}

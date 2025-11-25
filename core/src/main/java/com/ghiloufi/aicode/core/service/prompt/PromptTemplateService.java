@@ -1,36 +1,38 @@
 package com.ghiloufi.aicode.core.service.prompt;
 
-import com.ghiloufi.aicode.core.config.PromptProperties;
-import java.util.Objects;
+import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
+import com.ghiloufi.aicode.core.config.PromptPropertiesFactory.PromptPropertiesAdapter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class PromptTemplateService {
 
-  private final PromptProperties promptProperties;
-
-  public PromptTemplateService(final PromptProperties promptProperties) {
-    this.promptProperties =
-        Objects.requireNonNull(promptProperties, "PromptProperties cannot be null");
-  }
+  @NonNull private final PromptPropertiesFactory factory;
 
   public String compileSystemPrompt() {
-    return promptProperties.getSystem();
+    return getActivePromptProperties().getSystem();
   }
 
   public String compileFixGenerationInstructions() {
-    return promptProperties.getFixGeneration();
+    return getActivePromptProperties().getFixGeneration();
   }
 
   public String compileConfidenceInstructions() {
-    return promptProperties.getConfidence();
+    return getActivePromptProperties().getConfidence();
   }
 
   public String compileSchema() {
-    return promptProperties.getSchema();
+    return getActivePromptProperties().getSchema();
   }
 
   public String compileOutputRequirements() {
-    return promptProperties.getOutputRequirements();
+    return getActivePromptProperties().getOutputRequirements();
+  }
+
+  private PromptPropertiesAdapter getActivePromptProperties() {
+    return factory.getActivePromptProperties();
   }
 }

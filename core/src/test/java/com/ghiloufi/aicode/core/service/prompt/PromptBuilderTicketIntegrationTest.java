@@ -3,6 +3,8 @@ package com.ghiloufi.aicode.core.service.prompt;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.application.service.TicketContextExtractor;
+import com.ghiloufi.aicode.core.config.FeaturesConfiguration;
+import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.DiffHunkBlock;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
@@ -18,13 +20,22 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import reactor.core.publisher.Mono;
 
 @DisplayName("PromptBuilder Ticket Integration Tests")
+@SpringBootTest(
+    classes = {
+      FeaturesConfiguration.class,
+      PromptTemplateService.class,
+      PromptPropertiesFactory.class
+    })
 final class PromptBuilderTicketIntegrationTest {
 
   private PromptBuilder promptBuilder;
   private TicketContextExtractor ticketContextExtractor;
+  @Autowired private PromptTemplateService promptTemplateService;
   private RepositoryIdentifier testRepo;
 
   @BeforeEach
@@ -32,7 +43,7 @@ final class PromptBuilderTicketIntegrationTest {
     final DiffFormatter diffFormatter = new DiffFormatter();
     final TicketSystemPort ticketSystem = createMockTicketSystem();
     ticketContextExtractor = new TicketContextExtractor(ticketSystem);
-    promptBuilder = new PromptBuilder(diffFormatter);
+    promptBuilder = new PromptBuilder(diffFormatter, promptTemplateService);
     testRepo = RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
   }
 
@@ -134,7 +145,10 @@ final class PromptBuilderTicketIntegrationTest {
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
 
     final int ticketContextIndex = prompt.indexOf("BUSINESS CONTEXT FROM TICKET");
-    final int systemPromptIndex = prompt.indexOf("code review assistant");
+    final int currentPromptIndex = prompt.indexOf("code review assistant");
+    final int optimizedPromptIndex = prompt.indexOf("Senior software engineer");
+    final int systemPromptIndex =
+        currentPromptIndex > -1 ? currentPromptIndex : optimizedPromptIndex;
 
     assertThat(ticketContextIndex).isGreaterThan(-1);
     assertThat(systemPromptIndex).isGreaterThan(-1);
@@ -149,7 +163,8 @@ final class PromptBuilderTicketIntegrationTest {
 
     final TicketContextExtractor extractor =
         new TicketContextExtractor(ticketSystemWithoutDescription);
-    final PromptBuilder builderWithNoDesc = new PromptBuilder(new DiffFormatter());
+    final PromptBuilder builderWithNoDesc =
+        new PromptBuilder(new DiffFormatter(), promptTemplateService);
 
     final EnrichedDiffAnalysisBundle enrichedBundle =
         createEnrichedBundle("[TM-999] : Feature", null);
