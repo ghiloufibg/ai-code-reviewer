@@ -6,8 +6,7 @@ public record DiffAnalysisBundle(
     RepositoryIdentifier repositoryIdentifier,
     GitDiffDocument structuredDiff,
     String rawDiffText,
-    String mergeRequestTitle,
-    String mergeRequestDescription) {
+    PrMetadata prMetadata) {
 
   public DiffAnalysisBundle {
     Objects.requireNonNull(repositoryIdentifier, "Le repository identifier ne peut pas être null");
@@ -16,6 +15,10 @@ public record DiffAnalysisBundle(
 
     if (rawDiffText.trim().isEmpty()) {
       throw new IllegalArgumentException("Le texte brut du diff ne peut pas être vide");
+    }
+
+    if (prMetadata == null) {
+      prMetadata = PrMetadata.empty();
     }
   }
 

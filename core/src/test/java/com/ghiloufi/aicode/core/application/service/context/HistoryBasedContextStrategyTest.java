@@ -70,7 +70,7 @@ final class HistoryBasedContextStrategyTest {
 
       final GitDiffDocument gitDiff = new GitDiffDocument(modifiedFiles);
       final DiffAnalysisBundle diffBundle =
-          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null, null);
+          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null);
 
       final List<CoChangeMetrics> metricsForService =
           List.of(
@@ -118,7 +118,7 @@ final class HistoryBasedContextStrategyTest {
 
       final GitDiffDocument gitDiff = new GitDiffDocument(modifiedFiles);
       final DiffAnalysisBundle diffBundle =
-          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null, null);
+          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null);
 
       final List<CoChangeMetrics> metricsForService =
           List.of(new CoChangeMetrics("src/UserRepository.java", 10, 1.0));
@@ -171,7 +171,7 @@ final class HistoryBasedContextStrategyTest {
 
       final GitDiffDocument gitDiff = new GitDiffDocument(modifiedFiles);
       final DiffAnalysisBundle diffBundle =
-          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null, null);
+          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null);
 
       final CoChangeAnalysisResult emptyResult =
           new CoChangeAnalysisResult("src/UserService.java", List.of(), Map.of(), 0);
@@ -198,7 +198,7 @@ final class HistoryBasedContextStrategyTest {
 
       final GitDiffDocument gitDiff = new GitDiffDocument(modifiedFiles);
       final DiffAnalysisBundle diffBundle =
-          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null, null);
+          new DiffAnalysisBundle(testRepo, gitDiff, "rawDiffText", null);
 
       when(mockAnalyzer.analyzeCoChanges(any(), any()))
           .thenReturn(Mono.error(new RuntimeException("Analysis failed")));

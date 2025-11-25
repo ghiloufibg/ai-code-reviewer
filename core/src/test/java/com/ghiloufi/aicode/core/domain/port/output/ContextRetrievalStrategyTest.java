@@ -64,7 +64,7 @@ class ContextRetrievalStrategyTest {
     final RepositoryIdentifier repo =
         RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
     final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(repo, new GitDiffDocument(List.of()), "diff content", null, null);
+        new DiffAnalysisBundle(repo, new GitDiffDocument(List.of()), "diff content", null);
 
     final Mono<ContextRetrievalResult> result = strategy.retrieveContext(bundle);
 

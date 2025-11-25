@@ -15,6 +15,7 @@ import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
@@ -232,7 +233,7 @@ final class FixApplicationIntegrationTest {
         """;
     final RepositoryIdentifier repo =
         RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null, null);
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null);
   }
 
   private List<ReviewChunk> createSecurityIssueChunks() {
@@ -422,6 +423,17 @@ final class FixApplicationIntegrationTest {
         final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
       return Flux.empty();
     }
+
+    @Override
+    public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<PrMetadata> getPullRequestMetadata(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
+    }
   }
 
   private static final class TestAIReviewStreamingService extends AIReviewStreamingService {
@@ -429,7 +441,7 @@ final class FixApplicationIntegrationTest {
     private List<ReviewChunk> reviewChunks = List.of();
 
     TestAIReviewStreamingService() {
-      super(null, null, null);
+      super(null, null, null, null, null);
     }
 
     final void setReviewChunks(final List<ReviewChunk> chunks) {

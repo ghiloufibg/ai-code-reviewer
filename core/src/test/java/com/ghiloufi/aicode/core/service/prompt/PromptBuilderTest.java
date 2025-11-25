@@ -61,7 +61,7 @@ class PromptBuilderTest {
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
     final String rawDiff = "--- a/src/Test.java\n+++ b/src/Test.java\n@@ -10,2 +10,3 @@";
 
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, rawDiff, null, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, rawDiff, null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
@@ -85,7 +85,7 @@ class PromptBuilderTest {
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
     final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, diff, "raw diff text", null, null);
+        new DiffAnalysisBundle(testRepo, diff, "raw diff text", null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
@@ -107,7 +107,7 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
@@ -142,7 +142,7 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
 
     assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(enrichedBundle, null, null))
@@ -163,7 +163,7 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
       final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
@@ -184,7 +184,7 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
 
       final List<ContextMatch> matches =
           List.of(
@@ -227,7 +227,7 @@ class PromptBuilderTest {
       file.diffHunkBlocks = List.of(hunk);
 
       final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+      final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
 
       final List<ContextMatch> matches =
           List.of(

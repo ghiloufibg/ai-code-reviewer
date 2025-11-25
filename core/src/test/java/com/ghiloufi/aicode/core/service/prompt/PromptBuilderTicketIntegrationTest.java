@@ -10,6 +10,7 @@ import com.ghiloufi.aicode.core.domain.model.DiffHunkBlock;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitFileModification;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
@@ -57,7 +58,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         ticketContextExtractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
@@ -80,7 +81,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         ticketContextExtractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
@@ -99,7 +100,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         ticketContextExtractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
@@ -119,7 +120,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         ticketContextExtractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
@@ -139,7 +140,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         ticketContextExtractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
@@ -173,7 +174,7 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketBusinessContext ticketContext =
         extractor
             .extractFromMergeRequest(
-                enrichedBundle.mergeRequestTitle(), enrichedBundle.mergeRequestDescription())
+                enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
     final String prompt =
@@ -191,9 +192,19 @@ final class PromptBuilderTicketIntegrationTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null, null);
+    final PrMetadata prMetadata =
+        new PrMetadata(
+            mergeRequestTitle,
+            mergeRequestDescription,
+            null,
+            null,
+            null,
+            List.of(),
+            List.of(),
+            1);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", prMetadata);
 
-    return new EnrichedDiffAnalysisBundle(bundle, mergeRequestTitle, mergeRequestDescription);
+    return new EnrichedDiffAnalysisBundle(bundle);
   }
 
   private TicketSystemPort createMockTicketSystem() {

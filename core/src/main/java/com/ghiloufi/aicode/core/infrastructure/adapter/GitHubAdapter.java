@@ -67,9 +67,6 @@ public class GitHubAdapter implements SCMPort {
               final GHRepository ghRepository = gitHub.getRepository(ghRepo.getDisplayName());
               final GHPullRequest pullRequest = ghRepository.getPullRequest(prId.number());
 
-              final String prTitle = pullRequest.getTitle();
-              final String prBody = pullRequest.getBody();
-
               final List<GHPullRequestFileDetail> files = pullRequest.listFiles().toList();
               final String rawDiff = diffBuilder.buildRawDiff(files);
 
@@ -77,7 +74,9 @@ public class GitHubAdapter implements SCMPort {
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, prTitle, prBody);
+              final PrMetadata prMetadata = extractPrMetadata(pullRequest, files.size());
+
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, prMetadata);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(
@@ -258,5 +257,81 @@ public class GitHubAdapter implements SCMPort {
     return reactor.core.publisher.Flux.error(
         new UnsupportedOperationException(
             "Git history queries are not yet implemented for GitHub"));
+  }
+
+  @Override
+  public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+    return Mono.error(
+        new UnsupportedOperationException("File content retrieval not yet implemented for GitHub"));
+  }
+
+  @Override
+  public Mono<PrMetadata> getPullRequestMetadata(
+      final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+    return Mono.fromCallable(
+            () -> {
+              final GitHubRepositoryId ghRepo = identifierValidator.validateGitHubRepository(repo);
+              final PullRequestId prId =
+                  identifierValidator.validateGitHubChangeRequest(changeRequest);
+
+              final GHRepository ghRepository = gitHub.getRepository(ghRepo.getDisplayName());
+              final GHPullRequest pullRequest = ghRepository.getPullRequest(prId.number());
+
+              return extractPrMetadata(pullRequest, pullRequest.getChangedFiles());
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private PrMetadata extractPrMetadata(final GHPullRequest pullRequest, final int changedFiles) {
+    try {
+      final String author =
+          pullRequest.getUser() != null ? pullRequest.getUser().getLogin() : null;
+      final String baseBranch =
+          pullRequest.getBase() != null ? pullRequest.getBase().getRef() : null;
+      final String headBranch =
+          pullRequest.getHead() != null ? pullRequest.getHead().getRef() : null;
+
+      final List<String> labels =
+          pullRequest.getLabels().stream().map(label -> label.getName()).toList();
+
+      final List<CommitInfo> commits =
+          pullRequest.listCommits().toList().stream()
+              .limit(10)
+              .map(
+                  commit ->
+                      new CommitInfo(
+                          commit.getSha(),
+                          commit.getCommit().getMessage(),
+                          commit.getCommit().getAuthor() != null
+                              ? commit.getCommit().getAuthor().getName()
+                              : null,
+                          commit.getCommit().getAuthor() != null
+                                  && commit.getCommit().getAuthor().getDate() != null
+                              ? commit.getCommit().getAuthor().getDate().toInstant()
+                              : null,
+                          List.of()))
+              .toList();
+
+      return new PrMetadata(
+          pullRequest.getTitle(),
+          pullRequest.getBody(),
+          author,
+          baseBranch,
+          headBranch,
+          labels,
+          commits,
+          changedFiles);
+    } catch (final IOException e) {
+      log.warn("Failed to extract full PR metadata: {}", e.getMessage());
+      return new PrMetadata(
+          pullRequest.getTitle(),
+          pullRequest.getBody(),
+          null,
+          null,
+          null,
+          List.of(),
+          List.of(),
+          changedFiles);
+    }
   }
 }

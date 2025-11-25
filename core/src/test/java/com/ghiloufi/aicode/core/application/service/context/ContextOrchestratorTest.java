@@ -73,7 +73,7 @@ final class ContextOrchestratorTest {
     modification.diffHunkBlocks.add(hunk);
 
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    return new DiffAnalysisBundle(repo, gitDiff, "diff content", null, null);
+    return new DiffAnalysisBundle(repo, gitDiff, "diff content", null);
   }
 
   @Nested
@@ -88,7 +88,10 @@ final class ContextOrchestratorTest {
               false,
               5,
               List.of("metadata-based", "git-history"),
-              new ContextRetrievalConfig.RolloutConfig(100, false, 5000));
+              new ContextRetrievalConfig.RolloutConfig(100, false, 5000),
+              null,
+              null,
+              null);
 
       orchestrator = new ContextOrchestrator(List.of(metadataStrategy), contextEnricher, config);
 
@@ -110,7 +113,10 @@ final class ContextOrchestratorTest {
               true,
               5,
               List.of("metadata-based"),
-              new ContextRetrievalConfig.RolloutConfig(100, false, 5000));
+              new ContextRetrievalConfig.RolloutConfig(100, false, 5000),
+              null,
+              null,
+              null);
 
       orchestrator =
           new ContextOrchestrator(
@@ -256,7 +262,10 @@ final class ContextOrchestratorTest {
               true,
               1,
               List.of("metadata-based", "git-history"),
-              new ContextRetrievalConfig.RolloutConfig(100, false, 5000));
+              new ContextRetrievalConfig.RolloutConfig(100, false, 5000),
+              null,
+              null,
+              null);
 
       orchestrator =
           new ContextOrchestrator(
@@ -304,7 +313,10 @@ final class ContextOrchestratorTest {
               true,
               5,
               List.of("metadata-based"),
-              new ContextRetrievalConfig.RolloutConfig(100, true, 20));
+              new ContextRetrievalConfig.RolloutConfig(100, true, 20),
+              null,
+              null,
+              null);
 
       orchestrator = new ContextOrchestrator(List.of(metadataStrategy), contextEnricher, config);
 
@@ -328,7 +340,10 @@ final class ContextOrchestratorTest {
               true,
               5,
               List.of("metadata-based"),
-              new ContextRetrievalConfig.RolloutConfig(100, false, 20));
+              new ContextRetrievalConfig.RolloutConfig(100, false, 20),
+              null,
+              null,
+              null);
 
       orchestrator = new ContextOrchestrator(List.of(metadataStrategy), contextEnricher, config);
 
@@ -360,7 +375,10 @@ final class ContextOrchestratorTest {
               true,
               5,
               List.of("metadata-based", "git-history", "low-priority"),
-              new ContextRetrievalConfig.RolloutConfig(100, false, 5000));
+              new ContextRetrievalConfig.RolloutConfig(100, false, 5000),
+              null,
+              null,
+              null);
 
       final ContextRetrievalStrategy lowPriority = mock(ContextRetrievalStrategy.class);
       when(lowPriority.getStrategyName()).thenReturn("low-priority");

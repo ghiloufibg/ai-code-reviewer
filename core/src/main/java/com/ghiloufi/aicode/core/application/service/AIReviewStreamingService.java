@@ -1,14 +1,21 @@
 package com.ghiloufi.aicode.core.application.service;
 
+import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
+import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
+import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
+import com.ghiloufi.aicode.core.service.expansion.DiffExpansionService;
+import com.ghiloufi.aicode.core.service.policy.RepositoryPolicyProvider;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
@@ -17,14 +24,20 @@ public class AIReviewStreamingService {
   private final AIInteractionPort aiPort;
   private final PromptBuilder promptBuilder;
   private final TicketContextExtractor ticketContextExtractor;
+  private final DiffExpansionService diffExpansionService;
+  private final RepositoryPolicyProvider repositoryPolicyProvider;
 
   public AIReviewStreamingService(
       final AIInteractionPort aiPort,
       final PromptBuilder promptBuilder,
-      final TicketContextExtractor ticketContextExtractor) {
+      final TicketContextExtractor ticketContextExtractor,
+      final DiffExpansionService diffExpansionService,
+      final RepositoryPolicyProvider repositoryPolicyProvider) {
     this.aiPort = aiPort;
     this.promptBuilder = promptBuilder;
     this.ticketContextExtractor = ticketContextExtractor;
+    this.diffExpansionService = diffExpansionService;
+    this.repositoryPolicyProvider = repositoryPolicyProvider;
   }
 
   public Flux<ReviewChunk> reviewCodeStreaming(
@@ -37,18 +50,30 @@ public class AIReviewStreamingService {
     final ReviewConfiguration configWithLlmMetadata =
         config.withLlmMetadata(aiPort.getProviderName(), aiPort.getModelName());
 
-    return ticketContextExtractor
-        .extractFromMergeRequest(
-            enrichedDiff.mergeRequestTitle(), enrichedDiff.mergeRequestDescription())
+    final var basicBundle = enrichedDiff.toBasicBundle();
+    final var repo = enrichedDiff.repositoryIdentifier();
+    final var prMetadata = enrichedDiff.prMetadata();
+
+    return Mono.zip(
+            ticketContextExtractor.extractFromMergeRequest(
+                prMetadata.title(), prMetadata.description()),
+            diffExpansionService.expandDiff(basicBundle),
+            repositoryPolicyProvider.getPolicies(repo))
         .map(
-            ticketContext -> {
-              if (ticketContext.isEmpty()) {
-                log.debug("No ticket context found");
-              } else {
-                log.debug("Ticket context extracted: {}", ticketContext.ticketId());
-              }
+            tuple -> {
+              final TicketBusinessContext ticketContext = tuple.getT1();
+              final DiffExpansionResult expansionResult = tuple.getT2();
+              final RepositoryPolicies policies = tuple.getT3();
+
+              logContextResults(ticketContext, expansionResult, prMetadata, policies);
+
               return promptBuilder.buildReviewPrompt(
-                  enrichedDiff, configWithLlmMetadata, ticketContext);
+                  enrichedDiff,
+                  configWithLlmMetadata,
+                  ticketContext,
+                  expansionResult,
+                  prMetadata,
+                  policies);
             })
         .doOnNext(
             prompt ->
@@ -62,6 +87,36 @@ public class AIReviewStreamingService {
         .doOnComplete(() -> log.info("AI code review completed successfully"))
         .doOnError(e -> log.error("AI code review failed", e))
         .timeout(Duration.ofSeconds(60));
+  }
+
+  private void logContextResults(
+      final TicketBusinessContext ticketContext,
+      final DiffExpansionResult expansionResult,
+      final PrMetadata prMetadata,
+      final RepositoryPolicies policies) {
+    if (ticketContext.isEmpty()) {
+      log.debug("No ticket context found");
+    } else {
+      log.debug("Ticket context extracted: {}", ticketContext.ticketId());
+    }
+
+    if (expansionResult.hasExpandedFiles()) {
+      log.debug(
+          "Expanded {} files ({} skipped)",
+          expansionResult.filesExpanded(),
+          expansionResult.filesSkipped());
+    }
+
+    if (prMetadata.title() != null) {
+      log.debug(
+          "PR metadata: {} labels, {} commits",
+          prMetadata.labels().size(),
+          prMetadata.commits().size());
+    }
+
+    if (policies.hasPolicies()) {
+      log.debug("Repository policies loaded: {} documents", policies.allPolicies().size());
+    }
   }
 
   public ReviewConfiguration getLlmMetadata() {

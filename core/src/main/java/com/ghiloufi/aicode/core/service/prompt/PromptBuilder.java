@@ -1,6 +1,12 @@
 package com.ghiloufi.aicode.core.service.prompt;
 
+import com.ghiloufi.aicode.core.domain.model.CommitInfo;
+import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.ExpandedFileContext;
+import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
+import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
@@ -39,6 +45,22 @@ public class PromptBuilder {
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
       final TicketBusinessContext ticketContext) {
+    return buildReviewPrompt(
+        enrichedDiff,
+        config,
+        ticketContext,
+        DiffExpansionResult.empty(),
+        PrMetadata.empty(),
+        RepositoryPolicies.empty());
+  }
+
+  public String buildReviewPrompt(
+      final EnrichedDiffAnalysisBundle enrichedDiff,
+      final ReviewConfiguration config,
+      final TicketBusinessContext ticketContext,
+      final DiffExpansionResult expansionResult,
+      final PrMetadata prMetadata,
+      final RepositoryPolicies policies) {
     if (enrichedDiff == null) {
       throw new IllegalArgumentException("EnrichedDiffAnalysisBundle cannot be null");
     }
@@ -51,13 +73,22 @@ public class PromptBuilder {
 
     final String ticketContextFormatted = ticketContext.formatForPrompt();
 
-    return buildFullPrompt(enrichedDiff, config, ticketContextFormatted);
+    return buildFullPrompt(
+        enrichedDiff,
+        config,
+        ticketContextFormatted,
+        expansionResult != null ? expansionResult : DiffExpansionResult.empty(),
+        prMetadata != null ? prMetadata : PrMetadata.empty(),
+        policies != null ? policies : RepositoryPolicies.empty());
   }
 
   private String buildFullPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
-      final String ticketContext) {
+      final String ticketContext,
+      final DiffExpansionResult expansionResult,
+      final PrMetadata prMetadata,
+      final RepositoryPolicies policies) {
 
     final String formattedDiff = diffFormatter.formatDiff(enrichedDiff.structuredDiff());
 
@@ -73,6 +104,9 @@ public class PromptBuilder {
     prompt.append("language: ").append(config.programmingLanguage()).append("\n");
     prompt.append("focus: ").append(config.focus().name()).append("\n");
     prompt.append("[/REPO]\n\n");
+
+    appendPrMetadataSection(prompt, prMetadata);
+
     prompt.append("[DIFF]\n");
     prompt.append(formattedDiff);
     prompt.append("\n[/DIFF]\n");
@@ -82,6 +116,9 @@ public class PromptBuilder {
       prompt.append(formatContextMatches(enrichedDiff));
       prompt.append("[/CONTEXT]\n");
     }
+
+    appendExpandedFilesSection(prompt, expansionResult);
+    appendPoliciesSection(prompt, policies);
 
     if (config.customInstructions() != null && !config.customInstructions().isBlank()) {
       prompt.append("\n[CUSTOM_INSTRUCTIONS]\n");
@@ -133,5 +170,99 @@ public class PromptBuilder {
         .append("Consider their relationships when reviewing the diff.\n");
 
     return context.toString();
+  }
+
+  private void appendExpandedFilesSection(
+      final StringBuilder prompt, final DiffExpansionResult expansionResult) {
+    if (expansionResult == null || !expansionResult.hasExpandedFiles()) {
+      return;
+    }
+
+    prompt.append("\n[EXPANDED_FILES]\n");
+    prompt.append("Full content of modified files for additional context:\n\n");
+
+    for (final ExpandedFileContext file : expansionResult.expandedFiles()) {
+      if (!file.hasContent()) {
+        continue;
+      }
+      prompt.append("--- FILE: ").append(file.filePath());
+      if (file.truncated()) {
+        prompt.append(" (truncated from ").append(file.lineCount()).append(" lines)");
+      }
+      prompt.append(" ---\n");
+      prompt.append(file.content());
+      prompt.append("\n--- END FILE ---\n\n");
+    }
+    prompt.append("[/EXPANDED_FILES]\n");
+  }
+
+  private void appendPrMetadataSection(final StringBuilder prompt, final PrMetadata metadata) {
+    if (metadata == null || metadata.title() == null) {
+      return;
+    }
+
+    prompt.append("[PR_METADATA]\n");
+    prompt.append("Pull Request: ").append(metadata.title()).append("\n");
+
+    if (metadata.description() != null && !metadata.description().isBlank()) {
+      prompt.append("Description: ").append(metadata.description()).append("\n");
+    }
+
+    if (metadata.author() != null) {
+      prompt.append("Author: ").append(metadata.author()).append("\n");
+    }
+
+    if (metadata.baseBranch() != null && metadata.headBranch() != null) {
+      prompt
+          .append("Branch: ")
+          .append(metadata.headBranch())
+          .append(" → ")
+          .append(metadata.baseBranch())
+          .append("\n");
+    }
+
+    if (metadata.hasLabels()) {
+      prompt.append("Labels: ").append(String.join(", ", metadata.labels())).append("\n");
+    }
+
+    if (metadata.hasCommits()) {
+      prompt.append("\nRecent Commits:\n");
+      for (final CommitInfo commit : metadata.commits()) {
+        prompt.append("  - ").append(commit.shortId()).append(": ");
+        if (commit.hasMessage()) {
+          prompt.append(commit.firstLineOfMessage());
+        } else {
+          prompt.append("(no message)");
+        }
+        prompt.append("\n");
+      }
+    }
+
+    prompt.append("[/PR_METADATA]\n\n");
+  }
+
+  private void appendPoliciesSection(
+      final StringBuilder prompt, final RepositoryPolicies policies) {
+    if (policies == null || !policies.hasPolicies()) {
+      return;
+    }
+
+    prompt.append("\n[POLICIES]\n");
+    prompt.append("Repository guidelines to consider during review:\n\n");
+
+    for (final PolicyDocument policy : policies.allPolicies()) {
+      if (!policy.hasContent()) {
+        continue;
+      }
+
+      prompt.append("--- ").append(policy.name());
+      if (policy.truncated()) {
+        prompt.append(" (truncated)");
+      }
+      prompt.append(" ---\n");
+      prompt.append(policy.content());
+      prompt.append("\n--- END ---\n\n");
+    }
+    prompt.append("[/POLICIES]\n");
   }
 }

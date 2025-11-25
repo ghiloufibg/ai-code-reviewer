@@ -214,5 +214,16 @@ final class FixApplicationServiceTest {
         final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
       return Flux.empty();
     }
+
+    @Override
+    public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<com.ghiloufi.aicode.core.domain.model.PrMetadata> getPullRequestMetadata(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
+    }
   }
 }

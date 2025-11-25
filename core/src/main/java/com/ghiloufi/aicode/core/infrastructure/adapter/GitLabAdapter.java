@@ -84,22 +84,23 @@ public class GitLabAdapter implements SCMPort {
                       .getMergeRequestChanges(projectIdOrPath, (long) mrId.iid());
 
               final List<Diff> diffs = mergeRequestWithChanges.getChanges();
-              final String mrTitle = mergeRequestWithChanges.getTitle();
-              final String mrDescription = mergeRequestWithChanges.getDescription();
 
               log.debug(
                   "Fetched {} diffs for {}/MR!{} - Title: {}",
                   diffs.size(),
                   gitLabRepo.projectId(),
                   mrId.iid(),
-                  mrTitle);
+                  mergeRequestWithChanges.getTitle());
 
               final String rawDiff = diffBuilder.buildRawDiff(diffs);
               final GitDiffDocument structuredDiff = diffParser.parse(rawDiff);
 
               log.debug("Parsed {} file modifications", structuredDiff.files.size());
 
-              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, mrTitle, mrDescription);
+              final PrMetadata prMetadata =
+                  extractPrMetadata(mergeRequestWithChanges, diffs.size());
+
+              return new DiffAnalysisBundle(repo, structuredDiff, rawDiff, prMetadata);
             })
         .subscribeOn(Schedulers.boundedElastic())
         .doOnError(
@@ -1024,5 +1025,68 @@ public class GitLabAdapter implements SCMPort {
             ? commit.getCommittedDate().toInstant()
             : java.time.Instant.now(),
         List.of());
+  }
+
+  @Override
+  public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+    return Mono.error(
+        new UnsupportedOperationException("File content retrieval not yet implemented for GitLab"));
+  }
+
+  @Override
+  public Mono<PrMetadata> getPullRequestMetadata(
+      final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+              final MergeRequestId mrId =
+                  identifierValidator.validateGitLabChangeRequest(changeRequest);
+
+              final Object projectIdOrPath = gitLabRepo.projectId();
+              final MergeRequest mergeRequest =
+                  gitLabApi
+                      .getMergeRequestApi()
+                      .getMergeRequestChanges(projectIdOrPath, (long) mrId.iid());
+
+              final int changedFiles =
+                  mergeRequest.getChanges() != null ? mergeRequest.getChanges().size() : 0;
+
+              return extractPrMetadata(mergeRequest, changedFiles);
+            })
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  private PrMetadata extractPrMetadata(final MergeRequest mergeRequest, final int changedFiles) {
+    final String author =
+        mergeRequest.getAuthor() != null ? mergeRequest.getAuthor().getUsername() : null;
+
+    final List<String> labels =
+        mergeRequest.getLabels() != null ? List.copyOf(mergeRequest.getLabels()) : List.of();
+
+    List<CommitInfo> commits = List.of();
+    try {
+      final List<org.gitlab4j.api.models.Commit> mrCommits =
+          gitLabApi
+              .getMergeRequestApi()
+              .getCommits(mergeRequest.getProjectId(), (long) mergeRequest.getIid());
+      commits =
+          mrCommits.stream()
+              .limit(10)
+              .map(this::mapGitLabCommitToCommitInfo)
+              .toList();
+    } catch (final GitLabApiException e) {
+      log.warn("Failed to fetch commits for MR!{}: {}", mergeRequest.getIid(), e.getMessage());
+    }
+
+    return new PrMetadata(
+        mergeRequest.getTitle(),
+        mergeRequest.getDescription(),
+        author,
+        mergeRequest.getTargetBranch(),
+        mergeRequest.getSourceBranch(),
+        labels,
+        commits,
+        changedFiles);
   }
 }

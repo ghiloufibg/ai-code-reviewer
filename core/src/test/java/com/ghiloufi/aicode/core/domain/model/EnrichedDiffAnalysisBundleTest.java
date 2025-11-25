@@ -35,7 +35,7 @@ class EnrichedDiffAnalysisBundleTest {
   @Test
   void should_create_enriched_bundle_from_basic_bundle() {
     final DiffAnalysisBundle basicBundle =
-        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null, null);
+        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null);
 
     final EnrichedDiffAnalysisBundle enriched = new EnrichedDiffAnalysisBundle(basicBundle);
 
@@ -51,7 +51,7 @@ class EnrichedDiffAnalysisBundleTest {
     final ContextRetrievalResult context = createTestContext();
 
     final EnrichedDiffAnalysisBundle enriched =
-        new EnrichedDiffAnalysisBundle(testRepo, diff, "diff content", context, null, null);
+        new EnrichedDiffAnalysisBundle(testRepo, diff, "diff content", context, null);
 
     assertThat(enriched.hasContext()).isTrue();
     assertThat(enriched.contextResult()).isEqualTo(context);
@@ -60,7 +60,7 @@ class EnrichedDiffAnalysisBundleTest {
   @Test
   void should_add_context_to_enriched_bundle() {
     final DiffAnalysisBundle basicBundle =
-        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null, null);
+        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null);
     final ContextRetrievalResult context = createTestContext();
 
     final EnrichedDiffAnalysisBundle enriched =
@@ -74,7 +74,7 @@ class EnrichedDiffAnalysisBundleTest {
   @Test
   void should_convert_to_basic_bundle() {
     final DiffAnalysisBundle basicBundle =
-        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null, null);
+        new DiffAnalysisBundle(testRepo, createTestDiff(), "diff content", null);
     final EnrichedDiffAnalysisBundle enriched = new EnrichedDiffAnalysisBundle(basicBundle);
 
     final DiffAnalysisBundle converted = enriched.toBasicBundle();
@@ -87,7 +87,7 @@ class EnrichedDiffAnalysisBundleTest {
   void should_return_zero_context_count_when_no_context() {
     final EnrichedDiffAnalysisBundle enriched =
         new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null, null);
+            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null);
 
     assertThat(enriched.getContextMatchCount()).isZero();
   }
@@ -97,7 +97,7 @@ class EnrichedDiffAnalysisBundleTest {
     final ContextRetrievalResult context = createTestContext();
     final EnrichedDiffAnalysisBundle enriched =
         new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", context, null, null);
+            testRepo, createTestDiff(), "diff content", context, null);
 
     assertThat(enriched.getContextMatchCount()).isEqualTo(1);
   }
@@ -106,7 +106,7 @@ class EnrichedDiffAnalysisBundleTest {
   void should_generate_summary_without_context() {
     final EnrichedDiffAnalysisBundle enriched =
         new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null, null);
+            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null);
 
     final String summary = enriched.getSummary();
 
@@ -119,7 +119,7 @@ class EnrichedDiffAnalysisBundleTest {
     final ContextRetrievalResult context = createTestContext();
     final EnrichedDiffAnalysisBundle enriched =
         new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", context, null, null);
+            testRepo, createTestDiff(), "diff content", context, null);
 
     final String summary = enriched.getSummary();
 
@@ -136,7 +136,6 @@ class EnrichedDiffAnalysisBundleTest {
                     createTestDiff(),
                     "diff content",
                     ContextRetrievalResult.empty(),
-                    null,
                     null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Repository identifier cannot be null");
@@ -147,7 +146,7 @@ class EnrichedDiffAnalysisBundleTest {
     assertThatThrownBy(
             () ->
                 new EnrichedDiffAnalysisBundle(
-                    testRepo, null, "diff content", ContextRetrievalResult.empty(), null, null))
+                    testRepo, null, "diff content", ContextRetrievalResult.empty(), null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Structured diff cannot be null");
   }
@@ -157,7 +156,7 @@ class EnrichedDiffAnalysisBundleTest {
     assertThatThrownBy(
             () ->
                 new EnrichedDiffAnalysisBundle(
-                    testRepo, createTestDiff(), null, ContextRetrievalResult.empty(), null, null))
+                    testRepo, createTestDiff(), null, ContextRetrievalResult.empty(), null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Raw diff text cannot be null");
   }
@@ -167,7 +166,7 @@ class EnrichedDiffAnalysisBundleTest {
     assertThatThrownBy(
             () ->
                 new EnrichedDiffAnalysisBundle(
-                    testRepo, createTestDiff(), "", ContextRetrievalResult.empty(), null, null))
+                    testRepo, createTestDiff(), "", ContextRetrievalResult.empty(), null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Raw diff text cannot be empty");
   }
@@ -177,7 +176,7 @@ class EnrichedDiffAnalysisBundleTest {
     assertThatThrownBy(
             () ->
                 new EnrichedDiffAnalysisBundle(
-                    testRepo, createTestDiff(), "diff content", null, null, null))
+                    testRepo, createTestDiff(), "diff content", null, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Context result cannot be null");
   }
@@ -186,7 +185,7 @@ class EnrichedDiffAnalysisBundleTest {
   void should_throw_when_adding_null_context() {
     final EnrichedDiffAnalysisBundle enriched =
         new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null, null);
+            testRepo, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null);
 
     assertThatThrownBy(() -> enriched.withContext(null))
         .isInstanceOf(NullPointerException.class)

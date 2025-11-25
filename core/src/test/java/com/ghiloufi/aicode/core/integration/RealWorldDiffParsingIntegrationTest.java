@@ -91,7 +91,7 @@ final class RealWorldDiffParsingIntegrationTest {
 
       final GitDiffDocument parsedDiff = diffParser.parse(rawDiff);
       final DiffAnalysisBundle bundle =
-          new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff, null, null);
+          new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff, null);
 
       assertThat(bundle).isNotNull();
       assertThat(bundle.structuredDiff()).isEqualTo(parsedDiff);
@@ -177,7 +177,7 @@ final class RealWorldDiffParsingIntegrationTest {
 
       final GitDiffDocument parsedDiff = diffParser.parse(rawDiff);
       final DiffAnalysisBundle bundle =
-          new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff, null, null);
+          new DiffAnalysisBundle(testRepo, parsedDiff, rawDiff, null);
 
       assertThat(bundle).isNotNull();
       assertThat(bundle.structuredDiff()).isEqualTo(parsedDiff);

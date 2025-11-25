@@ -322,6 +322,17 @@ final class ReviewManagementServiceSummaryCommentTest {
         final RepositoryIdentifier repo, final java.time.LocalDate since, final int maxResults) {
       return Flux.empty();
     }
+
+    @Override
+    public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<PrMetadata> getPullRequestMetadata(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
+    }
   }
 
   private static final class TestSCMProviderFactory extends SCMProviderFactory {
@@ -340,7 +351,7 @@ final class ReviewManagementServiceSummaryCommentTest {
 
   private static final class TestAIReviewStreamingService extends AIReviewStreamingService {
     TestAIReviewStreamingService() {
-      super(null, null, null);
+      super(null, null, null, null, null);
     }
 
     @Override
@@ -381,8 +392,7 @@ final class ReviewManagementServiceSummaryCommentTest {
               diffAnalysisBundle.structuredDiff(),
               diffAnalysisBundle.rawDiffText(),
               ContextRetrievalResult.empty(),
-              diffAnalysisBundle.mergeRequestTitle(),
-              diffAnalysisBundle.mergeRequestDescription()));
+              diffAnalysisBundle.prMetadata()));
     }
   }
 }

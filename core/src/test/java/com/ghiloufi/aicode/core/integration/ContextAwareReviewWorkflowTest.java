@@ -57,7 +57,10 @@ final class ContextAwareReviewWorkflowTest {
             true,
             30,
             List.of("test-strategy"),
-            new ContextRetrievalConfig.RolloutConfig(100, false, 1000));
+            new ContextRetrievalConfig.RolloutConfig(100, false, 1000),
+            null,
+            null,
+            null);
 
     contextOrchestrator = new ContextOrchestrator(List.of(testStrategy), contextEnricher, config);
 
@@ -71,7 +74,7 @@ final class ContextAwareReviewWorkflowTest {
 
     final GitDiffDocument parsedDiff = diffParser.parse(mediumPRDiff);
     final DiffAnalysisBundle diffBundle =
-        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null, null);
+        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null);
 
     final Mono<EnrichedDiffAnalysisBundle> enrichedMono =
         contextOrchestrator.retrieveEnrichedContext(diffBundle);
@@ -127,14 +130,17 @@ final class ContextAwareReviewWorkflowTest {
 
     final GitDiffDocument parsedDiff = diffParser.parse(largePRDiff);
     final DiffAnalysisBundle diffBundle =
-        new DiffAnalysisBundle(testRepo, parsedDiff, largePRDiff, null, null);
+        new DiffAnalysisBundle(testRepo, parsedDiff, largePRDiff, null);
 
     final ContextRetrievalConfig configWithLowLimit =
         new ContextRetrievalConfig(
             true,
             30,
             List.of("test-strategy"),
-            new ContextRetrievalConfig.RolloutConfig(100, true, 100));
+            new ContextRetrievalConfig.RolloutConfig(100, true, 100),
+            null,
+            null,
+            null);
 
     final ContextOrchestrator orchestratorWithLimit =
         new ContextOrchestrator(
@@ -170,7 +176,7 @@ final class ContextAwareReviewWorkflowTest {
 
     final GitDiffDocument parsedDiff = diffParser.parse(mediumPRDiff);
     final DiffAnalysisBundle diffBundle =
-        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null, null);
+        new DiffAnalysisBundle(testRepo, parsedDiff, mediumPRDiff, null);
 
     final TestContextRetrievalStrategy emptyStrategy = new TestContextRetrievalStrategy();
     emptyStrategy.setMatchesToReturn(List.of());
@@ -183,7 +189,10 @@ final class ContextAwareReviewWorkflowTest {
                 true,
                 30,
                 List.of("test-strategy"),
-                new ContextRetrievalConfig.RolloutConfig(100, false, 1000)));
+                new ContextRetrievalConfig.RolloutConfig(100, false, 1000),
+                null,
+                null,
+                null));
 
     final Mono<EnrichedDiffAnalysisBundle> enrichedMono =
         orchestratorWithEmptyStrategy.retrieveEnrichedContext(diffBundle);

@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
+import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
@@ -11,6 +12,7 @@ import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
@@ -395,7 +397,7 @@ final class ReviewManagementServiceTest {
     final String rawDiff = "--- a/file.java\n+++ b/file.java\n@@ -1,1 +1,1 @@\n-old\n+new";
     final RepositoryIdentifier repo =
         RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
-    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null, null);
+    return new DiffAnalysisBundle(repo, gitDiffDocument, rawDiff, null);
   }
 
   private static final class TestSCMPort implements SCMPort {
@@ -535,6 +537,17 @@ final class ReviewManagementServiceTest {
         final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
       return Flux.empty();
     }
+
+    @Override
+    public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<PrMetadata> getPullRequestMetadata(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
+    }
   }
 
   private static final class TestSCMProviderFactory extends SCMProviderFactory {
@@ -558,7 +571,7 @@ final class ReviewManagementServiceTest {
     private boolean shouldFail = false;
 
     TestAIReviewStreamingService() {
-      super(null, null, null);
+      super(null, null, null, null, null);
     }
 
     final void setChunks(final List<ReviewChunk> chunks) {

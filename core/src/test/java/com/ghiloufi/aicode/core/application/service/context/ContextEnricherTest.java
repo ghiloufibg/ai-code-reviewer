@@ -36,7 +36,7 @@ final class ContextEnricherTest {
         new GitFileModification("src/Test.java", "src/Test.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
 
-    testBundle = new DiffAnalysisBundle(repo, gitDiff, "diff content", null, null);
+    testBundle = new DiffAnalysisBundle(repo, gitDiff, "diff content", null);
   }
 
   @Nested

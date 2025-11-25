@@ -35,8 +35,7 @@ public final class ContextEnricher {
         diffBundle.structuredDiff(),
         diffBundle.rawDiffText(),
         combinedResult,
-        diffBundle.mergeRequestTitle(),
-        diffBundle.mergeRequestDescription());
+        diffBundle.prMetadata());
   }
 
   private List<ContextMatch> deduplicateMatches(final List<ContextRetrievalResult> results) {

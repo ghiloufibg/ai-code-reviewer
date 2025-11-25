@@ -7,11 +7,11 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class CommitInfoTest {
+final class CommitInfoTest {
 
   @Test
   void should_create_valid_commit_info() {
-    final CommitInfo commit =
+    final var commit =
         new CommitInfo(
             "abc123",
             "feat: add user service",
@@ -28,7 +28,7 @@ class CommitInfoTest {
 
   @Test
   void should_return_changed_file_count() {
-    final CommitInfo commit =
+    final var commit =
         new CommitInfo(
             "abc123",
             "message",
@@ -41,7 +41,7 @@ class CommitInfoTest {
 
   @Test
   void should_identify_touched_file() {
-    final CommitInfo commit =
+    final var commit =
         new CommitInfo(
             "abc123",
             "message",
@@ -68,46 +68,119 @@ class CommitInfoTest {
   }
 
   @Test
-  void should_throw_when_message_is_null() {
-    assertThatThrownBy(() -> new CommitInfo("abc123", null, "author", Instant.now(), List.of()))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("Message cannot be null");
+  void should_allow_null_message() {
+    final var commit = new CommitInfo("abc123", null, "author", Instant.now(), List.of());
+
+    assertThat(commit.message()).isNull();
+    assertThat(commit.hasMessage()).isFalse();
   }
 
   @Test
-  void should_throw_when_author_is_null() {
-    assertThatThrownBy(() -> new CommitInfo("abc123", "message", null, Instant.now(), List.of()))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("Author cannot be null");
+  void should_allow_null_author() {
+    final var commit = new CommitInfo("abc123", "message", null, Instant.now(), List.of());
+
+    assertThat(commit.author()).isNull();
+    assertThat(commit.hasAuthor()).isFalse();
   }
 
   @Test
-  void should_throw_when_author_is_blank() {
-    assertThatThrownBy(() -> new CommitInfo("abc123", "message", "", Instant.now(), List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Author cannot be blank");
+  void should_allow_null_timestamp() {
+    final var commit = new CommitInfo("abc123", "message", "author", null, List.of());
+
+    assertThat(commit.timestamp()).isNull();
   }
 
   @Test
-  void should_throw_when_timestamp_is_null() {
-    assertThatThrownBy(() -> new CommitInfo("abc123", "message", "author", null, List.of()))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("Timestamp cannot be null");
-  }
+  void should_handle_null_changed_files() {
+    final var commit = new CommitInfo("abc123", "message", "author", Instant.now(), null);
 
-  @Test
-  void should_throw_when_changed_files_is_null() {
-    assertThatThrownBy(() -> new CommitInfo("abc123", "message", "author", Instant.now(), null))
-        .isInstanceOf(NullPointerException.class)
-        .hasMessageContaining("Changed files cannot be null");
+    assertThat(commit.changedFiles()).isEmpty();
+    assertThat(commit.getChangedFileCount()).isZero();
   }
 
   @Test
   void should_accept_empty_changed_files_list() {
-    final CommitInfo commit =
-        new CommitInfo("abc123", "message", "author", Instant.now(), List.of());
+    final var commit = new CommitInfo("abc123", "message", "author", Instant.now(), List.of());
 
     assertThat(commit.changedFiles()).isEmpty();
     assertThat(commit.getChangedFileCount()).isZero();
+  }
+
+  @Test
+  void should_return_short_id() {
+    final var commit =
+        new CommitInfo("abc123def456789", "message", "author", Instant.now(), List.of());
+
+    assertThat(commit.shortId()).isEqualTo("abc123d");
+  }
+
+  @Test
+  void should_return_full_id_when_short() {
+    final var commit = new CommitInfo("abc", "message", "author", Instant.now(), List.of());
+
+    assertThat(commit.shortId()).isEqualTo("abc");
+  }
+
+  @Test
+  void should_return_first_line_of_message() {
+    final var commit =
+        new CommitInfo(
+            "abc123", "First line\nSecond line\nThird line", "author", Instant.now(), List.of());
+
+    assertThat(commit.firstLineOfMessage()).isEqualTo("First line");
+  }
+
+  @Test
+  void should_return_full_message_when_single_line() {
+    final var commit =
+        new CommitInfo("abc123", "Single line message", "author", Instant.now(), List.of());
+
+    assertThat(commit.firstLineOfMessage()).isEqualTo("Single line message");
+  }
+
+  @Test
+  void should_return_empty_string_when_message_is_null() {
+    final var commit = new CommitInfo("abc123", null, "author", Instant.now(), List.of());
+
+    assertThat(commit.firstLineOfMessage()).isEmpty();
+  }
+
+  @Test
+  void should_return_empty_string_when_message_is_blank() {
+    final var commit = new CommitInfo("abc123", "   ", "author", Instant.now(), List.of());
+
+    assertThat(commit.firstLineOfMessage()).isEmpty();
+  }
+
+  @Test
+  void should_detect_has_message() {
+    final var withMessage = new CommitInfo("abc123", "message", null, null, null);
+    final var withoutMessage = new CommitInfo("abc123", null, null, null, null);
+    final var withBlankMessage = new CommitInfo("abc123", "   ", null, null, null);
+
+    assertThat(withMessage.hasMessage()).isTrue();
+    assertThat(withoutMessage.hasMessage()).isFalse();
+    assertThat(withBlankMessage.hasMessage()).isFalse();
+  }
+
+  @Test
+  void should_detect_has_author() {
+    final var withAuthor = new CommitInfo("abc123", null, "author", null, null);
+    final var withoutAuthor = new CommitInfo("abc123", null, null, null, null);
+    final var withBlankAuthor = new CommitInfo("abc123", null, "   ", null, null);
+
+    assertThat(withAuthor.hasAuthor()).isTrue();
+    assertThat(withoutAuthor.hasAuthor()).isFalse();
+    assertThat(withBlankAuthor.hasAuthor()).isFalse();
+  }
+
+  @Test
+  void should_make_defensive_copy_of_changed_files() {
+    final var mutableFiles = new java.util.ArrayList<>(List.of("file1.java"));
+    final var commit = new CommitInfo("abc123", "message", "author", Instant.now(), mutableFiles);
+
+    mutableFiles.clear();
+
+    assertThat(commit.changedFiles()).hasSize(1);
   }
 }

@@ -7,8 +7,7 @@ public record EnrichedDiffAnalysisBundle(
     GitDiffDocument structuredDiff,
     String rawDiffText,
     ContextRetrievalResult contextResult,
-    String mergeRequestTitle,
-    String mergeRequestDescription) {
+    PrMetadata prMetadata) {
 
   public EnrichedDiffAnalysisBundle {
     Objects.requireNonNull(repositoryIdentifier, "Repository identifier cannot be null");
@@ -19,6 +18,10 @@ public record EnrichedDiffAnalysisBundle(
     if (rawDiffText.trim().isEmpty()) {
       throw new IllegalArgumentException("Raw diff text cannot be empty");
     }
+
+    if (prMetadata == null) {
+      prMetadata = PrMetadata.empty();
+    }
   }
 
   public EnrichedDiffAnalysisBundle(final DiffAnalysisBundle originalBundle) {
@@ -27,21 +30,7 @@ public record EnrichedDiffAnalysisBundle(
         originalBundle.structuredDiff(),
         originalBundle.rawDiffText(),
         ContextRetrievalResult.empty(),
-        originalBundle.mergeRequestTitle(),
-        originalBundle.mergeRequestDescription());
-  }
-
-  public EnrichedDiffAnalysisBundle(
-      final DiffAnalysisBundle originalBundle,
-      final String mergeRequestTitle,
-      final String mergeRequestDescription) {
-    this(
-        originalBundle.repositoryIdentifier(),
-        originalBundle.structuredDiff(),
-        originalBundle.rawDiffText(),
-        ContextRetrievalResult.empty(),
-        mergeRequestTitle,
-        mergeRequestDescription);
+        originalBundle.prMetadata());
   }
 
   public EnrichedDiffAnalysisBundle withContext(final ContextRetrievalResult context) {
@@ -51,17 +40,11 @@ public record EnrichedDiffAnalysisBundle(
         this.structuredDiff,
         this.rawDiffText,
         context,
-        this.mergeRequestTitle,
-        this.mergeRequestDescription);
+        this.prMetadata);
   }
 
   public DiffAnalysisBundle toBasicBundle() {
-    return new DiffAnalysisBundle(
-        repositoryIdentifier,
-        structuredDiff,
-        rawDiffText,
-        mergeRequestTitle,
-        mergeRequestDescription);
+    return new DiffAnalysisBundle(repositoryIdentifier, structuredDiff, rawDiffText, prMetadata);
   }
 
   public boolean hasContext() {

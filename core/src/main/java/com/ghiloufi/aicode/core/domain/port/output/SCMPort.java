@@ -5,6 +5,7 @@ import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
@@ -51,4 +52,9 @@ public interface SCMPort {
       RepositoryIdentifier repo, String filePath, LocalDate since, int maxResults);
 
   Flux<CommitInfo> getCommitsSince(RepositoryIdentifier repo, LocalDate since, int maxResults);
+
+  Mono<String> getFileContent(RepositoryIdentifier repo, String filePath);
+
+  Mono<PrMetadata> getPullRequestMetadata(
+      RepositoryIdentifier repo, ChangeRequestIdentifier changeRequest);
 }

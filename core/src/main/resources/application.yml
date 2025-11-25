@@ -31,6 +31,34 @@ context-retrieval:
     confidence-minimum: 0.3
     time-window-days: 90
 
+  diff-expansion:
+    enabled: true
+    max-file-size-kb: 100
+    max-line-count: 500
+    max-files-to-expand: 10
+    excluded-extensions:
+      - .lock
+      - .svg
+      - .png
+      - .jpg
+      - .gif
+      - .ico
+
+  pr-metadata:
+    enabled: true
+    include-labels: true
+    include-commits: true
+    include-author: true
+    max-commit-messages: 5
+
+  policies:
+    enabled: true
+    max-content-chars: 5000
+    include-contributing: true
+    include-code-of-conduct: false
+    include-pr-template: true
+    include-security: true
+
 # Ticket System Configuration
 ticket-system:
   jira:
