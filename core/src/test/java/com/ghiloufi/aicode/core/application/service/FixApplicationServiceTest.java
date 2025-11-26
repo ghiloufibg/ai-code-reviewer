@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
+import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
@@ -173,21 +175,18 @@ final class FixApplicationServiceTest {
     }
 
     @Override
-    public Mono<com.ghiloufi.aicode.core.domain.model.RepositoryInfo> getRepository(
-        final RepositoryIdentifier repo) {
+    public Mono<RepositoryInfo> getRepository(final RepositoryIdentifier repo) {
       return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.MergeRequestSummary>
-        getOpenChangeRequests(final RepositoryIdentifier repo) {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<MergeRequestSummary> getOpenChangeRequests(final RepositoryIdentifier repo) {
+      return Flux.empty();
     }
 
     @Override
-    public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.RepositoryInfo>
-        getAllRepositories() {
-      return reactor.core.publisher.Flux.empty();
+    public Flux<RepositoryInfo> getAllRepositories() {
+      return Flux.empty();
     }
 
     @Override

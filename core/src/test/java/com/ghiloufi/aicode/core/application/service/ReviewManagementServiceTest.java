@@ -264,7 +264,7 @@ final class ReviewManagementServiceTest {
 
     testSCMPort.setShouldFailPublish(false);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, reviewResult);
 
     StepVerifier.create(result).verifyComplete();
@@ -280,7 +280,7 @@ final class ReviewManagementServiceTest {
 
     testSCMPort.setShouldFailPublish(true);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, reviewResult);
 
     StepVerifier.create(result)
@@ -302,7 +302,7 @@ final class ReviewManagementServiceTest {
 
     testSCMPort.setShouldFailPublish(false);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, emptyReviewResult);
 
     StepVerifier.create(result).verifyComplete();
@@ -472,52 +472,47 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
-    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle>
-        getDiff(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-            final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
+    public Mono<DiffAnalysisBundle> getDiff(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
       if (diffAnalysisBundle != null) {
         return Mono.just(diffAnalysisBundle);
       }
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishReview(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
-        final com.ghiloufi.aicode.core.domain.model.ReviewResult reviewResult) {
+    public Mono<Void> publishReview(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final ReviewResult reviewResult) {
       publishReviewCalled.set(true);
       if (shouldFailPublish) {
-        return reactor.core.publisher.Mono.error(new RuntimeException("Publish review failed"));
+        return Mono.error(new RuntimeException("Publish review failed"));
       }
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishSummaryComment(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
+    public Mono<Void> publishSummaryComment(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
         final String summaryComment) {
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Boolean> isChangeRequestOpen(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Mono.just(true);
+    public Mono<Boolean> isChangeRequestOpen(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.just(true);
     }
 
     @Override
-    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.RepositoryInfo>
-        getRepository(final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo) {
-      return reactor.core.publisher.Mono.empty();
+    public Mono<RepositoryInfo> getRepository(final RepositoryIdentifier repo) {
+      return Mono.empty();
     }
 
     @Override
-    public Flux<MergeRequestSummary> getOpenChangeRequests(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo) {
+    public Flux<MergeRequestSummary> getOpenChangeRequests(final RepositoryIdentifier repo) {
       if (shouldFail) {
         return Flux.error(new RuntimeException("SCM operation failed"));
       }
