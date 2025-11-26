@@ -1,6 +1,10 @@
 package com.ghiloufi.aicode.core.infrastructure.adapter;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
+import com.ghiloufi.aicode.core.infrastructure.adapter.openai.OpenAIChatRequest;
+import com.ghiloufi.aicode.core.infrastructure.adapter.openai.OpenAIStreamResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -9,11 +13,20 @@ import reactor.core.publisher.Flux;
 @Slf4j
 public final class OpenAIAdapter implements AIInteractionPort {
 
+  private static final String SSE_DATA_PREFIX = "data: ";
+  private static final String SSE_DONE_MARKER = "[DONE]";
+
   private final WebClient webClient;
+  private final ObjectMapper objectMapper;
   private final String model;
 
-  public OpenAIAdapter(final String baseUrl, final String model, final String apiKey) {
+  public OpenAIAdapter(
+      final String baseUrl,
+      final String model,
+      final String apiKey,
+      final ObjectMapper objectMapper) {
     this.model = model;
+    this.objectMapper = objectMapper;
     this.webClient =
         WebClient.builder()
             .baseUrl(baseUrl)
@@ -27,77 +40,53 @@ public final class OpenAIAdapter implements AIInteractionPort {
   public Flux<String> streamCompletion(final String prompt) {
     log.debug("Sending prompt: {} chars", prompt.length());
 
-    final String requestBody =
-        String.format(
-            """
-            {
-              "model": "%s",
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "You are a code reviewer. Analyze code and provide constructive feedback."
-                },
-                {
-                  "role": "user",
-                  "content": %s
-                }
-              ],
-              "stream": true,
-              "temperature": 0.1
-            }
-            """,
-            model, escapeJson(prompt));
+    final OpenAIChatRequest request = OpenAIChatRequest.forCodeReview(model, prompt);
 
     return webClient
         .post()
         .uri("/chat/completions")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(requestBody)
+        .bodyValue(serializeRequest(request))
         .accept(MediaType.TEXT_EVENT_STREAM)
         .retrieve()
         .bodyToFlux(String.class)
-        .filter(line -> !line.trim().isEmpty() && !line.equals("data: [DONE]"))
-        .map(
-            line -> {
-              if (line.startsWith("data: ")) {
-                return line.substring(6);
-              }
-              return line;
-            })
-        .filter(json -> json.contains("\"content\""))
-        .map(this::extractContent)
+        .filter(this::isValidSseLine)
+        .map(this::extractJsonFromSseLine)
+        .map(this::parseStreamResponse)
+        .filter(OpenAIStreamResponse::hasContent)
+        .map(response -> response.extractFirstContent().orElse(""))
         .doOnError(error -> log.error("Streaming error: {}", error.getMessage()))
         .doOnComplete(() -> log.debug("Streaming completed"));
   }
 
-  private String extractContent(final String json) {
+  private String serializeRequest(final OpenAIChatRequest request) {
     try {
-      final int contentStart = json.indexOf("\"content\":\"") + 11;
-      if (contentStart == 10) {
-        return "";
-      }
-      int contentEnd = json.indexOf("\"", contentStart);
-      while (contentEnd > 0 && json.charAt(contentEnd - 1) == '\\') {
-        contentEnd = json.indexOf("\"", contentEnd + 1);
-      }
-      if (contentEnd == -1) {
-        return "";
-      }
-      return json.substring(contentStart, contentEnd).replace("\\n", "\n").replace("\\\"", "\"");
-    } catch (final Exception e) {
-      log.debug("Content extraction failed");
-      return "";
+      return objectMapper.writeValueAsString(request);
+    } catch (final JsonProcessingException e) {
+      log.error("Failed to serialize OpenAI request: {}", e.getMessage());
+      throw new IllegalStateException("Failed to serialize request", e);
     }
   }
 
-  private String escapeJson(final String text) {
-    return "\""
-        + text.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-        + "\"";
+  private boolean isValidSseLine(final String line) {
+    final String trimmed = line.trim();
+    return !trimmed.isEmpty() && !trimmed.equals(SSE_DATA_PREFIX + SSE_DONE_MARKER);
+  }
+
+  private String extractJsonFromSseLine(final String line) {
+    if (line.startsWith(SSE_DATA_PREFIX)) {
+      return line.substring(SSE_DATA_PREFIX.length());
+    }
+    return line;
+  }
+
+  private OpenAIStreamResponse parseStreamResponse(final String json) {
+    try {
+      return objectMapper.readValue(json, OpenAIStreamResponse.class);
+    } catch (final JsonProcessingException e) {
+      log.debug("Failed to parse stream response: {}", e.getMessage());
+      return new OpenAIStreamResponse(null, null, null);
+    }
   }
 
   @Override
