@@ -17,6 +17,7 @@ import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +92,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     final ReviewConfiguration config = ReviewConfiguration.defaults();
     final SCMPort scmPort = scmProviderFactory.getProvider(repository.getProvider());
-    final List<ReviewChunk> accumulatedChunks = new ArrayList<>();
+    final List<ReviewChunk> accumulatedChunks = Collections.synchronizedList(new ArrayList<>());
 
     return scmPort
         .getDiff(repository, changeRequest)
