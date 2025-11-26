@@ -385,6 +385,78 @@ mvn spotless:apply
 - CI/CD will reject unformatted code
 - Run `mvn spotless:apply` as the final step of every implementation task
 
+### 10. REACTIVE STREAMS - NO FIRE-AND-FORGET
+
+**CRITICAL: Never use bare `.subscribe()` in reactive chains.**
+
+Fire-and-forget subscriptions cause silent data loss and are forbidden in this project.
+
+**Prohibited Patterns:**
+```java
+// ❌ WRONG - Fire-and-forget subscription
+someService.doSomething()
+    .doOnSuccess(v -> log.info("Done"))
+    .doOnError(e -> log.error("Failed", e))
+    .subscribe();  // FORBIDDEN - errors swallowed, no tracking
+
+// ❌ WRONG - Fire-and-forget inside doOnComplete/doOnSuccess
+flux.doOnComplete(() -> {
+    anotherService.save(data).subscribe();  // FORBIDDEN - detached subscription
+});
+
+// ❌ WRONG - Ignoring return value
+public void process() {
+    repository.save(entity);  // FORBIDDEN if save() returns Mono/Flux
+}
+```
+
+**Required Patterns:**
+```java
+// ✅ CORRECT - Return reactive type to caller (Option 1 - PREFERRED)
+public Mono<Void> process() {
+    return someService.doSomething()
+        .then(anotherService.save(data))
+        .doOnSuccess(v -> log.info("Completed"))
+        .doOnError(e -> log.error("Failed", e));
+}
+
+// ✅ CORRECT - Chain operations with then/flatMap
+public Flux<Result> streamAndSave() {
+    return dataStream
+        .collectList()
+        .flatMap(items -> repository.saveAll(items))
+        .thenMany(dataStream);
+}
+
+// ✅ CORRECT - Use concatWith for side effects that must complete
+public Flux<Chunk> streamWithPublish() {
+    return mainStream
+        .transform(flux -> flux.concatWith(
+            Mono.defer(() -> publishResult())
+                .then(Mono.empty())
+        ));
+}
+```
+
+**Refactoring Fire-and-Forget:**
+
+When you encounter `.subscribe()` at the end of a chain:
+1. **Identify the caller** - who needs to know about completion/failure?
+2. **Return the Mono/Flux** - propagate reactive types up the call stack
+3. **Chain with then/flatMap** - connect dependent operations
+4. **Handle at boundaries** - only subscribe at system edges (controllers, schedulers)
+
+**Detection:**
+```bash
+# Find potential fire-and-forget patterns
+grep -rn "\.subscribe()" --include="*.java" src/
+```
+
+**Enforcement:**
+- Code review must reject any bare `.subscribe()` without justification
+- Only allowed at true system boundaries (e.g., Spring WebFlux controllers handle subscription)
+- Every reactive return type must be propagated or explicitly handled
+
 ---
 
 ## 🧪 Testing Standards

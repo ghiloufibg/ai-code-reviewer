@@ -10,6 +10,7 @@ import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -310,7 +311,7 @@ final class ReviewManagementServiceSummaryCommentTest {
     public Flux<CommitInfo> getCommitsFor(
         final RepositoryIdentifier repo,
         final String filePath,
-        final java.time.LocalDate since,
+        final LocalDate since,
         final int maxResults) {
       return Flux.empty();
     }

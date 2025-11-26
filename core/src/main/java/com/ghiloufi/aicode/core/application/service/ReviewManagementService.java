@@ -118,76 +118,92 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                   chunk.content().length(),
                   accumulatedChunks.size());
             })
-        .doOnComplete(
-            () -> {
-              log.info("Streaming completed: {} chunks", accumulatedChunks.size());
-
-              if (!accumulatedChunks.isEmpty()) {
-                log.info(
-                    "Publishing review for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName());
-
-                final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
-                final ReviewResult result =
-                    chunkAccumulator
-                        .accumulateChunks(accumulatedChunks, config)
-                        .withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
-
-                scmPort
-                    .publishReview(repository, changeRequest, result)
-                    .doOnSuccess(
-                        v ->
-                            log.info(
-                                "Review published successfully for {}/{}",
-                                repository.getDisplayName(),
-                                changeRequest.getDisplayName()))
-                    .doOnError(
-                        error ->
-                            log.error(
-                                "Failed to publish review for {}/{}",
-                                repository.getDisplayName(),
-                                changeRequest.getDisplayName(),
-                                error))
-                    .then(
-                        Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
-                    .then(
-                        Mono.defer(
-                            () -> {
-                              final String reviewId =
-                                  repository.getDisplayName()
-                                      + "_"
-                                      + changeRequest.getNumber()
-                                      + "_"
-                                      + repository.getProvider().name().toLowerCase();
-                              log.debug("Saving review to database: {}", reviewId);
-                              return reviewRepository.save(reviewId, result);
-                            }))
-                    .doOnSuccess(
-                        v ->
-                            log.info(
-                                "Review saved to database for {}/{}",
-                                repository.getDisplayName(),
-                                changeRequest.getDisplayName()))
-                    .doOnError(
-                        error ->
-                            log.error(
-                                "Failed to save review to database for {}/{}",
-                                repository.getDisplayName(),
-                                changeRequest.getDisplayName(),
-                                error))
-                    .subscribe();
-              } else {
-                log.warn(
-                    "No chunks to publish for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName());
-              }
-            })
+        .transform(
+            flux ->
+                chainPublishOperations(
+                    flux, accumulatedChunks, repository, changeRequest, scmPort, config))
         .doOnError(
             error ->
                 log.error(
-                    "Streaming failed for {}/{}",
+                    "Review failed for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName(),
+                    error));
+  }
+
+  private Flux<ReviewChunk> chainPublishOperations(
+      final Flux<ReviewChunk> sourceFlux,
+      final List<ReviewChunk> accumulatedChunks,
+      final RepositoryIdentifier repository,
+      final ChangeRequestIdentifier changeRequest,
+      final SCMPort scmPort,
+      final ReviewConfiguration config) {
+    return sourceFlux.concatWith(
+        Mono.defer(
+                () -> {
+                  log.info("Streaming completed: {} chunks", accumulatedChunks.size());
+
+                  if (accumulatedChunks.isEmpty()) {
+                    log.warn(
+                        "No chunks to publish for {}/{}",
+                        repository.getDisplayName(),
+                        changeRequest.getDisplayName());
+                    return Mono.empty();
+                  }
+
+                  log.info(
+                      "Publishing review for {}/{}",
+                      repository.getDisplayName(),
+                      changeRequest.getDisplayName());
+
+                  final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
+                  final ReviewResult result =
+                      chunkAccumulator
+                          .accumulateChunks(accumulatedChunks, config)
+                          .withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+
+                  return publishAndSaveReview(repository, changeRequest, result, scmPort);
+                })
+            .then(Mono.empty()));
+  }
+
+  private Mono<Void> publishAndSaveReview(
+      final RepositoryIdentifier repository,
+      final ChangeRequestIdentifier changeRequest,
+      final ReviewResult result,
+      final SCMPort scmPort) {
+    final String reviewId =
+        repository.getDisplayName()
+            + "_"
+            + changeRequest.getNumber()
+            + "_"
+            + repository.getProvider().name().toLowerCase();
+
+    return scmPort
+        .publishReview(repository, changeRequest, result)
+        .doOnSuccess(
+            v ->
+                log.info(
+                    "Review published successfully for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName()))
+        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
+        .then(
+            Mono.defer(
+                () -> {
+                  log.debug("Saving review to database: {}", reviewId);
+                  return reviewRepository.save(reviewId, result);
+                }))
+        .doOnSuccess(
+            v ->
+                log.info(
+                    "Review saved to database for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName()))
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to publish/save review for {}/{}",
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error));

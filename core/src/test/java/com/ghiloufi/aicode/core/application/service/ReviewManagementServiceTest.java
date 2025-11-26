@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
+import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
@@ -21,6 +22,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
@@ -56,11 +58,10 @@ final class ReviewManagementServiceTest {
     testReviewRepository = new TestPostgresReviewRepository();
     testContextOrchestrator = new TestContextOrchestrator();
 
-    final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
-        new com.ghiloufi.aicode.core.config.SummaryCommentProperties(false, true, true);
-    final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
-        new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
-            summaryCommentProperties);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(false, true, true);
+    final SummaryCommentFormatter summaryCommentFormatter =
+        new SummaryCommentFormatter(summaryCommentProperties);
 
     reviewManagementService =
         new ReviewManagementService(
@@ -351,8 +352,8 @@ final class ReviewManagementServiceTest {
   }
 
   @Test
-  @DisplayName("should_stream_chunks_and_handle_publish_error_gracefully")
-  final void should_stream_chunks_and_handle_publish_error_gracefully() {
+  @DisplayName("should_stream_chunks_then_propagate_publish_error")
+  final void should_stream_chunks_then_propagate_publish_error() {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
@@ -371,7 +372,37 @@ final class ReviewManagementServiceTest {
     StepVerifier.create(result)
         .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SECURITY))
         .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SUGGESTION))
-        .verifyComplete();
+        .expectErrorMatches(
+            error ->
+                error instanceof RuntimeException
+                    && error.getMessage().equals("Publish review failed"))
+        .verify();
+  }
+
+  @Test
+  @DisplayName("should_stream_chunks_then_propagate_save_error")
+  final void should_stream_chunks_then_propagate_save_error() {
+    final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
+    final MergeRequestId changeRequest = new MergeRequestId(1);
+
+    final List<ReviewChunk> chunks =
+        List.of(new ReviewChunk(ReviewChunk.ChunkType.SECURITY, "Security issue", null));
+
+    testAIReviewStreamingService.setChunks(chunks);
+    testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
+    testSCMPort.setShouldFailPublish(false);
+    testReviewRepository.setShouldFail(true);
+
+    final Flux<ReviewChunk> result =
+        reviewManagementService.streamAndPublishReview(repository, changeRequest);
+
+    StepVerifier.create(result)
+        .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SECURITY))
+        .expectErrorMatches(
+            error ->
+                error instanceof RuntimeException
+                    && error.getMessage().equals("Database save failed"))
+        .verify();
   }
 
   @Test
@@ -612,14 +643,12 @@ final class ReviewManagementServiceTest {
 
     @Override
     public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
-      return accumulateChunks(
-          chunks, com.ghiloufi.aicode.core.domain.model.ReviewConfiguration.defaults());
+      return accumulateChunks(chunks, ReviewConfiguration.defaults());
     }
 
     @Override
     public ReviewResult accumulateChunks(
-        final List<ReviewChunk> chunks,
-        final com.ghiloufi.aicode.core.domain.model.ReviewConfiguration config) {
+        final List<ReviewChunk> chunks, final ReviewConfiguration config) {
       accumulateChunksCalled.set(true);
 
       final List<ReviewResult.Issue> issues = new ArrayList<>();
@@ -660,12 +689,22 @@ final class ReviewManagementServiceTest {
   }
 
   private static final class TestPostgresReviewRepository extends PostgresReviewRepository {
+
+    private boolean shouldFail = false;
+
     public TestPostgresReviewRepository() {
       super(null, null);
     }
 
+    final void setShouldFail(final boolean shouldFail) {
+      this.shouldFail = shouldFail;
+    }
+
     @Override
     public Mono<Void> save(final String reviewId, final ReviewResult result) {
+      if (shouldFail) {
+        return Mono.error(new RuntimeException("Database save failed"));
+      }
       return Mono.empty();
     }
 
