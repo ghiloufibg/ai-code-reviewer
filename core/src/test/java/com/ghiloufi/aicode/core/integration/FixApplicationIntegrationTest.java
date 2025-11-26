@@ -25,7 +25,9 @@ import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -69,6 +71,7 @@ final class FixApplicationIntegrationTest {
     final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
         new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
             summaryCommentProperties);
+    final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
 
     reviewManagementService =
         new ReviewManagementService(
@@ -78,7 +81,8 @@ final class FixApplicationIntegrationTest {
             testReviewRepository,
             testContextOrchestrator,
             summaryCommentProperties,
-            summaryCommentFormatter);
+            summaryCommentFormatter,
+            resilience);
 
     fixApplicationService = new FixApplicationService(testGitLabPort, mockRepository);
   }

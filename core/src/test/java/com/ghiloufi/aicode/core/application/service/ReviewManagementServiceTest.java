@@ -25,7 +25,9 @@ import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -62,6 +64,7 @@ final class ReviewManagementServiceTest {
         new SummaryCommentProperties(false, true, true);
     final SummaryCommentFormatter summaryCommentFormatter =
         new SummaryCommentFormatter(summaryCommentProperties);
+    final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
 
     reviewManagementService =
         new ReviewManagementService(
@@ -71,7 +74,8 @@ final class ReviewManagementServiceTest {
             testReviewRepository,
             testContextOrchestrator,
             summaryCommentProperties,
-            summaryCommentFormatter);
+            summaryCommentFormatter,
+            resilience);
   }
 
   @Test
@@ -380,8 +384,8 @@ final class ReviewManagementServiceTest {
   }
 
   @Test
-  @DisplayName("should_stream_chunks_then_propagate_save_error")
-  final void should_stream_chunks_then_propagate_save_error() {
+  @DisplayName("should_stream_chunks_and_complete_gracefully_when_save_fails")
+  final void should_stream_chunks_and_complete_gracefully_when_save_fails() {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
@@ -398,11 +402,9 @@ final class ReviewManagementServiceTest {
 
     StepVerifier.create(result)
         .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SECURITY))
-        .expectErrorMatches(
-            error ->
-                error instanceof RuntimeException
-                    && error.getMessage().equals("Database save failed"))
-        .verify();
+        .verifyComplete();
+
+    assertThat(testSCMPort.isPublishReviewCalled()).isTrue();
   }
 
   @Test

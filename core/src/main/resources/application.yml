@@ -70,3 +70,55 @@ logging:
   level:
     com.ghiloufi.aicode.core: DEBUG
     org.kohsuke.github: INFO
+
+# Resilience4j Configuration
+resilience4j:
+  retry:
+    configs:
+      critical:
+        maxAttempts: 3
+        waitDuration: 200ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.net.ConnectException
+          - org.springframework.web.reactive.function.client.WebClientException
+          - org.gitlab4j.api.GitLabApiException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+          - java.lang.NullPointerException
+
+      best-effort:
+        maxAttempts: 2
+        waitDuration: 100ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.sql.SQLException
+          - org.springframework.dao.DataAccessException
+
+      optional:
+        maxAttempts: 1
+        waitDuration: 0ms
+
+    instances:
+      scm-get-diff:
+        baseConfig: critical
+      scm-publish-review:
+        baseConfig: critical
+      scm-get-merge-requests:
+        baseConfig: critical
+      scm-publish-summary:
+        baseConfig: best-effort
+      ai-streaming:
+        baseConfig: critical
+        maxAttempts: 2
+      context-enrichment:
+        baseConfig: critical
+      db-save-review:
+        baseConfig: best-effort
+      ticket-context:
+        baseConfig: best-effort
+        maxAttempts: 1

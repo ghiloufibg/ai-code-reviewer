@@ -15,6 +15,7 @@ import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +39,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final ContextOrchestrator contextOrchestrator;
   private final SummaryCommentProperties summaryCommentProperties;
   private final SummaryCommentFormatter summaryCommentFormatter;
+  private final Resilience resilience;
 
   @Override
   public Flux<ReviewChunk> streamReview(
@@ -50,6 +52,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .getDiff(repository, changeRequest)
+        .transform(resilience.criticalMono("scm-get-diff"))
         .doOnSuccess(
             diff ->
                 log.debug(
@@ -57,13 +60,17 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     diff.getModifiedFileCount(),
                     diff.getTotalLineCount()))
         .flatMap(contextOrchestrator::retrieveEnrichedContext)
+        .transform(resilience.criticalMono("context-enrichment"))
         .doOnSuccess(
             enrichedDiff ->
                 log.debug(
                     "Context enrichment complete: {} context matches",
                     enrichedDiff.getContextMatchCount()))
         .flatMapMany(
-            enrichedDiff -> aiReviewStreamingService.reviewCodeStreaming(enrichedDiff, config))
+            enrichedDiff ->
+                aiReviewStreamingService
+                    .reviewCodeStreaming(enrichedDiff, config)
+                    .transform(resilience.criticalFlux("ai-streaming")))
         .doOnNext(
             chunk ->
                 log.debug("Streaming chunk: {} - {} chars", chunk.type(), chunk.content().length()))
@@ -72,14 +79,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                 log.info(
                     "Review completed for {}/{}",
                     repository.getDisplayName(),
-                    changeRequest.getDisplayName()))
-        .doOnError(
-            error ->
-                log.error(
-                    "Review failed for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName(),
-                    error));
+                    changeRequest.getDisplayName()));
   }
 
   @Override
@@ -96,6 +96,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .getDiff(repository, changeRequest)
+        .transform(resilience.criticalMono("scm-get-diff"))
         .doOnSuccess(
             diff ->
                 log.debug(
@@ -103,13 +104,17 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     diff.getModifiedFileCount(),
                     diff.getTotalLineCount()))
         .flatMap(contextOrchestrator::retrieveEnrichedContext)
+        .transform(resilience.criticalMono("context-enrichment"))
         .doOnSuccess(
             enrichedDiff ->
                 log.debug(
                     "Context enrichment complete: {} context matches",
                     enrichedDiff.getContextMatchCount()))
         .flatMapMany(
-            enrichedDiff -> aiReviewStreamingService.reviewCodeStreaming(enrichedDiff, config))
+            enrichedDiff ->
+                aiReviewStreamingService
+                    .reviewCodeStreaming(enrichedDiff, config)
+                    .transform(resilience.criticalFlux("ai-streaming")))
         .doOnNext(
             chunk -> {
               accumulatedChunks.add(chunk);
@@ -182,6 +187,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .publishReview(repository, changeRequest, result)
+        .transform(resilience.criticalMono("scm-publish-review"))
         .doOnSuccess(
             v ->
                 log.info(
@@ -191,10 +197,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
         .then(
             Mono.defer(
-                () -> {
-                  log.debug("Saving review to database: {}", reviewId);
-                  return reviewRepository.save(reviewId, result);
-                }))
+                    () -> {
+                      log.debug("Saving review to database: {}", reviewId);
+                      return reviewRepository.save(reviewId, result);
+                    })
+                .transform(resilience.bestEffortMono("db-save-review")))
         .doOnSuccess(
             v ->
                 log.info(
@@ -218,6 +225,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .getOpenChangeRequests(repository)
+        .transform(resilience.criticalFlux("scm-get-merge-requests"))
         .doOnNext(mr -> log.debug("Found open change request: #{} - {}", mr.iid(), mr.title()))
         .doOnComplete(
             () ->
@@ -243,6 +251,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .publishReview(repository, changeRequest, enrichedResult)
+        .transform(resilience.criticalMono("scm-publish-review"))
         .doOnSuccess(
             v ->
                 log.info(
@@ -259,16 +268,17 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, enrichedResult)))
         .then(
             Mono.defer(
-                () -> {
-                  final String reviewId =
-                      repository.getDisplayName()
-                          + "_"
-                          + changeRequest.getNumber()
-                          + "_"
-                          + repository.getProvider().name().toLowerCase();
-                  log.debug("Saving review to database: {}", reviewId);
-                  return reviewRepository.save(reviewId, enrichedResult);
-                }))
+                    () -> {
+                      final String reviewId =
+                          repository.getDisplayName()
+                              + "_"
+                              + changeRequest.getNumber()
+                              + "_"
+                              + repository.getProvider().name().toLowerCase();
+                      log.debug("Saving review to database: {}", reviewId);
+                      return reviewRepository.save(reviewId, enrichedResult);
+                    })
+                .transform(resilience.bestEffortMono("db-save-review")))
         .doOnSuccess(
             v ->
                 log.info(
@@ -303,27 +313,13 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .publishSummaryComment(repository, changeRequest, summaryComment)
+        .transform(resilience.bestEffortMono("scm-publish-summary"))
         .doOnSuccess(
             v ->
                 log.info(
                     "Summary comment published for {}/{}",
                     repository.getDisplayName(),
-                    changeRequest.getDisplayName()))
-        .doOnError(
-            error ->
-                log.error(
-                    "Failed to publish summary comment for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName(),
-                    error))
-        .onErrorResume(
-            error -> {
-              log.warn(
-                  "Summary comment publication failed, continuing with review process for {}/{}",
-                  repository.getDisplayName(),
-                  changeRequest.getDisplayName());
-              return Mono.empty();
-            });
+                    changeRequest.getDisplayName()));
   }
 
   @Override
@@ -334,6 +330,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     return scmPort
         .getAllRepositories()
+        .transform(resilience.criticalFlux("scm-get-merge-requests"))
         .doOnNext(repo -> log.debug("Found repository: {}", repo.fullName()))
         .doOnComplete(() -> log.info("Completed fetching repositories for: {}", provider))
         .doOnError(error -> log.error("Failed to fetch repositories for: {}", provider, error));

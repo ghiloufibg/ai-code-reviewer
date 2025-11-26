@@ -9,7 +9,9 @@ import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -39,6 +41,8 @@ final class ReviewManagementServiceSummaryCommentTest {
     final SummaryCommentFormatter summaryCommentFormatter =
         new SummaryCommentFormatter(summaryCommentProperties);
 
+    final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
+
     return new ReviewManagementService(
         aiReviewStreamingService,
         scmProviderFactory,
@@ -46,7 +50,8 @@ final class ReviewManagementServiceSummaryCommentTest {
         reviewRepository,
         contextOrchestrator,
         summaryCommentProperties,
-        summaryCommentFormatter);
+        summaryCommentFormatter,
+        resilience);
   }
 
   @Test
