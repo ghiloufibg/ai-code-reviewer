@@ -1070,11 +1070,7 @@ public class GitLabAdapter implements SCMPort {
           gitLabApi
               .getMergeRequestApi()
               .getCommits(mergeRequest.getProjectId(), (long) mergeRequest.getIid());
-      commits =
-          mrCommits.stream()
-              .limit(10)
-              .map(this::mapGitLabCommitToCommitInfo)
-              .toList();
+      commits = mrCommits.stream().limit(10).map(this::mapGitLabCommitToCommitInfo).toList();
     } catch (final GitLabApiException e) {
       log.warn("Failed to fetch commits for MR!{}: {}", mergeRequest.getIid(), e.getMessage());
     }

@@ -284,8 +284,7 @@ public class GitHubAdapter implements SCMPort {
 
   private PrMetadata extractPrMetadata(final GHPullRequest pullRequest, final int changedFiles) {
     try {
-      final String author =
-          pullRequest.getUser() != null ? pullRequest.getUser().getLogin() : null;
+      final String author = pullRequest.getUser() != null ? pullRequest.getUser().getLogin() : null;
       final String baseBranch =
           pullRequest.getBase() != null ? pullRequest.getBase().getRef() : null;
       final String headBranch =

@@ -96,8 +96,7 @@ class EnrichedDiffAnalysisBundleTest {
   void should_return_context_count_when_context_present() {
     final ContextRetrievalResult context = createTestContext();
     final EnrichedDiffAnalysisBundle enriched =
-        new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", context, null);
+        new EnrichedDiffAnalysisBundle(testRepo, createTestDiff(), "diff content", context, null);
 
     assertThat(enriched.getContextMatchCount()).isEqualTo(1);
   }
@@ -118,8 +117,7 @@ class EnrichedDiffAnalysisBundleTest {
   void should_generate_summary_with_context() {
     final ContextRetrievalResult context = createTestContext();
     final EnrichedDiffAnalysisBundle enriched =
-        new EnrichedDiffAnalysisBundle(
-            testRepo, createTestDiff(), "diff content", context, null);
+        new EnrichedDiffAnalysisBundle(testRepo, createTestDiff(), "diff content", context, null);
 
     final String summary = enriched.getSummary();
 
@@ -132,11 +130,7 @@ class EnrichedDiffAnalysisBundleTest {
     assertThatThrownBy(
             () ->
                 new EnrichedDiffAnalysisBundle(
-                    null,
-                    createTestDiff(),
-                    "diff content",
-                    ContextRetrievalResult.empty(),
-                    null))
+                    null, createTestDiff(), "diff content", ContextRetrievalResult.empty(), null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("Repository identifier cannot be null");
   }

@@ -194,14 +194,7 @@ final class PromptBuilderTicketIntegrationTest {
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
     final PrMetadata prMetadata =
         new PrMetadata(
-            mergeRequestTitle,
-            mergeRequestDescription,
-            null,
-            null,
-            null,
-            List.of(),
-            List.of(),
-            1);
+            mergeRequestTitle, mergeRequestDescription, null, null, null, List.of(), List.of(), 1);
     final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", prMetadata);
 
     return new EnrichedDiffAnalysisBundle(bundle);

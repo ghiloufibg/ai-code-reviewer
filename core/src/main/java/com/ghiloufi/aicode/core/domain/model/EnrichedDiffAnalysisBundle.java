@@ -36,11 +36,7 @@ public record EnrichedDiffAnalysisBundle(
   public EnrichedDiffAnalysisBundle withContext(final ContextRetrievalResult context) {
     Objects.requireNonNull(context, "Context cannot be null");
     return new EnrichedDiffAnalysisBundle(
-        this.repositoryIdentifier,
-        this.structuredDiff,
-        this.rawDiffText,
-        context,
-        this.prMetadata);
+        this.repositoryIdentifier, this.structuredDiff, this.rawDiffText, context, this.prMetadata);
   }
 
   public DiffAnalysisBundle toBasicBundle() {

@@ -84,8 +84,7 @@ class PromptBuilderTest {
     file.diffHunkBlocks = List.of(hunk);
 
     final GitDiffDocument diff = new GitDiffDocument(List.of(file));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, diff, "raw diff text", null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw diff text", null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 

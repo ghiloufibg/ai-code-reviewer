@@ -48,8 +48,7 @@ final class DiffFileReferenceExtractorTest {
         new GitFileModification(
             "src/main/java/com/example/Service.java", "src/main/java/com/example/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -80,8 +79,7 @@ final class DiffFileReferenceExtractorTest {
             "src/main/java/com/example/Controller.java",
             "src/main/java/com/example/Controller.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -116,8 +114,7 @@ final class DiffFileReferenceExtractorTest {
         new GitFileModification(
             "src/main/java/com/example/Service.java", "src/main/java/com/example/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -141,8 +138,7 @@ final class DiffFileReferenceExtractorTest {
 
     final GitFileModification modification = new GitFileModification("README.md", "README.md");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
@@ -166,8 +162,7 @@ final class DiffFileReferenceExtractorTest {
     final GitFileModification modification =
         new GitFileModification("src/Service.java", "src/Service.java");
     final GitDiffDocument gitDiff = new GitDiffDocument(List.of(modification));
-    final DiffAnalysisBundle bundle =
-        new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
+    final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, gitDiff, rawDiff, null);
 
     final List<ContextMatch> matches = extractor.extractReferences(bundle);
 
