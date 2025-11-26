@@ -10,7 +10,10 @@ import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
 import com.ghiloufi.aicode.core.exception.SCMException;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.gitlab4j.api.DiscussionsApi;
@@ -899,7 +902,7 @@ public class GitLabAdapter implements SCMPort {
   public Flux<CommitInfo> getCommitsFor(
       final RepositoryIdentifier repo,
       final String filePath,
-      final java.time.LocalDate since,
+      final LocalDate since,
       final int maxResults) {
     return Flux.defer(
             () -> {
@@ -914,9 +917,8 @@ public class GitLabAdapter implements SCMPort {
                     since);
 
                 final Object projectIdOrPath = gitLabRepo.projectId();
-                final java.util.Date sinceDate =
-                    java.util.Date.from(
-                        since.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                final Date sinceDate =
+                    Date.from(since.atStartOfDay(ZoneId.systemDefault()).toInstant());
 
                 final List<org.gitlab4j.api.models.Commit> commits =
                     gitLabApi
@@ -961,9 +963,8 @@ public class GitLabAdapter implements SCMPort {
                     "Fetching commits for project {} since {}", gitLabRepo.projectId(), since);
 
                 final Object projectIdOrPath = gitLabRepo.projectId();
-                final java.util.Date sinceDate =
-                    java.util.Date.from(
-                        since.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                final Date sinceDate =
+                    Date.from(since.atStartOfDay(ZoneId.systemDefault()).toInstant());
 
                 final List<org.gitlab4j.api.models.Commit> commits =
                     gitLabApi.getCommitsApi().getCommits(projectIdOrPath, null, sinceDate, null);

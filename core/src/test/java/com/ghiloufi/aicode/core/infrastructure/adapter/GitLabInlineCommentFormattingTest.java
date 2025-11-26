@@ -3,6 +3,13 @@ package com.ghiloufi.aicode.core.infrastructure.adapter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.service.CommentPlacementRouter;
+import com.ghiloufi.aicode.core.domain.service.DiffLineValidator;
+import com.ghiloufi.aicode.core.domain.service.GitLabDiffBuilder;
+import com.ghiloufi.aicode.core.domain.service.GitLabMergeRequestMapper;
+import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
+import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
+import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.lang.reflect.Method;
 import org.gitlab4j.api.GitLabApi;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +34,13 @@ final class GitLabInlineCommentFormattingTest {
         new GitLabAdapter(
             "https://gitlab.com",
             "test-token",
-            Mockito.mock(com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.GitLabDiffBuilder.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.GitLabMergeRequestMapper.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.DiffLineValidator.class),
-            Mockito.mock(com.ghiloufi.aicode.core.domain.service.CommentPlacementRouter.class));
+            Mockito.mock(UnifiedDiffParser.class),
+            Mockito.mock(SCMIdentifierValidator.class),
+            Mockito.mock(GitLabDiffBuilder.class),
+            Mockito.mock(GitLabMergeRequestMapper.class),
+            Mockito.mock(GitLabProjectMapper.class),
+            Mockito.mock(DiffLineValidator.class),
+            Mockito.mock(CommentPlacementRouter.class));
   }
 
   @Test

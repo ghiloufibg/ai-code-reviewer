@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -115,7 +116,7 @@ final class PrMetadataTest {
 
   @Test
   void should_make_defensive_copy_of_labels() {
-    final var mutableLabels = new java.util.ArrayList<>(List.of("label1"));
+    final var mutableLabels = new ArrayList<>(List.of("label1"));
     final var metadata = new PrMetadata(null, null, null, null, null, mutableLabels, null, 0);
 
     mutableLabels.clear();
@@ -126,7 +127,7 @@ final class PrMetadataTest {
   @Test
   void should_make_defensive_copy_of_commits() {
     final var commit = new CommitInfo("abc", "msg", null, null, List.of());
-    final var mutableCommits = new java.util.ArrayList<>(List.of(commit));
+    final var mutableCommits = new ArrayList<>(List.of(commit));
     final var metadata = new PrMetadata(null, null, null, null, null, null, mutableCommits, 0);
 
     mutableCommits.clear();
