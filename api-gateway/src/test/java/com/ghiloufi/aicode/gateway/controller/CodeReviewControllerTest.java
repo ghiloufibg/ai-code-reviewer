@@ -11,6 +11,7 @@ import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
+import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
@@ -249,15 +250,16 @@ final class CodeReviewControllerTest {
   @Test
   @DisplayName("should_publish_review_successfully_for_gitlab_merge_request")
   final void should_publish_review_successfully_for_gitlab_merge_request() {
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review summary";
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "Test.java";
-    issue.start_line = 10;
-    issue.severity = "HIGH";
-    issue.title = "Security vulnerability";
-    issue.suggestion = "Fix the vulnerability";
-    reviewResult.issues.add(issue);
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("HIGH")
+            .title("Security vulnerability")
+            .suggestion("Fix the vulnerability")
+            .build();
+    final ReviewResult reviewResult =
+        ReviewResult.builder().summary("Test review summary").issues(List.of(issue)).build();
 
     reviewManagementUseCase.setShouldFailPublish(false);
 
@@ -293,8 +295,7 @@ final class CodeReviewControllerTest {
   @Test
   @DisplayName("should_return_error_response_when_publish_fails")
   final void should_return_error_response_when_publish_fails() {
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review";
+    final ReviewResult reviewResult = ReviewResult.builder().summary("Test review").build();
 
     reviewManagementUseCase.setShouldFailPublish(true);
 
@@ -321,8 +322,8 @@ final class CodeReviewControllerTest {
   @Test
   @DisplayName("should_handle_empty_review_result")
   final void should_handle_empty_review_result() {
-    final ReviewResult emptyReviewResult = new ReviewResult();
-    emptyReviewResult.summary = "No issues found";
+    final ReviewResult emptyReviewResult =
+        ReviewResult.builder().summary("No issues found").build();
 
     reviewManagementUseCase.setShouldFailPublish(false);
 
@@ -489,6 +490,17 @@ final class CodeReviewControllerTest {
     public Flux<CommitInfo> getCommitsSince(
         final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
       return Flux.empty();
+    }
+
+    @Override
+    public Mono<PrMetadata> getPullRequestMetadata(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.empty();
+    }
+
+    @Override
+    public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
+      return Mono.empty();
     }
   }
 }

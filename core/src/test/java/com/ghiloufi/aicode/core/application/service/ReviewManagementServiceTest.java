@@ -245,15 +245,17 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review summary";
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "Test.java";
-    issue.start_line = 10;
-    issue.severity = "MEDIUM";
-    issue.title = "Test issue";
-    issue.suggestion = "Test suggestion";
-    reviewResult.issues.add(issue);
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("MEDIUM")
+            .title("Test issue")
+            .suggestion("Test suggestion")
+            .build();
+
+    final ReviewResult reviewResult =
+        ReviewResult.builder().summary("Test review summary").issues(List.of(issue)).build();
 
     testSCMPort.setShouldFailPublish(false);
 
@@ -269,8 +271,7 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("failing-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review";
+    final ReviewResult reviewResult = ReviewResult.builder().summary("Test review").build();
 
     testSCMPort.setShouldFailPublish(true);
 
@@ -291,8 +292,8 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult emptyReviewResult = new ReviewResult();
-    emptyReviewResult.summary = "No issues found";
+    final ReviewResult emptyReviewResult =
+        ReviewResult.builder().summary("No issues found").build();
 
     testSCMPort.setShouldFailPublish(false);
 
@@ -621,38 +622,40 @@ final class ReviewManagementServiceTest {
         final com.ghiloufi.aicode.core.domain.model.ReviewConfiguration config) {
       accumulateChunksCalled.set(true);
 
-      final ReviewResult result = new ReviewResult();
-      result.summary = "Test review summary";
-
       final List<ReviewResult.Issue> issues = new ArrayList<>();
       final List<ReviewResult.Note> notes = new ArrayList<>();
 
       for (final ReviewChunk chunk : chunks) {
         switch (chunk.type()) {
           case SECURITY, PERFORMANCE -> {
-            final ReviewResult.Issue issue = new ReviewResult.Issue();
-            issue.severity = chunk.type().name();
-            issue.title = "Test issue";
-            issue.file = "test.java";
-            issue.start_line = 10;
-            issue.suggestion = chunk.content();
+            final ReviewResult.Issue issue =
+                ReviewResult.Issue.issueBuilder()
+                    .severity(chunk.type().name())
+                    .title("Test issue")
+                    .file("test.java")
+                    .startLine(10)
+                    .suggestion(chunk.content())
+                    .build();
             issues.add(issue);
           }
           case SUGGESTION -> {
-            final ReviewResult.Note note = new ReviewResult.Note();
-            note.file = "test.java";
-            note.line = 20;
-            note.note = chunk.content();
+            final ReviewResult.Note note =
+                ReviewResult.Note.noteBuilder()
+                    .file("test.java")
+                    .line(20)
+                    .note(chunk.content())
+                    .build();
             notes.add(note);
           }
           default -> {}
         }
       }
 
-      result.issues.addAll(issues);
-      result.non_blocking_notes.addAll(notes);
-
-      return result;
+      return ReviewResult.builder()
+          .summary("Test review summary")
+          .issues(issues)
+          .nonBlockingNotes(notes)
+          .build();
     }
   }
 

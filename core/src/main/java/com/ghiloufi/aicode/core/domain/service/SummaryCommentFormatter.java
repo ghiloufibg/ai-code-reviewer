@@ -27,7 +27,7 @@ public final class SummaryCommentFormatter {
 
     comment.append(HEADER);
 
-    final String summary = reviewResult.summary;
+    final String summary = reviewResult.getSummary();
     if (summary == null || summary.isBlank()) {
       comment.append(NO_SUMMARY_MESSAGE);
     } else {
@@ -38,7 +38,7 @@ public final class SummaryCommentFormatter {
       appendStatistics(comment, reviewResult);
     }
 
-    if (config.isIncludeSeverityBreakdown() && !reviewResult.issues.isEmpty()) {
+    if (config.isIncludeSeverityBreakdown() && !reviewResult.getIssues().isEmpty()) {
       appendSeverityBreakdown(comment, reviewResult);
     }
 
@@ -48,8 +48,8 @@ public final class SummaryCommentFormatter {
   }
 
   private void appendStatistics(final StringBuilder comment, final ReviewResult reviewResult) {
-    final int issueCount = reviewResult.issues.size();
-    final int suggestionCount = reviewResult.non_blocking_notes.size();
+    final int issueCount = reviewResult.getIssues().size();
+    final int suggestionCount = reviewResult.getNonBlockingNotes().size();
     final int uniqueFileCount = countUniqueFiles(reviewResult);
 
     comment.append("### 📈 Review Statistics\n\n");
@@ -61,8 +61,8 @@ public final class SummaryCommentFormatter {
   private void appendSeverityBreakdown(
       final StringBuilder comment, final ReviewResult reviewResult) {
     final Map<String, Long> severityCounts =
-        reviewResult.issues.stream()
-            .collect(Collectors.groupingBy(issue -> issue.severity, Collectors.counting()));
+        reviewResult.getIssues().stream()
+            .collect(Collectors.groupingBy(issue -> issue.getSeverity(), Collectors.counting()));
 
     comment.append("### ⚠️ Severity Breakdown\n\n");
     severityCounts.forEach(
@@ -74,8 +74,8 @@ public final class SummaryCommentFormatter {
 
   private int countUniqueFiles(final ReviewResult reviewResult) {
     final Set<String> uniqueFiles = new HashSet<>();
-    reviewResult.issues.forEach(issue -> uniqueFiles.add(issue.file));
-    reviewResult.non_blocking_notes.forEach(note -> uniqueFiles.add(note.file));
+    reviewResult.getIssues().forEach(issue -> uniqueFiles.add(issue.getFile()));
+    reviewResult.getNonBlockingNotes().forEach(note -> uniqueFiles.add(note.getFile()));
     return uniqueFiles.size();
   }
 }

@@ -178,9 +178,9 @@ final class FixApplicationIntegrationTest {
 
       final ReviewResult result = testChunkAccumulator.getLastAccumulatedResult();
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).confidenceScore).isEqualTo(0.95);
-      assertThat(result.issues.get(0).suggestedFix).isNotNull();
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getConfidenceScore()).isEqualTo(0.95);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNotNull();
     }
 
     @Test
@@ -191,9 +191,9 @@ final class FixApplicationIntegrationTest {
       final ReviewResult result = testChunkAccumulator.getLastAccumulatedResult();
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).confidenceScore).isLessThan(0.5);
-      assertThat(result.issues.get(0).suggestedFix).isNull();
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getConfidenceScore()).isLessThan(0.5);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNull();
     }
   }
 
@@ -249,39 +249,41 @@ final class FixApplicationIntegrationTest {
   }
 
   private ReviewResult createHighConfidenceReviewResult() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Found 1 critical security issue with high confidence";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("src/main/java/SecurityVulnerability.java")
+            .startLine(10)
+            .severity("CRITICAL")
+            .title("SQL Injection vulnerability")
+            .suggestion("Use parameterized queries to prevent SQL injection")
+            .confidenceScore(0.95)
+            .confidenceExplanation("Clear security vulnerability with established pattern")
+            .suggestedFix(
+                "```diff\n- String query = \"SELECT * FROM users WHERE id = \" + userId;\n+ PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");\n```")
+            .build();
 
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "src/main/java/SecurityVulnerability.java";
-    issue.start_line = 10;
-    issue.severity = "CRITICAL";
-    issue.title = "SQL Injection vulnerability";
-    issue.suggestion = "Use parameterized queries to prevent SQL injection";
-    issue.confidenceScore = 0.95;
-    issue.confidenceExplanation = "Clear security vulnerability with established pattern";
-    issue.suggestedFix =
-        "```diff\n- String query = \"SELECT * FROM users WHERE id = \" + userId;\n+ PreparedStatement stmt = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");\n```";
-
-    result.issues.add(issue);
-    return result;
+    return ReviewResult.builder()
+        .summary("Found 1 critical security issue with high confidence")
+        .issues(List.of(issue))
+        .build();
   }
 
   private ReviewResult createLowConfidenceReviewResult() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Found 1 minor style suggestion with low confidence";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("src/main/java/StyleIssue.java")
+            .startLine(5)
+            .severity("INFO")
+            .title("Consider using var for local variables")
+            .suggestion("Modern Java style prefers var for local variables")
+            .confidenceScore(0.3)
+            .confidenceExplanation("Style preference, not a clear improvement")
+            .build();
 
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "src/main/java/StyleIssue.java";
-    issue.start_line = 5;
-    issue.severity = "INFO";
-    issue.title = "Consider using var for local variables";
-    issue.suggestion = "Modern Java style prefers var for local variables";
-    issue.confidenceScore = 0.3;
-    issue.confidenceExplanation = "Style preference, not a clear improvement";
-
-    result.issues.add(issue);
-    return result;
+    return ReviewResult.builder()
+        .summary("Found 1 minor style suggestion with low confidence")
+        .issues(List.of(issue))
+        .build();
   }
 
   private static final class TestGitLabSCMPort implements SCMPort {
@@ -496,7 +498,9 @@ final class FixApplicationIntegrationTest {
     public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
       accumulatedChunks.clear();
       accumulatedChunks.addAll(chunks);
-      return reviewResult != null ? reviewResult : new ReviewResult();
+      return reviewResult != null
+          ? reviewResult
+          : ReviewResult.builder().issues(List.of()).nonBlockingNotes(List.of()).build();
     }
 
     @Override
@@ -504,7 +508,9 @@ final class FixApplicationIntegrationTest {
         final List<ReviewChunk> chunks, final ReviewConfiguration config) {
       accumulatedChunks.clear();
       accumulatedChunks.addAll(chunks);
-      return reviewResult != null ? reviewResult : new ReviewResult();
+      return reviewResult != null
+          ? reviewResult
+          : ReviewResult.builder().issues(List.of()).nonBlockingNotes(List.of()).build();
     }
   }
 

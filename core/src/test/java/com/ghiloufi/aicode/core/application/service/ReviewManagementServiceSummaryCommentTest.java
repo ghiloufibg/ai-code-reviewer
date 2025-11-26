@@ -174,40 +174,38 @@ final class ReviewManagementServiceSummaryCommentTest {
   }
 
   private ReviewResult createReviewResult() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test review summary";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("MEDIUM")
+            .title("Test issue")
+            .build();
 
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "Test.java";
-    issue.start_line = 10;
-    issue.severity = "MEDIUM";
-    issue.title = "Test issue";
-
-    result.issues.add(issue);
-
-    return result;
+    return ReviewResult.builder().summary("Test review summary").issues(List.of(issue)).build();
   }
 
   private ReviewResult createReviewResultWithSeverity() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test review with severity";
+    final ReviewResult.Issue highIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Critical.java")
+            .startLine(5)
+            .severity("HIGH")
+            .title("High severity issue")
+            .build();
 
-    final ReviewResult.Issue highIssue = new ReviewResult.Issue();
-    highIssue.file = "Critical.java";
-    highIssue.start_line = 5;
-    highIssue.severity = "HIGH";
-    highIssue.title = "High severity issue";
+    final ReviewResult.Issue mediumIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Warning.java")
+            .startLine(15)
+            .severity("MEDIUM")
+            .title("Medium severity issue")
+            .build();
 
-    final ReviewResult.Issue mediumIssue = new ReviewResult.Issue();
-    mediumIssue.file = "Warning.java";
-    mediumIssue.start_line = 15;
-    mediumIssue.severity = "MEDIUM";
-    mediumIssue.title = "Medium severity issue";
-
-    result.issues.add(highIssue);
-    result.issues.add(mediumIssue);
-
-    return result;
+    return ReviewResult.builder()
+        .summary("Test review with severity")
+        .issues(List.of(highIssue, mediumIssue))
+        .build();
   }
 
   private static final class TestSCMPort implements SCMPort {

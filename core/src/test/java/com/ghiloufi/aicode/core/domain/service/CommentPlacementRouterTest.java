@@ -31,11 +31,11 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(validationResult);
 
-    assertThat(splitResult.validForInline().issues).hasSize(2);
-    assertThat(splitResult.validForInline().issues).containsExactly(validIssue1, validIssue2);
+    assertThat(splitResult.validForInline().getIssues()).hasSize(2);
+    assertThat(splitResult.validForInline().getIssues()).containsExactly(validIssue1, validIssue2);
 
-    assertThat(splitResult.invalidForFallback().issues).hasSize(1);
-    assertThat(splitResult.invalidForFallback().issues).containsExactly(invalidIssue1);
+    assertThat(splitResult.invalidForFallback().getIssues()).hasSize(1);
+    assertThat(splitResult.invalidForFallback().getIssues()).containsExactly(invalidIssue1);
 
     assertThat(splitResult.errors()).hasSize(1);
     assertThat(splitResult.errors().getFirst())
@@ -56,11 +56,11 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(validationResult);
 
-    assertThat(splitResult.validForInline().non_blocking_notes).hasSize(1);
-    assertThat(splitResult.validForInline().non_blocking_notes).containsExactly(validNote);
+    assertThat(splitResult.validForInline().getNonBlockingNotes()).hasSize(1);
+    assertThat(splitResult.validForInline().getNonBlockingNotes()).containsExactly(validNote);
 
-    assertThat(splitResult.invalidForFallback().non_blocking_notes).hasSize(1);
-    assertThat(splitResult.invalidForFallback().non_blocking_notes).containsExactly(invalidNote);
+    assertThat(splitResult.invalidForFallback().getNonBlockingNotes()).hasSize(1);
+    assertThat(splitResult.invalidForFallback().getNonBlockingNotes()).containsExactly(invalidNote);
   }
 
   @Test
@@ -74,10 +74,10 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(validationResult);
 
-    assertThat(splitResult.validForInline().issues).hasSize(1);
-    assertThat(splitResult.validForInline().non_blocking_notes).hasSize(1);
-    assertThat(splitResult.invalidForFallback().issues).isEmpty();
-    assertThat(splitResult.invalidForFallback().non_blocking_notes).isEmpty();
+    assertThat(splitResult.validForInline().getIssues()).hasSize(1);
+    assertThat(splitResult.validForInline().getNonBlockingNotes()).hasSize(1);
+    assertThat(splitResult.invalidForFallback().getIssues()).isEmpty();
+    assertThat(splitResult.invalidForFallback().getNonBlockingNotes()).isEmpty();
   }
 
   @Test
@@ -91,10 +91,10 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(validationResult);
 
-    assertThat(splitResult.validForInline().issues).isEmpty();
-    assertThat(splitResult.validForInline().non_blocking_notes).isEmpty();
-    assertThat(splitResult.invalidForFallback().issues).hasSize(1);
-    assertThat(splitResult.invalidForFallback().non_blocking_notes).hasSize(1);
+    assertThat(splitResult.validForInline().getIssues()).isEmpty();
+    assertThat(splitResult.validForInline().getNonBlockingNotes()).isEmpty();
+    assertThat(splitResult.invalidForFallback().getIssues()).hasSize(1);
+    assertThat(splitResult.invalidForFallback().getNonBlockingNotes()).hasSize(1);
   }
 
   @Test
@@ -110,7 +110,7 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(validationResult);
 
-    assertThat(splitResult.validForInline().issues).containsExactly(issue1, issue2, issue3);
+    assertThat(splitResult.validForInline().getIssues()).containsExactly(issue1, issue2, issue3);
   }
 
   @Test
@@ -144,29 +144,25 @@ class CommentPlacementRouterTest {
 
     final CommentPlacementRouter.SplitResult splitResult = router.split(emptyValidation);
 
-    assertThat(splitResult.validForInline().issues).isEmpty();
-    assertThat(splitResult.validForInline().non_blocking_notes).isEmpty();
-    assertThat(splitResult.invalidForFallback().issues).isEmpty();
-    assertThat(splitResult.invalidForFallback().non_blocking_notes).isEmpty();
+    assertThat(splitResult.validForInline().getIssues()).isEmpty();
+    assertThat(splitResult.validForInline().getNonBlockingNotes()).isEmpty();
+    assertThat(splitResult.invalidForFallback().getIssues()).isEmpty();
+    assertThat(splitResult.invalidForFallback().getNonBlockingNotes()).isEmpty();
     assertThat(splitResult.errors()).isEmpty();
   }
 
   private ReviewResult.Issue createIssue(
       final String file, final int line, final String severity, final String title) {
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = file;
-    issue.start_line = line;
-    issue.severity = severity;
-    issue.title = title;
-    issue.suggestion = "Fix it";
-    return issue;
+    return ReviewResult.Issue.issueBuilder()
+        .file(file)
+        .startLine(line)
+        .severity(severity)
+        .title(title)
+        .suggestion("Fix it")
+        .build();
   }
 
   private ReviewResult.Note createNote(final String file, final int line, final String noteText) {
-    final ReviewResult.Note note = new ReviewResult.Note();
-    note.file = file;
-    note.line = line;
-    note.note = noteText;
-    return note;
+    return ReviewResult.Note.noteBuilder().file(file).line(line).note(noteText).build();
   }
 }

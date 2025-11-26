@@ -7,6 +7,7 @@ import com.ghiloufi.aicode.core.domain.service.ReviewResultFormatter;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -239,22 +240,20 @@ public class GitHubAdapter implements SCMPort {
   }
 
   @Override
-  public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-      getCommitsFor(
-          final RepositoryIdentifier repo,
-          final String filePath,
-          final java.time.LocalDate since,
-          final int maxResults) {
-    return reactor.core.publisher.Flux.error(
+  public Flux<CommitInfo> getCommitsFor(
+      final RepositoryIdentifier repo,
+      final String filePath,
+      final LocalDate since,
+      final int maxResults) {
+    return Flux.error(
         new UnsupportedOperationException(
             "Git history queries are not yet implemented for GitHub"));
   }
 
   @Override
-  public reactor.core.publisher.Flux<com.ghiloufi.aicode.core.domain.model.CommitInfo>
-      getCommitsSince(
-          final RepositoryIdentifier repo, final java.time.LocalDate since, final int maxResults) {
-    return reactor.core.publisher.Flux.error(
+  public Flux<CommitInfo> getCommitsSince(
+      final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
+    return Flux.error(
         new UnsupportedOperationException(
             "Git history queries are not yet implemented for GitHub"));
   }

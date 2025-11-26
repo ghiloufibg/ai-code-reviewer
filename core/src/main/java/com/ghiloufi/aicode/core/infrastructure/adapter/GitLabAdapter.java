@@ -144,8 +144,8 @@ public class GitLabAdapter implements SCMPort {
 
               log.debug(
                   "Validation: {} valid issues, {} invalid issues",
-                  splitResult.validForInline().issues.size(),
-                  splitResult.invalidForFallback().issues.size());
+                  splitResult.validForInline().getIssues().size(),
+                  splitResult.invalidForFallback().getIssues().size());
 
               return publishWithInlineComments(
                   projectIdOrPath, mrId.iid(), mergeRequest, splitResult);
@@ -599,10 +599,11 @@ public class GitLabAdapter implements SCMPort {
 
     int inlineCommentsCreated = 0;
 
-    for (final ReviewResult.Issue issue : splitResult.validForInline().issues) {
+    for (final ReviewResult.Issue issue : splitResult.validForInline().getIssues()) {
       try {
         final String commentBody = formatInlineComment(issue);
-        final Position position = createPosition(mergeRequest, issue.file, issue.start_line);
+        final Position position =
+            createPosition(mergeRequest, issue.getFile(), issue.getStartLine());
 
         final Discussion discussion =
             discussionsApi.createMergeRequestDiscussion(
@@ -613,24 +614,25 @@ public class GitLabAdapter implements SCMPort {
 
         log.debug(
             "Created inline comment on {}:{} (discussion {})",
-            issue.file,
-            issue.start_line,
+            issue.getFile(),
+            issue.getStartLine(),
             discussion.getId());
 
       } catch (final GitLabApiException e) {
-        log.error("Failed to create inline comment for {}:{}", issue.file, issue.start_line, e);
+        log.error(
+            "Failed to create inline comment for {}:{}", issue.getFile(), issue.getStartLine(), e);
         errors.add(
             new PublishError(
-                issue.file,
-                issue.start_line,
+                issue.getFile(),
+                issue.getStartLine(),
                 "Failed to create inline comment: " + e.getMessage()));
       }
     }
 
-    for (final ReviewResult.Note note : splitResult.validForInline().non_blocking_notes) {
+    for (final ReviewResult.Note note : splitResult.validForInline().getNonBlockingNotes()) {
       try {
         final String commentBody = formatInlineNote(note);
-        final Position position = createPosition(mergeRequest, note.file, note.line);
+        final Position position = createPosition(mergeRequest, note.getFile(), note.getLine());
 
         final Discussion discussion =
             discussionsApi.createMergeRequestDiscussion(
@@ -641,20 +643,20 @@ public class GitLabAdapter implements SCMPort {
 
         log.debug(
             "Created inline note on {}:{} (discussion {})",
-            note.file,
-            note.line,
+            note.getFile(),
+            note.getLine(),
             discussion.getId());
 
       } catch (final GitLabApiException e) {
-        log.error("Failed to create inline note for {}:{}", note.file, note.line, e);
+        log.error("Failed to create inline note for {}:{}", note.getFile(), note.getLine(), e);
         errors.add(
             new PublishError(
-                note.file, note.line, "Failed to create inline note: " + e.getMessage()));
+                note.getFile(), note.getLine(), "Failed to create inline note: " + e.getMessage()));
       }
     }
 
-    if (!splitResult.invalidForFallback().issues.isEmpty()
-        || !splitResult.invalidForFallback().non_blocking_notes.isEmpty()) {
+    if (!splitResult.invalidForFallback().getIssues().isEmpty()
+        || !splitResult.invalidForFallback().getNonBlockingNotes().isEmpty()) {
       try {
         final String fallbackBody = formatFallbackComment(splitResult);
         gitLabApi
@@ -663,7 +665,7 @@ public class GitLabAdapter implements SCMPort {
 
         log.debug(
             "Published fallback comment with {} invalid issues",
-            splitResult.invalidForFallback().issues.size());
+            splitResult.invalidForFallback().getIssues().size());
 
       } catch (final GitLabApiException e) {
         log.error("Failed to publish fallback comment", e);
@@ -675,11 +677,11 @@ public class GitLabAdapter implements SCMPort {
     log.info(
         "Published review: {} inline comments, {} fallback items",
         inlineCommentsCreated,
-        splitResult.invalidForFallback().issues.size());
+        splitResult.invalidForFallback().getIssues().size());
 
     return new PublishResult(
         inlineCommentsCreated,
-        splitResult.invalidForFallback().issues.size(),
+        splitResult.invalidForFallback().getIssues().size(),
         discussionIds,
         errors);
   }
@@ -742,7 +744,7 @@ public class GitLabAdapter implements SCMPort {
     final String label = "issue";
 
     final String blockingStatus =
-        switch (issue.severity) {
+        switch (issue.getSeverity()) {
           case "critical" -> "(blocking)";
           case "major" -> "(blocking)";
           case "minor" -> "(non-blocking)";
@@ -751,27 +753,30 @@ public class GitLabAdapter implements SCMPort {
         };
 
     final String severityDecoration =
-        switch (issue.severity) {
+        switch (issue.getSeverity()) {
           case "critical" -> "critical";
           case "major" -> "major";
           case "minor" -> "minor";
           case "info" -> "info";
-          default -> issue.severity;
+          default -> issue.getSeverity();
         };
 
     final StringBuilder comment = new StringBuilder();
     comment.append(
-        String.format("%s %s, %s: %s\n\n", label, blockingStatus, severityDecoration, issue.title));
+        String.format(
+            "%s %s, %s: %s\n\n", label, blockingStatus, severityDecoration, issue.getTitle()));
 
-    if (issue.suggestion != null && !issue.suggestion.isBlank()) {
-      comment.append(String.format("**Recommendation:** %s\n\n", issue.suggestion));
+    if (issue.getSuggestion() != null && !issue.getSuggestion().isBlank()) {
+      comment.append(String.format("**Recommendation:** %s\n\n", issue.getSuggestion()));
     }
 
     if (issue.isHighConfidence() && issue.hasFixSuggestion()) {
-      if (issue.confidenceScore != null) {
-        comment.append(String.format("**Confidence: %.0f%%**\n\n", issue.confidenceScore * 100));
+      if (issue.getConfidenceScore() != null) {
+        comment.append(
+            String.format("**Confidence: %.0f%%**\n\n", issue.getConfidenceScore() * 100));
       }
-      final String gitlabSuggestion = convertMarkdownDiffToGitLabSuggestion(issue.suggestedFix);
+      final String gitlabSuggestion =
+          convertMarkdownDiffToGitLabSuggestion(issue.getSuggestedFix());
       comment.append(gitlabSuggestion);
       if (!gitlabSuggestion.endsWith("\n")) {
         comment.append("\n");
@@ -782,7 +787,7 @@ public class GitLabAdapter implements SCMPort {
   }
 
   private String formatInlineNote(final ReviewResult.Note note) {
-    return "note (non-blocking): Code observation\n\n" + note.note;
+    return "note (non-blocking): Code observation\n\n" + note.getNote();
   }
 
   private String formatFallbackComment(final CommentPlacementRouter.SplitResult splitResult) {
@@ -790,9 +795,9 @@ public class GitLabAdapter implements SCMPort {
     body.append("## Additional Review Findings\n\n");
     body.append("The following issues were found in code areas outside the current diff:\n\n");
 
-    for (final ReviewResult.Issue issue : splitResult.invalidForFallback().issues) {
+    for (final ReviewResult.Issue issue : splitResult.invalidForFallback().getIssues()) {
       final String blockingStatus =
-          switch (issue.severity) {
+          switch (issue.getSeverity()) {
             case "critical" -> "(blocking)";
             case "major" -> "(blocking)";
             case "minor" -> "(non-blocking)";
@@ -801,32 +806,33 @@ public class GitLabAdapter implements SCMPort {
           };
 
       final String severityLabel =
-          switch (issue.severity) {
+          switch (issue.getSeverity()) {
             case "critical" -> "CRITICAL";
             case "major" -> "MAJOR";
             case "minor" -> "MINOR";
             case "info" -> "INFO";
-            default -> issue.severity.toUpperCase();
+            default -> issue.getSeverity().toUpperCase();
           };
 
       body.append("---\n\n");
-      body.append(String.format("**Issue:** %s\n", issue.title));
+      body.append(String.format("**Issue:** %s\n", issue.getTitle()));
       body.append(String.format("**Severity:** %s %s\n", severityLabel, blockingStatus));
-      body.append(String.format("**Location:** `%s:%d`\n\n", issue.file, issue.start_line));
+      body.append(
+          String.format("**Location:** `%s:%d`\n\n", issue.getFile(), issue.getStartLine()));
 
-      if (issue.suggestion != null && !issue.suggestion.isBlank()) {
-        body.append(String.format("**Recommendation:** %s\n\n", issue.suggestion));
+      if (issue.getSuggestion() != null && !issue.getSuggestion().isBlank()) {
+        body.append(String.format("**Recommendation:** %s\n\n", issue.getSuggestion()));
       }
     }
 
-    if (!splitResult.invalidForFallback().non_blocking_notes.isEmpty()) {
+    if (!splitResult.invalidForFallback().getNonBlockingNotes().isEmpty()) {
       body.append("---\n\n");
       body.append("## Additional Notes\n\n");
-      for (final ReviewResult.Note note : splitResult.invalidForFallback().non_blocking_notes) {
+      for (final ReviewResult.Note note : splitResult.invalidForFallback().getNonBlockingNotes()) {
         body.append("---\n\n");
         body.append("**Note:** Code observation\n");
-        body.append(String.format("**Location:** `%s:%d`\n\n", note.file, note.line));
-        body.append(String.format("%s\n\n", note.note));
+        body.append(String.format("**Location:** `%s:%d`\n\n", note.getFile(), note.getLine()));
+        body.append(String.format("%s\n\n", note.getNote()));
       }
     }
 

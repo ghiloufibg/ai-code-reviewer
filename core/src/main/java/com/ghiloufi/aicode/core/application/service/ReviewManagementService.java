@@ -18,6 +18,7 @@ import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewReposit
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -26,6 +27,7 @@ import reactor.core.publisher.Mono;
 @SuppressWarnings("LoggingSimilarMessage")
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ReviewManagementService implements ReviewManagementUseCase {
 
   private final AIReviewStreamingService aiReviewStreamingService;
@@ -35,23 +37,6 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final ContextOrchestrator contextOrchestrator;
   private final SummaryCommentProperties summaryCommentProperties;
   private final SummaryCommentFormatter summaryCommentFormatter;
-
-  public ReviewManagementService(
-      final AIReviewStreamingService aiReviewStreamingService,
-      final SCMProviderFactory scmProviderFactory,
-      final ReviewChunkAccumulator chunkAccumulator,
-      final PostgresReviewRepository reviewRepository,
-      final ContextOrchestrator contextOrchestrator,
-      final SummaryCommentProperties summaryCommentProperties,
-      final SummaryCommentFormatter summaryCommentFormatter) {
-    this.aiReviewStreamingService = aiReviewStreamingService;
-    this.scmProviderFactory = scmProviderFactory;
-    this.chunkAccumulator = chunkAccumulator;
-    this.reviewRepository = reviewRepository;
-    this.contextOrchestrator = contextOrchestrator;
-    this.summaryCommentProperties = summaryCommentProperties;
-    this.summaryCommentFormatter = summaryCommentFormatter;
-  }
 
   @Override
   public Flux<ReviewChunk> streamReview(
@@ -143,11 +128,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName());
 
-                final ReviewResult result =
-                    chunkAccumulator.accumulateChunks(accumulatedChunks, config);
                 final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
-                result.llmProvider = llmMetadata.llmProvider();
-                result.llmModel = llmMetadata.llmModel();
+                final ReviewResult result =
+                    chunkAccumulator
+                        .accumulateChunks(accumulatedChunks, config)
+                        .withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
 
                 scmPort
                     .publishReview(repository, changeRequest, result)
@@ -236,11 +221,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
 
     final SCMPort scmPort = scmProviderFactory.getProvider(repository.getProvider());
     final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
-    reviewResult.llmProvider = llmMetadata.llmProvider();
-    reviewResult.llmModel = llmMetadata.llmModel();
+    final ReviewResult enrichedResult =
+        reviewResult.withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
 
     return scmPort
-        .publishReview(repository, changeRequest, reviewResult)
+        .publishReview(repository, changeRequest, enrichedResult)
         .doOnSuccess(
             v ->
                 log.info(
@@ -254,7 +239,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error))
-        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, reviewResult)))
+        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, enrichedResult)))
         .then(
             Mono.defer(
                 () -> {
@@ -265,7 +250,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                           + "_"
                           + repository.getProvider().name().toLowerCase();
                   log.debug("Saving review to database: {}", reviewId);
-                  return reviewRepository.save(reviewId, reviewResult);
+                  return reviewRepository.save(reviewId, enrichedResult);
                 }))
         .doOnSuccess(
             v ->

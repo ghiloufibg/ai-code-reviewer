@@ -151,8 +151,8 @@ final class DiffAnalysisBundleTest {
 
       final DiffAnalysisBundle bundle = new DiffAnalysisBundle(repo, gitDiff, rawDiff, null);
 
-      assertThat(bundle.getSummary()).contains("1 fichier(s)");
-      assertThat(bundle.getSummary()).contains("1 ligne(s)");
+      assertThat(bundle.getSummary()).contains("1 file(s) modified");
+      assertThat(bundle.getSummary()).contains("1 line(s) total");
     }
   }
 }

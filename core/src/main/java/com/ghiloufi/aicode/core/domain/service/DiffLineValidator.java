@@ -27,16 +27,16 @@ public class DiffLineValidator {
     final List<ReviewResult.Note> validNotes = new ArrayList<>();
     final List<ReviewResult.Note> invalidNotes = new ArrayList<>();
 
-    for (final ReviewResult.Issue issue : result.issues) {
-      if (isLineInDiff(diff, issue.file, issue.start_line)) {
+    for (final ReviewResult.Issue issue : result.getIssues()) {
+      if (isLineInDiff(diff, issue.getFile(), issue.getStartLine())) {
         validIssues.add(issue);
       } else {
         invalidIssues.add(issue);
       }
     }
 
-    for (final ReviewResult.Note note : result.non_blocking_notes) {
-      if (isLineInDiff(diff, note.file, note.line)) {
+    for (final ReviewResult.Note note : result.getNonBlockingNotes()) {
+      if (isLineInDiff(diff, note.getFile(), note.getLine())) {
         validNotes.add(note);
       } else {
         invalidNotes.add(note);

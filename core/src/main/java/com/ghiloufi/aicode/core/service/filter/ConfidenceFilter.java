@@ -20,24 +20,24 @@ public final class ConfidenceFilter {
       return filterByConfidence(result, 0.5);
     }
 
-    if (result.issues == null || result.issues.isEmpty()) {
+    if (result.getIssues() == null || result.getIssues().isEmpty()) {
       log.debug("No issues to filter");
       return result;
     }
 
-    final int originalIssueCount = result.issues.size();
+    final int originalIssueCount = result.getIssues().size();
     final List<ReviewResult.Issue> filteredIssues =
-        result.issues.stream()
+        result.getIssues().stream()
             .filter(
                 issue -> {
                   final double confidence =
-                      issue.confidenceScore != null ? issue.confidenceScore : 0.5;
+                      issue.getConfidenceScore() != null ? issue.getConfidenceScore() : 0.5;
                   final boolean meetsThreshold = confidence >= minimumThreshold;
 
                   if (!meetsThreshold) {
                     log.info(
                         "Filtered out issue '{}' (confidence: {}, threshold: {})",
-                        issue.title,
+                        issue.getTitle(),
                         confidence,
                         minimumThreshold);
                   }
@@ -57,7 +57,6 @@ public final class ConfidenceFilter {
       log.debug("All {} issues meet confidence threshold {}", originalIssueCount, minimumThreshold);
     }
 
-    result.issues = filteredIssues;
-    return result;
+    return result.withIssues(filteredIssues);
   }
 }
