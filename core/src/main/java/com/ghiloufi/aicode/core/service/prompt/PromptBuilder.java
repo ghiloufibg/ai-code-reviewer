@@ -92,7 +92,8 @@ public class PromptBuilder {
 
     final String formattedDiff = diffFormatter.formatDiff(enrichedDiff.structuredDiff());
 
-    final StringBuilder prompt = new StringBuilder();
+    final int estimatedSize = 8000 + formattedDiff.length();
+    final StringBuilder prompt = new StringBuilder(estimatedSize);
 
     if (!ticketContext.isBlank()) {
       prompt.append(ticketContext);

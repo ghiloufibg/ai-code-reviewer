@@ -10,7 +10,7 @@ public class DiffHunkBlock {
   public int oldCount;
   public int newStart;
   public int newCount;
-  public List<String> lines = new ArrayList<>();
+  public List<String> lines = new ArrayList<>(50);
 
   public DiffHunkBlock() {}
 
@@ -22,28 +22,37 @@ public class DiffHunkBlock {
     this.newCount = newCount;
   }
 
-  public int getAddedLinesCount() {
-    if (lines == null) {
-      return 0;
-    }
+  public record LineStats(int added, int deleted, int context) {}
 
-    return (int) lines.stream().filter(line -> line.startsWith("+")).count();
+  public LineStats getLineStats() {
+    if (lines == null) {
+      return new LineStats(0, 0, 0);
+    }
+    int added = 0;
+    int deleted = 0;
+    int context = 0;
+    for (final String line : lines) {
+      if (line.startsWith("+")) {
+        added++;
+      } else if (line.startsWith("-")) {
+        deleted++;
+      } else if (line.startsWith(" ")) {
+        context++;
+      }
+    }
+    return new LineStats(added, deleted, context);
+  }
+
+  public int getAddedLinesCount() {
+    return getLineStats().added();
   }
 
   public int getDeletedLinesCount() {
-    if (lines == null) {
-      return 0;
-    }
-
-    return (int) lines.stream().filter(line -> line.startsWith("-")).count();
+    return getLineStats().deleted();
   }
 
   public int getContextLinesCount() {
-    if (lines == null) {
-      return 0;
-    }
-
-    return (int) lines.stream().filter(line -> line.startsWith(" ")).count();
+    return getLineStats().context();
   }
 
   public boolean isEmpty() {
