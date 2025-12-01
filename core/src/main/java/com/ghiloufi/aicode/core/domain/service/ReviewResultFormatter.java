@@ -25,27 +25,32 @@ public final class ReviewResultFormatter {
 
   private void appendSummary(final StringBuilder builder, final ReviewResult reviewResult) {
     if (hasSummary(reviewResult)) {
-      builder.append(reviewResult.summary).append("\n\n");
+      builder.append(reviewResult.getSummary()).append("\n\n");
     }
   }
 
   private void appendIssues(final StringBuilder builder, final ReviewResult reviewResult) {
     if (hasIssues(reviewResult)) {
-      builder.append(String.format(ISSUES_SECTION_TEMPLATE, reviewResult.issues.size()));
+      builder.append(String.format(ISSUES_SECTION_TEMPLATE, reviewResult.getIssues().size()));
 
-      for (final ReviewResult.Issue issue : reviewResult.issues) {
+      for (final ReviewResult.Issue issue : reviewResult.getIssues()) {
         appendIssue(builder, issue);
       }
     }
   }
 
   private void appendIssue(final StringBuilder builder, final ReviewResult.Issue issue) {
-    builder.append("### ").append(issue.severity).append(": ").append(issue.title).append("\n");
-    builder.append("**File:** `").append(issue.file).append("`\n");
-    builder.append("**Line:** ").append(issue.start_line).append("\n");
+    builder
+        .append("### ")
+        .append(issue.getSeverity())
+        .append(": ")
+        .append(issue.getTitle())
+        .append("\n");
+    builder.append("**File:** `").append(issue.getFile()).append("`\n");
+    builder.append("**Line:** ").append(issue.getStartLine()).append("\n");
 
     if (hasSuggestion(issue)) {
-      builder.append("**Suggestion:** ").append(issue.suggestion).append("\n");
+      builder.append("**Suggestion:** ").append(issue.getSuggestion()).append("\n");
     }
 
     builder.append("\n");
@@ -53,10 +58,11 @@ public final class ReviewResultFormatter {
 
   private void appendNotes(final StringBuilder builder, final ReviewResult reviewResult) {
     if (hasNotes(reviewResult)) {
-      builder.append(String.format(NOTES_SECTION_TEMPLATE, reviewResult.non_blocking_notes.size()));
+      builder.append(
+          String.format(NOTES_SECTION_TEMPLATE, reviewResult.getNonBlockingNotes().size()));
 
-      for (final ReviewResult.Note note : reviewResult.non_blocking_notes) {
-        builder.append("- ").append(note.note).append("\n");
+      for (final ReviewResult.Note note : reviewResult.getNonBlockingNotes()) {
+        builder.append("- ").append(note.getNote()).append("\n");
       }
     }
   }
@@ -69,19 +75,19 @@ public final class ReviewResultFormatter {
   }
 
   private boolean hasSummary(final ReviewResult reviewResult) {
-    return reviewResult.summary != null && !reviewResult.summary.isBlank();
+    return reviewResult.getSummary() != null && !reviewResult.getSummary().isBlank();
   }
 
   private boolean hasIssues(final ReviewResult reviewResult) {
-    return !reviewResult.issues.isEmpty();
+    return !reviewResult.getIssues().isEmpty();
   }
 
   private boolean hasNotes(final ReviewResult reviewResult) {
-    return !reviewResult.non_blocking_notes.isEmpty();
+    return !reviewResult.getNonBlockingNotes().isEmpty();
   }
 
   private boolean hasSuggestion(final ReviewResult.Issue issue) {
-    return issue.suggestion != null && !issue.suggestion.isEmpty();
+    return issue.getSuggestion() != null && !issue.getSuggestion().isEmpty();
   }
 
   private boolean isEmpty(final ReviewResult reviewResult) {

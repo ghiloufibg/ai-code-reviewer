@@ -9,15 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class SecurityAnalysisOrchestrator {
-
-  private static final Logger logger = LoggerFactory.getLogger(SecurityAnalysisOrchestrator.class);
 
   private static final String SUPPORTED_LANGUAGE = "java";
 
@@ -39,14 +37,14 @@ public class SecurityAnalysisOrchestrator {
             .build();
 
     if (multiToolOrchestrator != null) {
-      logger.info("Multi-tool security analysis is ENABLED with result caching");
+      log.info("Multi-tool security analysis is ENABLED with result caching");
     } else {
-      logger.info("Multi-tool security analysis is DISABLED, using SpotBugs only with caching");
+      log.info("Multi-tool security analysis is DISABLED, using SpotBugs only with caching");
     }
   }
 
   public SecurityAnalysisResponse analyze(final SecurityAnalysisRequest request) {
-    logger.info(
+    log.info(
         "Starting security analysis for file: {}, language: {}",
         request.filename(),
         request.language());
@@ -58,14 +56,14 @@ public class SecurityAnalysisOrchestrator {
     final SecurityAnalysisResponse cachedResponse = analysisCache.getIfPresent(cacheKey);
 
     if (cachedResponse != null) {
-      logger.info(
+      log.info(
           "Cache HIT for file: {} (saved {}ms)",
           request.filename(),
           cachedResponse.analysisTimeMs());
       return cachedResponse;
     }
 
-    logger.debug("Cache MISS for file: {}, performing analysis", request.filename());
+    log.debug("Cache MISS for file: {}, performing analysis", request.filename());
 
     final SecurityAnalysisResponse response;
 
@@ -77,7 +75,7 @@ public class SecurityAnalysisOrchestrator {
 
     analysisCache.put(cacheKey, response);
 
-    logger.info(
+    log.info(
         "Security analysis completed for file: {}. Found {} findings in {}ms (cached for reuse)",
         request.filename(),
         response.findings().size(),
@@ -88,7 +86,7 @@ public class SecurityAnalysisOrchestrator {
 
   private void validateLanguage(final String language) {
     if (!SUPPORTED_LANGUAGE.equalsIgnoreCase(language)) {
-      logger.warn("Unsupported language requested: {}", language);
+      log.warn("Unsupported language requested: {}", language);
       throw new UnsupportedLanguageException(language);
     }
   }
@@ -109,7 +107,7 @@ public class SecurityAnalysisOrchestrator {
       }
       return hexString.toString();
     } catch (final NoSuchAlgorithmException e) {
-      logger.error("SHA-256 algorithm not available, falling back to simple concatenation", e);
+      log.error("SHA-256 algorithm not available, falling back to simple concatenation", e);
       return code.hashCode() + "_" + language + "_" + filename;
     }
   }

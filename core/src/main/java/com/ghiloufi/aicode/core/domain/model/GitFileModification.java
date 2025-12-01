@@ -9,7 +9,7 @@ public class GitFileModification {
 
   public String oldPath;
   public String newPath;
-  public List<DiffHunkBlock> diffHunkBlocks = new ArrayList<>();
+  public List<DiffHunkBlock> diffHunkBlocks = new ArrayList<>(10);
 
   public GitFileModification() {}
 

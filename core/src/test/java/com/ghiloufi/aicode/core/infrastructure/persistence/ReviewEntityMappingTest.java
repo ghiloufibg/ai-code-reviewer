@@ -18,27 +18,30 @@ class ReviewEntityMappingTest {
   @Test
   @DisplayName("should map issue with inline comment metadata to entity")
   void should_map_issue_with_inline_metadata() {
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "src/Main.java";
-    issue.start_line = 42;
-    issue.severity = "critical";
-    issue.title = "Null pointer risk";
-    issue.suggestion = "Add null check";
-    issue.inlineCommentPosted = true;
-    issue.scmCommentId = "discussion_123";
-    issue.positionMetadata = "{\"base_sha\":\"abc\",\"head_sha\":\"def\"}";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("src/Main.java")
+            .startLine(42)
+            .severity("critical")
+            .title("Null pointer risk")
+            .suggestion("Add null check")
+            .inlineCommentPosted(true)
+            .scmCommentId("discussion_123")
+            .positionMetadata("{\"base_sha\":\"abc\",\"head_sha\":\"def\"}")
+            .build();
 
     final ReviewIssueEntity entity =
         ReviewIssueEntity.builder()
-            .filePath(issue.file)
-            .startLine(issue.start_line)
-            .severity(issue.severity)
-            .title(issue.title)
-            .suggestion(issue.suggestion)
-            .inlineCommentPosted(issue.inlineCommentPosted != null && issue.inlineCommentPosted)
-            .scmCommentId(issue.scmCommentId)
-            .fallbackReason(issue.fallbackReason)
-            .positionMetadata(issue.positionMetadata)
+            .filePath(issue.getFile())
+            .startLine(issue.getStartLine())
+            .severity(issue.getSeverity())
+            .title(issue.getTitle())
+            .suggestion(issue.getSuggestion())
+            .inlineCommentPosted(
+                issue.getInlineCommentPosted() != null && issue.getInlineCommentPosted())
+            .scmCommentId(issue.getScmCommentId())
+            .fallbackReason(issue.getFallbackReason())
+            .positionMetadata(issue.getPositionMetadata())
             .build();
 
     assertThat(entity.isInlineCommentPosted()).isTrue();
@@ -50,25 +53,28 @@ class ReviewEntityMappingTest {
   @Test
   @DisplayName("should map issue with fallback metadata to entity")
   void should_map_issue_with_fallback_metadata() {
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "src/Main.java";
-    issue.start_line = 999;
-    issue.severity = "major";
-    issue.title = "Invalid line";
-    issue.inlineCommentPosted = false;
-    issue.scmCommentId = "note_456";
-    issue.fallbackReason = "INVALID_LINE";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("src/Main.java")
+            .startLine(999)
+            .severity("major")
+            .title("Invalid line")
+            .inlineCommentPosted(false)
+            .scmCommentId("note_456")
+            .fallbackReason("INVALID_LINE")
+            .build();
 
     final ReviewIssueEntity entity =
         ReviewIssueEntity.builder()
-            .filePath(issue.file)
-            .startLine(issue.start_line)
-            .severity(issue.severity)
-            .title(issue.title)
-            .inlineCommentPosted(issue.inlineCommentPosted != null && issue.inlineCommentPosted)
-            .scmCommentId(issue.scmCommentId)
-            .fallbackReason(issue.fallbackReason)
-            .positionMetadata(issue.positionMetadata)
+            .filePath(issue.getFile())
+            .startLine(issue.getStartLine())
+            .severity(issue.getSeverity())
+            .title(issue.getTitle())
+            .inlineCommentPosted(
+                issue.getInlineCommentPosted() != null && issue.getInlineCommentPosted())
+            .scmCommentId(issue.getScmCommentId())
+            .fallbackReason(issue.getFallbackReason())
+            .positionMetadata(issue.getPositionMetadata())
             .build();
 
     assertThat(entity.isInlineCommentPosted()).isFalse();
@@ -80,23 +86,26 @@ class ReviewEntityMappingTest {
   @Test
   @DisplayName("should map note with inline comment metadata to entity")
   void should_map_note_with_inline_metadata() {
-    final ReviewResult.Note note = new ReviewResult.Note();
-    note.file = "src/Utils.java";
-    note.line = 15;
-    note.note = "Consider using Optional";
-    note.inlineCommentPosted = true;
-    note.scmCommentId = "discussion_789";
-    note.positionMetadata = "{\"new_line\":15}";
+    final ReviewResult.Note note =
+        ReviewResult.Note.noteBuilder()
+            .file("src/Utils.java")
+            .line(15)
+            .note("Consider using Optional")
+            .inlineCommentPosted(true)
+            .scmCommentId("discussion_789")
+            .positionMetadata("{\"new_line\":15}")
+            .build();
 
     final ReviewNoteEntity entity =
         ReviewNoteEntity.builder()
-            .filePath(note.file)
-            .lineNumber(note.line)
-            .note(note.note)
-            .inlineCommentPosted(note.inlineCommentPosted != null && note.inlineCommentPosted)
-            .scmCommentId(note.scmCommentId)
-            .fallbackReason(note.fallbackReason)
-            .positionMetadata(note.positionMetadata)
+            .filePath(note.getFile())
+            .lineNumber(note.getLine())
+            .note(note.getNote())
+            .inlineCommentPosted(
+                note.getInlineCommentPosted() != null && note.getInlineCommentPosted())
+            .scmCommentId(note.getScmCommentId())
+            .fallbackReason(note.getFallbackReason())
+            .positionMetadata(note.getPositionMetadata())
             .build();
 
     assertThat(entity.isInlineCommentPosted()).isTrue();
@@ -107,22 +116,25 @@ class ReviewEntityMappingTest {
   @Test
   @DisplayName("should handle null metadata fields gracefully")
   void should_handle_null_metadata() {
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "src/Main.java";
-    issue.start_line = 10;
-    issue.severity = "minor";
-    issue.title = "Legacy issue without metadata";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("src/Main.java")
+            .startLine(10)
+            .severity("minor")
+            .title("Legacy issue without metadata")
+            .build();
 
     final ReviewIssueEntity entity =
         ReviewIssueEntity.builder()
-            .filePath(issue.file)
-            .startLine(issue.start_line)
-            .severity(issue.severity)
-            .title(issue.title)
-            .inlineCommentPosted(issue.inlineCommentPosted != null && issue.inlineCommentPosted)
-            .scmCommentId(issue.scmCommentId)
-            .fallbackReason(issue.fallbackReason)
-            .positionMetadata(issue.positionMetadata)
+            .filePath(issue.getFile())
+            .startLine(issue.getStartLine())
+            .severity(issue.getSeverity())
+            .title(issue.getTitle())
+            .inlineCommentPosted(
+                issue.getInlineCommentPosted() != null && issue.getInlineCommentPosted())
+            .scmCommentId(issue.getScmCommentId())
+            .fallbackReason(issue.getFallbackReason())
+            .positionMetadata(issue.getPositionMetadata())
             .build();
 
     assertThat(entity.isInlineCommentPosted()).isFalse();

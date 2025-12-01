@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
+import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitResult;
@@ -21,9 +22,12 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -56,11 +60,11 @@ final class ReviewManagementServiceTest {
     testReviewRepository = new TestPostgresReviewRepository();
     testContextOrchestrator = new TestContextOrchestrator();
 
-    final com.ghiloufi.aicode.core.config.SummaryCommentProperties summaryCommentProperties =
-        new com.ghiloufi.aicode.core.config.SummaryCommentProperties(false, true, true);
-    final com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter summaryCommentFormatter =
-        new com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter(
-            summaryCommentProperties);
+    final SummaryCommentProperties summaryCommentProperties =
+        new SummaryCommentProperties(false, true, true);
+    final SummaryCommentFormatter summaryCommentFormatter =
+        new SummaryCommentFormatter(summaryCommentProperties);
+    final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
 
     reviewManagementService =
         new ReviewManagementService(
@@ -70,7 +74,8 @@ final class ReviewManagementServiceTest {
             testReviewRepository,
             testContextOrchestrator,
             summaryCommentProperties,
-            summaryCommentFormatter);
+            summaryCommentFormatter,
+            resilience);
   }
 
   @Test
@@ -245,19 +250,21 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review summary";
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "Test.java";
-    issue.start_line = 10;
-    issue.severity = "MEDIUM";
-    issue.title = "Test issue";
-    issue.suggestion = "Test suggestion";
-    reviewResult.issues.add(issue);
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("MEDIUM")
+            .title("Test issue")
+            .suggestion("Test suggestion")
+            .build();
+
+    final ReviewResult reviewResult =
+        ReviewResult.builder().summary("Test review summary").issues(List.of(issue)).build();
 
     testSCMPort.setShouldFailPublish(false);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, reviewResult);
 
     StepVerifier.create(result).verifyComplete();
@@ -269,12 +276,11 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("failing-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult reviewResult = new ReviewResult();
-    reviewResult.summary = "Test review";
+    final ReviewResult reviewResult = ReviewResult.builder().summary("Test review").build();
 
     testSCMPort.setShouldFailPublish(true);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, reviewResult);
 
     StepVerifier.create(result)
@@ -291,12 +297,12 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    final ReviewResult emptyReviewResult = new ReviewResult();
-    emptyReviewResult.summary = "No issues found";
+    final ReviewResult emptyReviewResult =
+        ReviewResult.builder().summary("No issues found").build();
 
     testSCMPort.setShouldFailPublish(false);
 
-    final reactor.core.publisher.Mono<Void> result =
+    final Mono<Void> result =
         reviewManagementService.publishReview(repository, changeRequest, emptyReviewResult);
 
     StepVerifier.create(result).verifyComplete();
@@ -350,8 +356,8 @@ final class ReviewManagementServiceTest {
   }
 
   @Test
-  @DisplayName("should_stream_chunks_and_handle_publish_error_gracefully")
-  final void should_stream_chunks_and_handle_publish_error_gracefully() {
+  @DisplayName("should_stream_chunks_then_propagate_publish_error")
+  final void should_stream_chunks_then_propagate_publish_error() {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
@@ -370,7 +376,35 @@ final class ReviewManagementServiceTest {
     StepVerifier.create(result)
         .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SECURITY))
         .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SUGGESTION))
+        .expectErrorMatches(
+            error ->
+                error instanceof RuntimeException
+                    && error.getMessage().equals("Publish review failed"))
+        .verify();
+  }
+
+  @Test
+  @DisplayName("should_stream_chunks_and_complete_gracefully_when_save_fails")
+  final void should_stream_chunks_and_complete_gracefully_when_save_fails() {
+    final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
+    final MergeRequestId changeRequest = new MergeRequestId(1);
+
+    final List<ReviewChunk> chunks =
+        List.of(new ReviewChunk(ReviewChunk.ChunkType.SECURITY, "Security issue", null));
+
+    testAIReviewStreamingService.setChunks(chunks);
+    testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
+    testSCMPort.setShouldFailPublish(false);
+    testReviewRepository.setShouldFail(true);
+
+    final Flux<ReviewChunk> result =
+        reviewManagementService.streamAndPublishReview(repository, changeRequest);
+
+    StepVerifier.create(result)
+        .assertNext(chunk -> assertThat(chunk.type()).isEqualTo(ReviewChunk.ChunkType.SECURITY))
         .verifyComplete();
+
+    assertThat(testSCMPort.isPublishReviewCalled()).isTrue();
   }
 
   @Test
@@ -438,52 +472,47 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
-    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle>
-        getDiff(
-            final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-            final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
+    public Mono<DiffAnalysisBundle> getDiff(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
       if (diffAnalysisBundle != null) {
         return Mono.just(diffAnalysisBundle);
       }
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishReview(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
-        final com.ghiloufi.aicode.core.domain.model.ReviewResult reviewResult) {
+    public Mono<Void> publishReview(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
+        final ReviewResult reviewResult) {
       publishReviewCalled.set(true);
       if (shouldFailPublish) {
-        return reactor.core.publisher.Mono.error(new RuntimeException("Publish review failed"));
+        return Mono.error(new RuntimeException("Publish review failed"));
       }
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Void> publishSummaryComment(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest,
+    public Mono<Void> publishSummaryComment(
+        final RepositoryIdentifier repo,
+        final ChangeRequestIdentifier changeRequest,
         final String summaryComment) {
-      return reactor.core.publisher.Mono.empty();
+      return Mono.empty();
     }
 
     @Override
-    public reactor.core.publisher.Mono<Boolean> isChangeRequestOpen(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo,
-        final com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier changeRequest) {
-      return reactor.core.publisher.Mono.just(true);
+    public Mono<Boolean> isChangeRequestOpen(
+        final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
+      return Mono.just(true);
     }
 
     @Override
-    public reactor.core.publisher.Mono<com.ghiloufi.aicode.core.domain.model.RepositoryInfo>
-        getRepository(final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo) {
-      return reactor.core.publisher.Mono.empty();
+    public Mono<RepositoryInfo> getRepository(final RepositoryIdentifier repo) {
+      return Mono.empty();
     }
 
     @Override
-    public Flux<MergeRequestSummary> getOpenChangeRequests(
-        final com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier repo) {
+    public Flux<MergeRequestSummary> getOpenChangeRequests(final RepositoryIdentifier repo) {
       if (shouldFail) {
         return Flux.error(new RuntimeException("SCM operation failed"));
       }
@@ -611,18 +640,13 @@ final class ReviewManagementServiceTest {
 
     @Override
     public ReviewResult accumulateChunks(final List<ReviewChunk> chunks) {
-      return accumulateChunks(
-          chunks, com.ghiloufi.aicode.core.domain.model.ReviewConfiguration.defaults());
+      return accumulateChunks(chunks, ReviewConfiguration.defaults());
     }
 
     @Override
     public ReviewResult accumulateChunks(
-        final List<ReviewChunk> chunks,
-        final com.ghiloufi.aicode.core.domain.model.ReviewConfiguration config) {
+        final List<ReviewChunk> chunks, final ReviewConfiguration config) {
       accumulateChunksCalled.set(true);
-
-      final ReviewResult result = new ReviewResult();
-      result.summary = "Test review summary";
 
       final List<ReviewResult.Issue> issues = new ArrayList<>();
       final List<ReviewResult.Note> notes = new ArrayList<>();
@@ -630,39 +654,54 @@ final class ReviewManagementServiceTest {
       for (final ReviewChunk chunk : chunks) {
         switch (chunk.type()) {
           case SECURITY, PERFORMANCE -> {
-            final ReviewResult.Issue issue = new ReviewResult.Issue();
-            issue.severity = chunk.type().name();
-            issue.title = "Test issue";
-            issue.file = "test.java";
-            issue.start_line = 10;
-            issue.suggestion = chunk.content();
+            final ReviewResult.Issue issue =
+                ReviewResult.Issue.issueBuilder()
+                    .severity(chunk.type().name())
+                    .title("Test issue")
+                    .file("test.java")
+                    .startLine(10)
+                    .suggestion(chunk.content())
+                    .build();
             issues.add(issue);
           }
           case SUGGESTION -> {
-            final ReviewResult.Note note = new ReviewResult.Note();
-            note.file = "test.java";
-            note.line = 20;
-            note.note = chunk.content();
+            final ReviewResult.Note note =
+                ReviewResult.Note.noteBuilder()
+                    .file("test.java")
+                    .line(20)
+                    .note(chunk.content())
+                    .build();
             notes.add(note);
           }
           default -> {}
         }
       }
 
-      result.issues.addAll(issues);
-      result.non_blocking_notes.addAll(notes);
-
-      return result;
+      return ReviewResult.builder()
+          .summary("Test review summary")
+          .issues(issues)
+          .nonBlockingNotes(notes)
+          .build();
     }
   }
 
   private static final class TestPostgresReviewRepository extends PostgresReviewRepository {
+
+    private boolean shouldFail = false;
+
     public TestPostgresReviewRepository() {
       super(null, null);
     }
 
+    final void setShouldFail(final boolean shouldFail) {
+      this.shouldFail = shouldFail;
+    }
+
     @Override
     public Mono<Void> save(final String reviewId, final ReviewResult result) {
+      if (shouldFail) {
+        return Mono.error(new RuntimeException("Database save failed"));
+      }
       return Mono.empty();
     }
 

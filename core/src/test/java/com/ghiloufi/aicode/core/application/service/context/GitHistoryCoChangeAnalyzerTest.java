@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 @DisplayName("GitHistoryCoChangeAnalyzer Tests")
@@ -65,8 +66,7 @@ final class GitHistoryCoChangeAnalyzerTest {
     when(mockSCMPort.getCommitsFor(eq(repo), eq(targetFile), any(LocalDate.class), anyInt()))
         .thenReturn(Flux.fromIterable(commits));
 
-    final reactor.core.publisher.Mono<CoChangeAnalysisResult> result =
-        analyzer.analyzeCoChanges(repo, targetFile);
+    final Mono<CoChangeAnalysisResult> result = analyzer.analyzeCoChanges(repo, targetFile);
 
     StepVerifier.create(result)
         .assertNext(
@@ -96,8 +96,7 @@ final class GitHistoryCoChangeAnalyzerTest {
     when(mockSCMPort.getCommitsFor(eq(repo), eq(targetFile), any(LocalDate.class), anyInt()))
         .thenReturn(Flux.empty());
 
-    final reactor.core.publisher.Mono<CoChangeAnalysisResult> result =
-        analyzer.analyzeCoChanges(repo, targetFile);
+    final Mono<CoChangeAnalysisResult> result = analyzer.analyzeCoChanges(repo, targetFile);
 
     StepVerifier.create(result)
         .assertNext(

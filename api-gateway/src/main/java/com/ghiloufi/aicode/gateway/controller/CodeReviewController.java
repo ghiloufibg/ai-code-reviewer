@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
+import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
 import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import jakarta.validation.constraints.Positive;
 import java.net.URLDecoder;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -38,8 +40,7 @@ public class CodeReviewController {
   private final ReviewManagementUseCase reviewManagementUseCase;
   private final Optional<FixApplicationService> fixApplicationService;
   private final SSEFormatter sseFormatter;
-  private final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
-      reviewIssueRepository;
+  private final ReviewIssueRepository reviewIssueRepository;
 
   @GetMapping(
       value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/stream",
@@ -322,7 +323,7 @@ public class CodeReviewController {
   }
 
   @GetMapping(value = "/issues/{issueId}", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<Map<String, Object>> getIssue(@PathVariable final java.util.UUID issueId) {
+  public Mono<Map<String, Object>> getIssue(@PathVariable final UUID issueId) {
 
     log.info("Retrieving issue: {}", issueId);
 
@@ -396,7 +397,7 @@ public class CodeReviewController {
       @PathVariable final String provider,
       @PathVariable final String repositoryId,
       @PathVariable @Positive final int changeRequestId,
-      @PathVariable final java.util.UUID issueId) {
+      @PathVariable final UUID issueId) {
 
     final SourceProvider sourceProvider = SourceProvider.fromString(provider);
     final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);

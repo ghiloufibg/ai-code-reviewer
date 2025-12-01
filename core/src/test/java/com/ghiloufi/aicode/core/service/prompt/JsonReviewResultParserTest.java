@@ -64,17 +64,18 @@ class JsonReviewResultParserTest {
       final ReviewResult result = parser.parse(jsonResponse);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Code review completed. Found 2 issues.");
-      assertThat(result.issues).hasSize(2);
-      assertThat(result.non_blocking_notes).hasSize(1);
+      assertThat(result.getSummary()).isEqualTo("Code review completed. Found 2 issues.");
+      assertThat(result.getIssues()).hasSize(2);
+      assertThat(result.getNonBlockingNotes()).hasSize(1);
 
-      assertThat(result.issues.get(0).file).isEqualTo("src/Main.java");
-      assertThat(result.issues.get(0).start_line).isEqualTo(10);
-      assertThat(result.issues.get(0).severity).isEqualTo("major");
-      assertThat(result.issues.get(0).title).isEqualTo("Potential null pointer exception");
+      assertThat(result.getIssues().get(0).getFile()).isEqualTo("src/Main.java");
+      assertThat(result.getIssues().get(0).getStartLine()).isEqualTo(10);
+      assertThat(result.getIssues().get(0).getSeverity()).isEqualTo("major");
+      assertThat(result.getIssues().get(0).getTitle())
+          .isEqualTo("Potential null pointer exception");
 
-      assertThat(result.non_blocking_notes.get(0).file).isEqualTo("src/Config.java");
-      assertThat(result.non_blocking_notes.get(0).line).isEqualTo(5);
+      assertThat(result.getNonBlockingNotes().get(0).getFile()).isEqualTo("src/Config.java");
+      assertThat(result.getNonBlockingNotes().get(0).getLine()).isEqualTo(5);
     }
 
     @Test
@@ -92,9 +93,9 @@ class JsonReviewResultParserTest {
       final ReviewResult result = parser.parse(jsonResponse);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("No issues found. Code looks good!");
-      assertThat(result.issues).isEmpty();
-      assertThat(result.non_blocking_notes).isEmpty();
+      assertThat(result.getSummary()).isEqualTo("No issues found. Code looks good!");
+      assertThat(result.getIssues()).isEmpty();
+      assertThat(result.getNonBlockingNotes()).isEmpty();
     }
 
     @Test
@@ -114,7 +115,7 @@ class JsonReviewResultParserTest {
       final ReviewResult result = parser.parse(jsonResponseWithMarkdown);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Review complete");
+      assertThat(result.getSummary()).isEqualTo("Review complete");
     }
 
     @Test
@@ -134,7 +135,7 @@ class JsonReviewResultParserTest {
       final ReviewResult result = parser.parse(jsonResponse);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Review complete");
+      assertThat(result.getSummary()).isEqualTo("Review complete");
     }
 
     @Test
@@ -169,15 +170,15 @@ class JsonReviewResultParserTest {
       final ReviewResult result = parser.parse(jsonResponseWithSchema);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary)
+      assertThat(result.getSummary())
           .isEqualTo(
               "The FizzBuzz implementation is functional but contains redundant checks and could be optimized for clarity and performance.");
-      assertThat(result.issues).isEmpty();
-      assertThat(result.non_blocking_notes).hasSize(3);
-      assertThat(result.non_blocking_notes.get(0).file).isEqualTo("FizzBuzz.java");
-      assertThat(result.non_blocking_notes.get(0).line).isEqualTo(10);
-      assertThat(result.non_blocking_notes.get(1).line).isEqualTo(30);
-      assertThat(result.non_blocking_notes.get(2).line).isEqualTo(46);
+      assertThat(result.getIssues()).isEmpty();
+      assertThat(result.getNonBlockingNotes()).hasSize(3);
+      assertThat(result.getNonBlockingNotes().get(0).getFile()).isEqualTo("FizzBuzz.java");
+      assertThat(result.getNonBlockingNotes().get(0).getLine()).isEqualTo(10);
+      assertThat(result.getNonBlockingNotes().get(1).getLine()).isEqualTo(30);
+      assertThat(result.getNonBlockingNotes().get(2).getLine()).isEqualTo(46);
     }
   }
 

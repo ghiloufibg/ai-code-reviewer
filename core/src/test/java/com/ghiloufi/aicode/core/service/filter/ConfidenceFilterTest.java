@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,8 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, -0.1);
 
-    assertThat(filtered.issues).hasSize(1);
-    assertThat(filtered.issues.get(0).confidenceScore).isEqualTo(0.6);
+    assertThat(filtered.getIssues()).hasSize(1);
+    assertThat(filtered.getIssues().get(0).getConfidenceScore()).isEqualTo(0.6);
   }
 
   @Test
@@ -45,19 +46,18 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 1.5);
 
-    assertThat(filtered.issues).hasSize(1);
-    assertThat(filtered.issues.get(0).confidenceScore).isEqualTo(0.6);
+    assertThat(filtered.getIssues()).hasSize(1);
+    assertThat(filtered.getIssues().get(0).getConfidenceScore()).isEqualTo(0.6);
   }
 
   @Test
   @DisplayName("should_return_unchanged_result_when_no_issues_present")
   void should_return_unchanged_result_when_no_issues_present() {
-    final ReviewResult result = new ReviewResult();
-    result.issues = new ArrayList<>();
+    final ReviewResult result = ReviewResult.builder().build();
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.5);
 
-    assertThat(filtered.issues).isEmpty();
+    assertThat(filtered.getIssues()).isEmpty();
   }
 
   @Test
@@ -67,9 +67,9 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.6);
 
-    assertThat(filtered.issues).hasSize(2);
-    assertThat(filtered.issues.get(0).confidenceScore).isEqualTo(0.7);
-    assertThat(filtered.issues.get(1).confidenceScore).isEqualTo(0.9);
+    assertThat(filtered.getIssues()).hasSize(2);
+    assertThat(filtered.getIssues().get(0).getConfidenceScore()).isEqualTo(0.7);
+    assertThat(filtered.getIssues().get(1).getConfidenceScore()).isEqualTo(0.9);
   }
 
   @Test
@@ -79,43 +79,43 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.5);
 
-    assertThat(filtered.issues).hasSize(2);
-    assertThat(filtered.issues.get(0).confidenceScore).isEqualTo(0.5);
-    assertThat(filtered.issues.get(1).confidenceScore).isEqualTo(0.6);
+    assertThat(filtered.getIssues()).hasSize(2);
+    assertThat(filtered.getIssues().get(0).getConfidenceScore()).isEqualTo(0.5);
+    assertThat(filtered.getIssues().get(1).getConfidenceScore()).isEqualTo(0.6);
   }
 
   @Test
   @DisplayName("should_treat_null_confidence_as_default_0_5")
   void should_treat_null_confidence_as_default_0_5() {
-    final ReviewResult result = new ReviewResult();
-    result.issues = new ArrayList<>();
+    final ReviewResult.Issue issueWithNullConfidence =
+        ReviewResult.Issue.issueBuilder()
+            .title("Issue with null confidence")
+            .confidenceScore(null)
+            .build();
 
-    final ReviewResult.Issue issueWithNullConfidence = new ReviewResult.Issue();
-    issueWithNullConfidence.title = "Issue with null confidence";
-    issueWithNullConfidence.confidenceScore = null;
-
-    result.issues.add(issueWithNullConfidence);
+    final ReviewResult result =
+        ReviewResult.builder().issues(List.of(issueWithNullConfidence)).build();
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.4);
 
-    assertThat(filtered.issues).hasSize(1);
+    assertThat(filtered.getIssues()).hasSize(1);
   }
 
   @Test
   @DisplayName("should_filter_out_null_confidence_when_threshold_is_above_0_5")
   void should_filter_out_null_confidence_when_threshold_is_above_0_5() {
-    final ReviewResult result = new ReviewResult();
-    result.issues = new ArrayList<>();
+    final ReviewResult.Issue issueWithNullConfidence =
+        ReviewResult.Issue.issueBuilder()
+            .title("Issue with null confidence")
+            .confidenceScore(null)
+            .build();
 
-    final ReviewResult.Issue issueWithNullConfidence = new ReviewResult.Issue();
-    issueWithNullConfidence.title = "Issue with null confidence";
-    issueWithNullConfidence.confidenceScore = null;
-
-    result.issues.add(issueWithNullConfidence);
+    final ReviewResult result =
+        ReviewResult.builder().issues(List.of(issueWithNullConfidence)).build();
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.6);
 
-    assertThat(filtered.issues).isEmpty();
+    assertThat(filtered.getIssues()).isEmpty();
   }
 
   @Test
@@ -125,7 +125,7 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 0.0);
 
-    assertThat(filtered.issues).hasSize(5);
+    assertThat(filtered.getIssues()).hasSize(5);
   }
 
   @Test
@@ -135,7 +135,7 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 1.0);
 
-    assertThat(filtered.issues).isEmpty();
+    assertThat(filtered.getIssues()).isEmpty();
   }
 
   @Test
@@ -145,22 +145,23 @@ class ConfidenceFilterTest {
 
     final ReviewResult filtered = filter.filterByConfidence(result, 1.0);
 
-    assertThat(filtered.issues).hasSize(1);
-    assertThat(filtered.issues.get(0).confidenceScore).isEqualTo(1.0);
+    assertThat(filtered.getIssues()).hasSize(1);
+    assertThat(filtered.getIssues().get(0).getConfidenceScore()).isEqualTo(1.0);
   }
 
   private ReviewResult createResultWithIssues(final Double... confidenceScores) {
-    final ReviewResult result = new ReviewResult();
-    result.issues = new ArrayList<>();
+    final List<ReviewResult.Issue> issues = new ArrayList<>();
 
     for (int i = 0; i < confidenceScores.length; i++) {
-      final ReviewResult.Issue issue = new ReviewResult.Issue();
-      issue.title = "Issue " + (i + 1);
-      issue.confidenceScore = confidenceScores[i];
-      issue.confidenceExplanation = "Confidence explanation for issue " + (i + 1);
-      result.issues.add(issue);
+      final ReviewResult.Issue issue =
+          ReviewResult.Issue.issueBuilder()
+              .title("Issue " + (i + 1))
+              .confidenceScore(confidenceScores[i])
+              .confidenceExplanation("Confidence explanation for issue " + (i + 1))
+              .build();
+      issues.add(issue);
     }
 
-    return result;
+    return ReviewResult.builder().issues(issues).build();
   }
 }

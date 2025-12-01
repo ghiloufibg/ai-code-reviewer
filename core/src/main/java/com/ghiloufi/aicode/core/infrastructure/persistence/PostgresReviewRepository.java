@@ -193,79 +193,84 @@ public class PostgresReviewRepository {
             .changeRequestId(extractChangeRequestId(reviewId))
             .provider(extractProvider(reviewId))
             .status(ReviewState.PENDING)
-            .summary(result.summary)
-            .llmProvider(result.llmProvider)
-            .llmModel(result.llmModel)
-            .rawLlmResponse(result.rawLlmResponse)
+            .summary(result.getSummary())
+            .llmProvider(result.getLlmProvider())
+            .llmModel(result.getLlmModel())
+            .rawLlmResponse(result.getRawLlmResponse())
             .build();
 
-    if (result.issues != null) {
-      result.issues.forEach(
-          issue -> {
-            final ReviewIssueEntity issueEntity =
-                ReviewIssueEntity.builder()
-                    .filePath(issue.file)
-                    .startLine(issue.start_line)
-                    .severity(issue.severity)
-                    .title(issue.title)
-                    .suggestion(issue.suggestion)
-                    .build();
-            entity.addIssue(issueEntity);
-          });
+    if (result.getIssues() != null) {
+      result
+          .getIssues()
+          .forEach(
+              issue -> {
+                final ReviewIssueEntity issueEntity =
+                    ReviewIssueEntity.builder()
+                        .filePath(issue.getFile())
+                        .startLine(issue.getStartLine())
+                        .severity(issue.getSeverity())
+                        .title(issue.getTitle())
+                        .suggestion(issue.getSuggestion())
+                        .build();
+                entity.addIssue(issueEntity);
+              });
     }
 
-    if (result.non_blocking_notes != null) {
-      result.non_blocking_notes.forEach(
-          note -> {
-            final ReviewNoteEntity noteEntity =
-                ReviewNoteEntity.builder()
-                    .filePath(note.file)
-                    .lineNumber(note.line)
-                    .note(note.note)
-                    .build();
-            entity.addNote(noteEntity);
-          });
+    if (result.getNonBlockingNotes() != null) {
+      result
+          .getNonBlockingNotes()
+          .forEach(
+              note -> {
+                final ReviewNoteEntity noteEntity =
+                    ReviewNoteEntity.builder()
+                        .filePath(note.getFile())
+                        .lineNumber(note.getLine())
+                        .note(note.getNote())
+                        .build();
+                entity.addNote(noteEntity);
+              });
     }
 
     return entity;
   }
 
   private ReviewResult convertToDomain(final ReviewEntity entity) {
-    final ReviewResult result = new ReviewResult();
-    result.summary = entity.getSummary();
-    result.llmProvider = entity.getLlmProvider();
-    result.llmModel = entity.getLlmModel();
-    result.rawLlmResponse = entity.getRawLlmResponse();
+    final List<ReviewResult.Issue> issues =
+        entity.getIssues() != null
+            ? entity.getIssues().stream()
+                .map(
+                    issueEntity ->
+                        ReviewResult.Issue.issueBuilder()
+                            .file(issueEntity.getFilePath())
+                            .startLine(issueEntity.getStartLine())
+                            .severity(issueEntity.getSeverity())
+                            .title(issueEntity.getTitle())
+                            .suggestion(issueEntity.getSuggestion())
+                            .build())
+                .toList()
+            : List.of();
 
-    if (entity.getIssues() != null) {
-      entity
-          .getIssues()
-          .forEach(
-              issueEntity -> {
-                final ReviewResult.Issue issue = new ReviewResult.Issue();
-                issue.file = issueEntity.getFilePath();
-                issue.start_line = issueEntity.getStartLine();
-                issue.severity = issueEntity.getSeverity();
-                issue.title = issueEntity.getTitle();
-                issue.suggestion = issueEntity.getSuggestion();
-                result.issues.add(issue);
-              });
-    }
+    final List<ReviewResult.Note> notes =
+        entity.getNotes() != null
+            ? entity.getNotes().stream()
+                .map(
+                    noteEntity ->
+                        ReviewResult.Note.noteBuilder()
+                            .file(noteEntity.getFilePath())
+                            .line(noteEntity.getLineNumber())
+                            .note(noteEntity.getNote())
+                            .build())
+                .toList()
+            : List.of();
 
-    if (entity.getNotes() != null) {
-      entity
-          .getNotes()
-          .forEach(
-              noteEntity -> {
-                final ReviewResult.Note note = new ReviewResult.Note();
-                note.file = noteEntity.getFilePath();
-                note.line = noteEntity.getLineNumber();
-                note.note = noteEntity.getNote();
-                result.non_blocking_notes.add(note);
-              });
-    }
-
-    return result;
+    return ReviewResult.builder()
+        .summary(entity.getSummary())
+        .llmProvider(entity.getLlmProvider())
+        .llmModel(entity.getLlmModel())
+        .rawLlmResponse(entity.getRawLlmResponse())
+        .issues(issues)
+        .nonBlockingNotes(notes)
+        .build();
   }
 
   private UUID parseReviewId(final String reviewId) {

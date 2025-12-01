@@ -29,51 +29,56 @@ public final class ReviewSummaryFormatter {
   }
 
   private void appendIssuesSection(final StringBuilder summary, final ReviewResult result) {
-    if (result.issues.isEmpty()) {
+    if (result.getIssues().isEmpty()) {
       summary.append("✅ Issues Found: 0\n");
     } else {
-      summary.append(String.format("⚠️  Issues Found: %d\n", result.issues.size()));
-      for (int i = 0; i < Math.min(MAX_ISSUES_TO_DISPLAY, result.issues.size()); i++) {
-        final ReviewResult.Issue issue = result.issues.get(i);
+      summary.append(String.format("⚠️  Issues Found: %d\n", result.getIssues().size()));
+      for (int i = 0; i < Math.min(MAX_ISSUES_TO_DISPLAY, result.getIssues().size()); i++) {
+        final ReviewResult.Issue issue = result.getIssues().get(i);
         summary.append(
             String.format(
                 "   %d. [%s] %s (%s:%d)\n",
-                i + 1, issue.severity, issue.title, issue.file, issue.start_line));
+                i + 1,
+                issue.getSeverity(),
+                issue.getTitle(),
+                issue.getFile(),
+                issue.getStartLine()));
       }
-      if (result.issues.size() > MAX_ISSUES_TO_DISPLAY) {
+      if (result.getIssues().size() > MAX_ISSUES_TO_DISPLAY) {
         summary.append(
             String.format(
-                "   ... and %d more issues\n", result.issues.size() - MAX_ISSUES_TO_DISPLAY));
+                "   ... and %d more issues\n", result.getIssues().size() - MAX_ISSUES_TO_DISPLAY));
       }
     }
   }
 
   private void appendNotesSection(final StringBuilder summary, final ReviewResult result) {
     summary.append(
-        String.format("\n📝 Non-Blocking Notes: %d\n", result.non_blocking_notes.size()));
-    for (int i = 0; i < Math.min(MAX_NOTES_TO_DISPLAY, result.non_blocking_notes.size()); i++) {
-      final ReviewResult.Note note = result.non_blocking_notes.get(i);
+        String.format("\n📝 Non-Blocking Notes: %d\n", result.getNonBlockingNotes().size()));
+    for (int i = 0; i < Math.min(MAX_NOTES_TO_DISPLAY, result.getNonBlockingNotes().size()); i++) {
+      final ReviewResult.Note note = result.getNonBlockingNotes().get(i);
       final String notePreview =
-          note.note.length() > NOTE_PREVIEW_LENGTH
-              ? note.note.substring(0, NOTE_PREVIEW_LENGTH) + "..."
-              : note.note;
+          note.getNote().length() > NOTE_PREVIEW_LENGTH
+              ? note.getNote().substring(0, NOTE_PREVIEW_LENGTH) + "..."
+              : note.getNote();
       summary.append(
-          String.format("   %d. [%s:%d] %s\n", i + 1, note.file, note.line, notePreview));
+          String.format("   %d. [%s:%d] %s\n", i + 1, note.getFile(), note.getLine(), notePreview));
     }
-    if (result.non_blocking_notes.size() > MAX_NOTES_TO_DISPLAY) {
+    if (result.getNonBlockingNotes().size() > MAX_NOTES_TO_DISPLAY) {
       summary.append(
           String.format(
               "   ... and %d more notes\n",
-              result.non_blocking_notes.size() - MAX_NOTES_TO_DISPLAY));
+              result.getNonBlockingNotes().size() - MAX_NOTES_TO_DISPLAY));
     }
   }
 
   private void appendSummarySection(final StringBuilder summary, final ReviewResult result) {
-    summary.append(String.format("\n📄 Summary: %d characters\n", result.summary.length()));
+    final String resultSummary = result.getSummary() != null ? result.getSummary() : "";
+    summary.append(String.format("\n📄 Summary: %d characters\n", resultSummary.length()));
     final String summaryPreview =
-        result.summary.length() > SUMMARY_PREVIEW_LENGTH
-            ? result.summary.substring(0, SUMMARY_PREVIEW_LENGTH) + "..."
-            : result.summary;
+        resultSummary.length() > SUMMARY_PREVIEW_LENGTH
+            ? resultSummary.substring(0, SUMMARY_PREVIEW_LENGTH) + "..."
+            : resultSummary;
     summary.append("   ").append(summaryPreview.replace("\n", "\n   ")).append("\n");
   }
 }

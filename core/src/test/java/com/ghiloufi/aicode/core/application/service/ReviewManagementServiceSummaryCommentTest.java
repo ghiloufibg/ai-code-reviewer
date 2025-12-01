@@ -9,7 +9,10 @@ import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
+import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.github.resilience4j.retry.RetryRegistry;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,6 +41,8 @@ final class ReviewManagementServiceSummaryCommentTest {
     final SummaryCommentFormatter summaryCommentFormatter =
         new SummaryCommentFormatter(summaryCommentProperties);
 
+    final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
+
     return new ReviewManagementService(
         aiReviewStreamingService,
         scmProviderFactory,
@@ -45,7 +50,8 @@ final class ReviewManagementServiceSummaryCommentTest {
         reviewRepository,
         contextOrchestrator,
         summaryCommentProperties,
-        summaryCommentFormatter);
+        summaryCommentFormatter,
+        resilience);
   }
 
   @Test
@@ -174,40 +180,38 @@ final class ReviewManagementServiceSummaryCommentTest {
   }
 
   private ReviewResult createReviewResult() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test review summary";
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("MEDIUM")
+            .title("Test issue")
+            .build();
 
-    final ReviewResult.Issue issue = new ReviewResult.Issue();
-    issue.file = "Test.java";
-    issue.start_line = 10;
-    issue.severity = "MEDIUM";
-    issue.title = "Test issue";
-
-    result.issues.add(issue);
-
-    return result;
+    return ReviewResult.builder().summary("Test review summary").issues(List.of(issue)).build();
   }
 
   private ReviewResult createReviewResultWithSeverity() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test review with severity";
+    final ReviewResult.Issue highIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Critical.java")
+            .startLine(5)
+            .severity("HIGH")
+            .title("High severity issue")
+            .build();
 
-    final ReviewResult.Issue highIssue = new ReviewResult.Issue();
-    highIssue.file = "Critical.java";
-    highIssue.start_line = 5;
-    highIssue.severity = "HIGH";
-    highIssue.title = "High severity issue";
+    final ReviewResult.Issue mediumIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Warning.java")
+            .startLine(15)
+            .severity("MEDIUM")
+            .title("Medium severity issue")
+            .build();
 
-    final ReviewResult.Issue mediumIssue = new ReviewResult.Issue();
-    mediumIssue.file = "Warning.java";
-    mediumIssue.start_line = 15;
-    mediumIssue.severity = "MEDIUM";
-    mediumIssue.title = "Medium severity issue";
-
-    result.issues.add(highIssue);
-    result.issues.add(mediumIssue);
-
-    return result;
+    return ReviewResult.builder()
+        .summary("Test review with severity")
+        .issues(List.of(highIssue, mediumIssue))
+        .build();
   }
 
   private static final class TestSCMPort implements SCMPort {
@@ -312,7 +316,7 @@ final class ReviewManagementServiceSummaryCommentTest {
     public Flux<CommitInfo> getCommitsFor(
         final RepositoryIdentifier repo,
         final String filePath,
-        final java.time.LocalDate since,
+        final LocalDate since,
         final int maxResults) {
       return Flux.empty();
     }

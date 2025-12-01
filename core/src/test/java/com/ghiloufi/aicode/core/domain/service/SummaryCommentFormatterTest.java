@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 final class SummaryCommentFormatterTest {
@@ -29,8 +30,7 @@ final class SummaryCommentFormatterTest {
   @Test
   void should_return_no_summary_message_when_summary_is_null() {
     final SummaryCommentFormatter formatter = createFormatter(true, true);
-    final ReviewResult result = new ReviewResult();
-    result.summary = null;
+    final ReviewResult result = ReviewResult.builder().summary(null).build();
 
     final String formatted = formatter.formatSummaryComment(result);
 
@@ -41,8 +41,7 @@ final class SummaryCommentFormatterTest {
   @Test
   void should_return_no_summary_message_when_summary_is_blank() {
     final SummaryCommentFormatter formatter = createFormatter(true, true);
-    final ReviewResult result = new ReviewResult();
-    result.summary = "   ";
+    final ReviewResult result = ReviewResult.builder().summary("   ").build();
 
     final String formatted = formatter.formatSummaryComment(result);
 
@@ -122,28 +121,24 @@ final class SummaryCommentFormatterTest {
   @Test
   void should_count_unique_files_correctly() {
     final SummaryCommentFormatter formatter = createFormatter(true, true);
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test";
 
-    final ReviewResult.Issue issue1 = new ReviewResult.Issue();
-    issue1.file = "FileA.java";
-    issue1.severity = "HIGH";
+    final ReviewResult.Issue issue1 =
+        ReviewResult.Issue.issueBuilder().file("FileA.java").severity("HIGH").build();
 
-    final ReviewResult.Issue issue2 = new ReviewResult.Issue();
-    issue2.file = "FileA.java";
-    issue2.severity = "MEDIUM";
+    final ReviewResult.Issue issue2 =
+        ReviewResult.Issue.issueBuilder().file("FileA.java").severity("MEDIUM").build();
 
-    final ReviewResult.Issue issue3 = new ReviewResult.Issue();
-    issue3.file = "FileB.java";
-    issue3.severity = "LOW";
+    final ReviewResult.Issue issue3 =
+        ReviewResult.Issue.issueBuilder().file("FileB.java").severity("LOW").build();
 
-    final ReviewResult.Note note1 = new ReviewResult.Note();
-    note1.file = "FileC.java";
+    final ReviewResult.Note note1 = ReviewResult.Note.noteBuilder().file("FileC.java").build();
 
-    result.issues.add(issue1);
-    result.issues.add(issue2);
-    result.issues.add(issue3);
-    result.non_blocking_notes.add(note1);
+    final ReviewResult result =
+        ReviewResult.builder()
+            .summary("Test")
+            .issues(List.of(issue1, issue2, issue3))
+            .nonBlockingNotes(List.of(note1))
+            .build();
 
     final String formatted = formatter.formatSummaryComment(result);
 
@@ -151,62 +146,43 @@ final class SummaryCommentFormatterTest {
   }
 
   private ReviewResult createReviewWithSummary(final String summary) {
-    final ReviewResult result = new ReviewResult();
-    result.summary = summary;
-    return result;
+    return ReviewResult.builder().summary(summary).build();
   }
 
   private ReviewResult createReviewWithIssuesAndNotes() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test summary";
+    final ReviewResult.Issue issue1 =
+        ReviewResult.Issue.issueBuilder().file("File1.java").severity("HIGH").build();
 
-    final ReviewResult.Issue issue1 = new ReviewResult.Issue();
-    issue1.file = "File1.java";
-    issue1.severity = "HIGH";
+    final ReviewResult.Issue issue2 =
+        ReviewResult.Issue.issueBuilder().file("File2.java").severity("MEDIUM").build();
 
-    final ReviewResult.Issue issue2 = new ReviewResult.Issue();
-    issue2.file = "File2.java";
-    issue2.severity = "MEDIUM";
+    final ReviewResult.Issue issue3 =
+        ReviewResult.Issue.issueBuilder().file("File3.java").severity("LOW").build();
 
-    final ReviewResult.Issue issue3 = new ReviewResult.Issue();
-    issue3.file = "File3.java";
-    issue3.severity = "LOW";
+    final ReviewResult.Note note1 = ReviewResult.Note.noteBuilder().file("File4.java").build();
 
-    final ReviewResult.Note note1 = new ReviewResult.Note();
-    note1.file = "File4.java";
+    final ReviewResult.Note note2 = ReviewResult.Note.noteBuilder().file("File5.java").build();
 
-    final ReviewResult.Note note2 = new ReviewResult.Note();
-    note2.file = "File5.java";
-
-    result.issues.add(issue1);
-    result.issues.add(issue2);
-    result.issues.add(issue3);
-    result.non_blocking_notes.add(note1);
-    result.non_blocking_notes.add(note2);
-
-    return result;
+    return ReviewResult.builder()
+        .summary("Test summary")
+        .issues(List.of(issue1, issue2, issue3))
+        .nonBlockingNotes(List.of(note1, note2))
+        .build();
   }
 
   private ReviewResult createReviewWithSeverityVariety() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test summary with severity variety";
+    final ReviewResult.Issue critical =
+        ReviewResult.Issue.issueBuilder().file("Critical.java").severity("CRITICAL").build();
 
-    final ReviewResult.Issue critical = new ReviewResult.Issue();
-    critical.file = "Critical.java";
-    critical.severity = "CRITICAL";
+    final ReviewResult.Issue high =
+        ReviewResult.Issue.issueBuilder().file("High.java").severity("HIGH").build();
 
-    final ReviewResult.Issue high = new ReviewResult.Issue();
-    high.file = "High.java";
-    high.severity = "HIGH";
+    final ReviewResult.Issue medium =
+        ReviewResult.Issue.issueBuilder().file("Medium.java").severity("MEDIUM").build();
 
-    final ReviewResult.Issue medium = new ReviewResult.Issue();
-    medium.file = "Medium.java";
-    medium.severity = "MEDIUM";
-
-    result.issues.add(critical);
-    result.issues.add(high);
-    result.issues.add(medium);
-
-    return result;
+    return ReviewResult.builder()
+        .summary("Test summary with severity variety")
+        .issues(List.of(critical, high, medium))
+        .build();
   }
 }

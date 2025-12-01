@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewIssueEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository;
@@ -332,7 +333,7 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity review = new ReviewEntity();
     review.setRepositoryId("test-repo");
     review.setChangeRequestId("123");
-    review.setStatus(com.ghiloufi.aicode.core.domain.model.ReviewState.IN_PROGRESS);
+    review.setStatus(ReviewState.IN_PROGRESS);
     review.setProvider("GITHUB");
 
     final ReviewIssueEntity issue =
@@ -353,7 +354,7 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewEntity review = new ReviewEntity();
     review.setRepositoryId("test-repo");
     review.setChangeRequestId("456");
-    review.setStatus(com.ghiloufi.aicode.core.domain.model.ReviewState.IN_PROGRESS);
+    review.setStatus(ReviewState.IN_PROGRESS);
     review.setProvider("GITHUB");
 
     final ReviewIssueEntity issue1 =

@@ -6,6 +6,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,9 +66,9 @@ class PostgresReviewRepositoryIntegrationTest {
             optionalResult -> {
               assertThat(optionalResult).isPresent();
               final ReviewResult savedResult = optionalResult.get();
-              assertThat(savedResult.summary).isEqualTo("Test review summary");
-              assertThat(savedResult.issues).hasSize(2);
-              assertThat(savedResult.non_blocking_notes).hasSize(1);
+              assertThat(savedResult.getSummary()).isEqualTo("Test review summary");
+              assertThat(savedResult.getIssues()).hasSize(2);
+              assertThat(savedResult.getNonBlockingNotes()).hasSize(1);
             })
         .verifyComplete();
   }
@@ -99,16 +100,17 @@ class PostgresReviewRepositoryIntegrationTest {
     final String reviewId = "test-repo_789_github";
     final ReviewResult initialResult = createSampleReviewResult();
 
-    final ReviewResult updatedResult = new ReviewResult();
-    updatedResult.summary = "Updated summary";
+    final ReviewResult.Issue newIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("UpdatedFile.java")
+            .startLine(99)
+            .severity("HIGH")
+            .title("Updated issue")
+            .suggestion("Fix this updated issue")
+            .build();
 
-    final ReviewResult.Issue newIssue = new ReviewResult.Issue();
-    newIssue.file = "UpdatedFile.java";
-    newIssue.start_line = 99;
-    newIssue.severity = "HIGH";
-    newIssue.title = "Updated issue";
-    newIssue.suggestion = "Fix this updated issue";
-    updatedResult.issues.add(newIssue);
+    final ReviewResult updatedResult =
+        ReviewResult.builder().summary("Updated summary").issues(List.of(newIssue)).build();
 
     StepVerifier.create(
             repository
@@ -123,9 +125,9 @@ class PostgresReviewRepositoryIntegrationTest {
             optionalResult -> {
               assertThat(optionalResult).isPresent();
               final ReviewResult result = optionalResult.get();
-              assertThat(result.summary).isEqualTo("Updated summary");
-              assertThat(result.issues).hasSize(1);
-              assertThat(result.issues.get(0).file).isEqualTo("UpdatedFile.java");
+              assertThat(result.getSummary()).isEqualTo("Updated summary");
+              assertThat(result.getIssues()).hasSize(1);
+              assertThat(result.getIssues().get(0).getFile()).isEqualTo("UpdatedFile.java");
             })
         .verifyComplete();
   }
@@ -217,8 +219,7 @@ class PostgresReviewRepositoryIntegrationTest {
         }
         """;
 
-    final ReviewResult result = createSampleReviewResult();
-    result.rawLlmResponse = rawJson;
+    final ReviewResult result = createSampleReviewResult().withRawLlmResponse(rawJson);
 
     StepVerifier.create(repository.save(reviewId, result)).verifyComplete();
 
@@ -227,8 +228,8 @@ class PostgresReviewRepositoryIntegrationTest {
             optionalResult -> {
               assertThat(optionalResult).isPresent();
               final ReviewResult savedResult = optionalResult.get();
-              assertThat(savedResult.rawLlmResponse).isNotNull();
-              assertThat(savedResult.rawLlmResponse).isEqualTo(rawJson);
+              assertThat(savedResult.getRawLlmResponse()).isNotNull();
+              assertThat(savedResult.getRawLlmResponse()).isEqualTo(rawJson);
             })
         .verifyComplete();
   }
@@ -240,12 +241,11 @@ class PostgresReviewRepositoryIntegrationTest {
     final String initialRawJson = "{\"summary\": \"Initial\"}";
     final String updatedRawJson = "{\"summary\": \"Updated\"}";
 
-    final ReviewResult initialResult = createSampleReviewResult();
-    initialResult.rawLlmResponse = initialRawJson;
+    final ReviewResult initialResult =
+        createSampleReviewResult().withRawLlmResponse(initialRawJson);
 
-    final ReviewResult updatedResult = createSampleReviewResult();
-    updatedResult.summary = "Updated summary";
-    updatedResult.rawLlmResponse = updatedRawJson;
+    final ReviewResult updatedResult =
+        ReviewResult.builder().summary("Updated summary").rawLlmResponse(updatedRawJson).build();
 
     StepVerifier.create(
             repository
@@ -260,8 +260,8 @@ class PostgresReviewRepositoryIntegrationTest {
             optionalResult -> {
               assertThat(optionalResult).isPresent();
               final ReviewResult result = optionalResult.get();
-              assertThat(result.rawLlmResponse).isEqualTo(updatedRawJson);
-              assertThat(result.summary).isEqualTo("Updated summary");
+              assertThat(result.getRawLlmResponse()).isEqualTo(updatedRawJson);
+              assertThat(result.getSummary()).isEqualTo("Updated summary");
             })
         .verifyComplete();
   }
@@ -270,8 +270,7 @@ class PostgresReviewRepositoryIntegrationTest {
   @DisplayName("should handle null raw LLM response gracefully")
   void should_handle_null_raw_llm_response_gracefully() {
     final String reviewId = "test-repo_null_rawjson_github";
-    final ReviewResult result = createSampleReviewResult();
-    result.rawLlmResponse = null;
+    final ReviewResult result = createSampleReviewResult().withRawLlmResponse(null);
 
     StepVerifier.create(repository.save(reviewId, result)).verifyComplete();
 
@@ -280,37 +279,41 @@ class PostgresReviewRepositoryIntegrationTest {
             optionalResult -> {
               assertThat(optionalResult).isPresent();
               final ReviewResult savedResult = optionalResult.get();
-              assertThat(savedResult.rawLlmResponse).isNull();
+              assertThat(savedResult.getRawLlmResponse()).isNull();
             })
         .verifyComplete();
   }
 
   private ReviewResult createSampleReviewResult() {
-    final ReviewResult result = new ReviewResult();
-    result.summary = "Test review summary";
+    final ReviewResult.Issue issue1 =
+        ReviewResult.Issue.issueBuilder()
+            .file("TestFile.java")
+            .startLine(10)
+            .severity("MEDIUM")
+            .title("Test issue 1")
+            .suggestion("Fix this issue")
+            .build();
 
-    final ReviewResult.Issue issue1 = new ReviewResult.Issue();
-    issue1.file = "TestFile.java";
-    issue1.start_line = 10;
-    issue1.severity = "MEDIUM";
-    issue1.title = "Test issue 1";
-    issue1.suggestion = "Fix this issue";
-    result.issues.add(issue1);
+    final ReviewResult.Issue issue2 =
+        ReviewResult.Issue.issueBuilder()
+            .file("AnotherFile.java")
+            .startLine(20)
+            .severity("LOW")
+            .title("Test issue 2")
+            .suggestion("Consider refactoring")
+            .build();
 
-    final ReviewResult.Issue issue2 = new ReviewResult.Issue();
-    issue2.file = "AnotherFile.java";
-    issue2.start_line = 20;
-    issue2.severity = "LOW";
-    issue2.title = "Test issue 2";
-    issue2.suggestion = "Consider refactoring";
-    result.issues.add(issue2);
+    final ReviewResult.Note note =
+        ReviewResult.Note.noteBuilder()
+            .file("TestFile.java")
+            .line(15)
+            .note("Good implementation")
+            .build();
 
-    final ReviewResult.Note note = new ReviewResult.Note();
-    note.file = "TestFile.java";
-    note.line = 15;
-    note.note = "Good implementation";
-    result.non_blocking_notes.add(note);
-
-    return result;
+    return ReviewResult.builder()
+        .summary("Test review summary")
+        .issues(List.of(issue1, issue2))
+        .nonBlockingNotes(List.of(note))
+        .build();
   }
 }

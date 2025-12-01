@@ -109,8 +109,8 @@ class EnrichedDiffAnalysisBundleTest {
 
     final String summary = enriched.getSummary();
 
-    assertThat(summary).contains("0 file(s) modifié(s)");
-    assertThat(summary).doesNotContain("contexte");
+    assertThat(summary).contains("0 file(s) modified");
+    assertThat(summary).doesNotContain("context file(s)");
   }
 
   @Test
@@ -121,8 +121,8 @@ class EnrichedDiffAnalysisBundleTest {
 
     final String summary = enriched.getSummary();
 
-    assertThat(summary).contains("0 file(s) modifié(s)");
-    assertThat(summary).contains("1 fichier(s) de contexte");
+    assertThat(summary).contains("0 file(s) modified");
+    assertThat(summary).contains("1 context file(s)");
   }
 
   @Test

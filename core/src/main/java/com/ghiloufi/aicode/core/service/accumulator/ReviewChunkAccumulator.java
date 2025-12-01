@@ -49,12 +49,12 @@ public class ReviewChunkAccumulator {
     }
 
     log.info("Detected JSON response, parsing as ReviewResult");
-    final ReviewResult parsedResult = jsonParser.parse(accumulatedContent);
-    parsedResult.rawLlmResponse = accumulatedContent;
+    final ReviewResult parsedResult =
+        jsonParser.parse(accumulatedContent).withRawLlmResponse(accumulatedContent);
     log.info(
         "Successfully parsed JSON ReviewResult: {} issues, {} notes",
-        parsedResult.issues.size(),
-        parsedResult.non_blocking_notes.size());
+        parsedResult.getIssues().size(),
+        parsedResult.getNonBlockingNotes().size());
 
     final ReviewResult filteredResult =
         confidenceFilter.filterByConfidence(parsedResult, config.minimumConfidenceThreshold());

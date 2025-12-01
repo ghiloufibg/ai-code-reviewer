@@ -9,12 +9,12 @@ public record DiffAnalysisBundle(
     PrMetadata prMetadata) {
 
   public DiffAnalysisBundle {
-    Objects.requireNonNull(repositoryIdentifier, "Le repository identifier ne peut pas être null");
-    Objects.requireNonNull(structuredDiff, "Le diff structuré ne peut pas être null");
-    Objects.requireNonNull(rawDiffText, "Le texte brut du diff ne peut pas être null");
+    Objects.requireNonNull(repositoryIdentifier, "Repository identifier cannot be null");
+    Objects.requireNonNull(structuredDiff, "Structured diff cannot be null");
+    Objects.requireNonNull(rawDiffText, "Raw diff text cannot be null");
 
     if (rawDiffText.trim().isEmpty()) {
-      throw new IllegalArgumentException("Le texte brut du diff ne peut pas être vide");
+      throw new IllegalArgumentException("Raw diff text cannot be empty");
     }
 
     if (prMetadata == null) {
@@ -36,17 +36,16 @@ public record DiffAnalysisBundle(
   public String getSummary() {
     if (structuredDiff.files.isEmpty()
         || structuredDiff.files.stream().allMatch(file -> file.diffHunkBlocks.isEmpty())) {
-      return "Diff vide - aucune modification";
+      return "Empty diff - no modifications";
     }
 
     return String.format(
-        "Diff: %d fichier(s) modifié(s), %d ligne(s) total",
-        getModifiedFileCount(), getTotalLineCount());
+        "Diff: %d file(s) modified, %d line(s) total", getModifiedFileCount(), getTotalLineCount());
   }
 
   @Override
   public String toString() {
     return String.format(
-        "DiffAnalysisBundle[%s, rawText=%d caractères]", getSummary(), rawDiffText.length());
+        "DiffAnalysisBundle[%s, rawText=%d chars]", getSummary(), rawDiffText.length());
   }
 }

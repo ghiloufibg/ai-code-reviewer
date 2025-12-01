@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.domain.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,7 +26,7 @@ final class ReviewResultFormatterTest {
     @Test
     @DisplayName("should_return_no_issues_message_when_no_issues_notes_or_summary")
     final void should_return_no_issues_message_when_no_issues_notes_or_summary() {
-      final ReviewResult reviewResult = new ReviewResult();
+      final ReviewResult reviewResult = ReviewResult.builder().build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -36,8 +37,7 @@ final class ReviewResultFormatterTest {
     @Test
     @DisplayName("should_return_no_issues_message_when_summary_is_blank")
     final void should_return_no_issues_message_when_summary_is_blank() {
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.summary = "   ";
+      final ReviewResult reviewResult = ReviewResult.builder().summary("   ").build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -52,8 +52,8 @@ final class ReviewResultFormatterTest {
     @Test
     @DisplayName("should_include_summary_when_present")
     final void should_include_summary_when_present() {
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.summary = "Overall the code looks good";
+      final ReviewResult reviewResult =
+          ReviewResult.builder().summary("Overall the code looks good").build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -63,7 +63,7 @@ final class ReviewResultFormatterTest {
     @Test
     @DisplayName("should_not_include_summary_when_null")
     final void should_not_include_summary_when_null() {
-      final ReviewResult reviewResult = new ReviewResult();
+      final ReviewResult reviewResult = ReviewResult.builder().build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -83,9 +83,8 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Issue issue2 =
           createIssue("WARNING", "Unused variable", "Utils.java", 15, null);
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.issues.add(issue1);
-      reviewResult.issues.add(issue2);
+      final ReviewResult reviewResult =
+          ReviewResult.builder().issues(List.of(issue1, issue2)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -98,8 +97,7 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Issue issue =
           createIssue("CRITICAL", "Null pointer risk", "Main.java", 42, "Add null check");
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.issues.add(issue);
+      final ReviewResult reviewResult = ReviewResult.builder().issues(List.of(issue)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -115,8 +113,7 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Issue issue =
           createIssue("WARNING", "Unused variable", "Utils.java", 15, null);
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.issues.add(issue);
+      final ReviewResult reviewResult = ReviewResult.builder().issues(List.of(issue)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -130,8 +127,7 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Issue issue =
           createIssue("WARNING", "Code smell", "Service.java", 100, "");
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.issues.add(issue);
+      final ReviewResult reviewResult = ReviewResult.builder().issues(List.of(issue)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -144,13 +140,13 @@ final class ReviewResultFormatterTest {
         final String file,
         final int line,
         final String suggestion) {
-      final ReviewResult.Issue issue = new ReviewResult.Issue();
-      issue.severity = severity;
-      issue.title = title;
-      issue.file = file;
-      issue.start_line = line;
-      issue.suggestion = suggestion;
-      return issue;
+      return ReviewResult.Issue.issueBuilder()
+          .severity(severity)
+          .title(title)
+          .file(file)
+          .startLine(line)
+          .suggestion(suggestion)
+          .build();
     }
   }
 
@@ -164,9 +160,8 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Note note1 = createNote("Consider adding logging");
       final ReviewResult.Note note2 = createNote("Great use of patterns");
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.non_blocking_notes.add(note1);
-      reviewResult.non_blocking_notes.add(note2);
+      final ReviewResult reviewResult =
+          ReviewResult.builder().nonBlockingNotes(List.of(note1, note2)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -179,9 +174,8 @@ final class ReviewResultFormatterTest {
       final ReviewResult.Note note1 = createNote("Consider adding logging");
       final ReviewResult.Note note2 = createNote("Great use of patterns");
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.non_blocking_notes.add(note1);
-      reviewResult.non_blocking_notes.add(note2);
+      final ReviewResult reviewResult =
+          ReviewResult.builder().nonBlockingNotes(List.of(note1, note2)).build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -190,9 +184,7 @@ final class ReviewResultFormatterTest {
     }
 
     private ReviewResult.Note createNote(final String noteText) {
-      final ReviewResult.Note note = new ReviewResult.Note();
-      note.note = noteText;
-      return note;
+      return ReviewResult.Note.noteBuilder().note(noteText).build();
     }
   }
 
@@ -207,10 +199,12 @@ final class ReviewResultFormatterTest {
           createIssue("CRITICAL", "Security flaw", "Auth.java", 25, "Fix ASAP");
       final ReviewResult.Note note = createNote("Good code structure");
 
-      final ReviewResult reviewResult = new ReviewResult();
-      reviewResult.summary = "Code review complete";
-      reviewResult.issues.add(issue);
-      reviewResult.non_blocking_notes.add(note);
+      final ReviewResult reviewResult =
+          ReviewResult.builder()
+              .summary("Code review complete")
+              .issues(List.of(issue))
+              .nonBlockingNotes(List.of(note))
+              .build();
 
       final String formatted = formatter.format(reviewResult);
 
@@ -228,19 +222,17 @@ final class ReviewResultFormatterTest {
         final String file,
         final int line,
         final String suggestion) {
-      final ReviewResult.Issue issue = new ReviewResult.Issue();
-      issue.severity = severity;
-      issue.title = title;
-      issue.file = file;
-      issue.start_line = line;
-      issue.suggestion = suggestion;
-      return issue;
+      return ReviewResult.Issue.issueBuilder()
+          .severity(severity)
+          .title(title)
+          .file(file)
+          .startLine(line)
+          .suggestion(suggestion)
+          .build();
     }
 
     private ReviewResult.Note createNote(final String noteText) {
-      final ReviewResult.Note note = new ReviewResult.Note();
-      note.note = noteText;
-      return note;
+      return ReviewResult.Note.noteBuilder().note(noteText).build();
     }
   }
 }

@@ -15,13 +15,17 @@ public class CommentPlacementRouter {
   public SplitResult split(final DiffLineValidator.ValidationResult validationResult) {
     Objects.requireNonNull(validationResult, "ValidationResult cannot be null");
 
-    final ReviewResult validReview = new ReviewResult();
-    validReview.issues = new ArrayList<>(validationResult.validIssues());
-    validReview.non_blocking_notes = new ArrayList<>(validationResult.validNotes());
+    final ReviewResult validReview =
+        ReviewResult.builder()
+            .issues(new ArrayList<>(validationResult.validIssues()))
+            .nonBlockingNotes(new ArrayList<>(validationResult.validNotes()))
+            .build();
 
-    final ReviewResult invalidReview = new ReviewResult();
-    invalidReview.issues = new ArrayList<>(validationResult.invalidIssues());
-    invalidReview.non_blocking_notes = new ArrayList<>(validationResult.invalidNotes());
+    final ReviewResult invalidReview =
+        ReviewResult.builder()
+            .issues(new ArrayList<>(validationResult.invalidIssues()))
+            .nonBlockingNotes(new ArrayList<>(validationResult.invalidNotes()))
+            .build();
 
     final List<String> errors = new ArrayList<>();
 
@@ -29,11 +33,12 @@ public class CommentPlacementRouter {
       errors.add(
           String.format(
               "Issue '%s' at %s:%d is outside diff range",
-              issue.title, issue.file, issue.start_line));
+              issue.getTitle(), issue.getFile(), issue.getStartLine()));
     }
 
     for (final ReviewResult.Note note : validationResult.invalidNotes()) {
-      errors.add(String.format("Note at %s:%d is outside diff range", note.file, note.line));
+      errors.add(
+          String.format("Note at %s:%d is outside diff range", note.getFile(), note.getLine()));
     }
 
     return new SplitResult(validReview, invalidReview, errors);

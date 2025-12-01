@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -176,7 +177,7 @@ final class CommitInfoTest {
 
   @Test
   void should_make_defensive_copy_of_changed_files() {
-    final var mutableFiles = new java.util.ArrayList<>(List.of("file1.java"));
+    final var mutableFiles = new ArrayList<>(List.of("file1.java"));
     final var commit = new CommitInfo("abc123", "message", "author", Instant.now(), mutableFiles);
 
     mutableFiles.clear();

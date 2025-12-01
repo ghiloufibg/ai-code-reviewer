@@ -17,7 +17,9 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -180,7 +182,7 @@ final class RepositoryPolicyProviderTest {
   }
 
   private static class TestSCMPort implements SCMPort {
-    private final java.util.Map<String, String> fileContents = new java.util.HashMap<>();
+    private final Map<String, String> fileContents = new HashMap<>();
 
     void setFileContent(final String path, final String content) {
       fileContents.put(path, content);

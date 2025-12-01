@@ -3,7 +3,7 @@ package com.ghiloufi.aicode.core.domain.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
-import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,10 +26,7 @@ final class ReviewSummaryFormatterTest {
     @Test
     @DisplayName("should_format_empty_result")
     final void should_format_empty_result() {
-      final ReviewResult result = new ReviewResult();
-      result.issues = new ArrayList<>();
-      result.non_blocking_notes = new ArrayList<>();
-      result.summary = "";
+      final ReviewResult result = ReviewResult.builder().summary("").build();
 
       final String summary = formatter.formatSummary(result);
 
@@ -43,17 +40,16 @@ final class ReviewSummaryFormatterTest {
     @Test
     @DisplayName("should_format_result_with_issues_only")
     final void should_format_result_with_issues_only() {
-      final ReviewResult result = new ReviewResult();
-      result.issues = new ArrayList<>();
-      result.non_blocking_notes = new ArrayList<>();
-      result.summary = "Test summary";
+      final ReviewResult.Issue issue =
+          ReviewResult.Issue.issueBuilder()
+              .severity("HIGH")
+              .file("Main.java")
+              .startLine(42)
+              .title("Security vulnerability")
+              .build();
 
-      final ReviewResult.Issue issue = new ReviewResult.Issue();
-      issue.severity = "HIGH";
-      issue.file = "Main.java";
-      issue.start_line = 42;
-      issue.title = "Security vulnerability";
-      result.issues.add(issue);
+      final ReviewResult result =
+          ReviewResult.builder().summary("Test summary").issues(List.of(issue)).build();
 
       final String summary = formatter.formatSummary(result);
 
@@ -65,16 +61,15 @@ final class ReviewSummaryFormatterTest {
     @Test
     @DisplayName("should_format_result_with_notes_only")
     final void should_format_result_with_notes_only() {
-      final ReviewResult result = new ReviewResult();
-      result.issues = new ArrayList<>();
-      result.non_blocking_notes = new ArrayList<>();
-      result.summary = "Test summary";
+      final ReviewResult.Note note =
+          ReviewResult.Note.noteBuilder()
+              .file("Helper.java")
+              .line(15)
+              .note("Consider refactoring")
+              .build();
 
-      final ReviewResult.Note note = new ReviewResult.Note();
-      note.file = "Helper.java";
-      note.line = 15;
-      note.note = "Consider refactoring";
-      result.non_blocking_notes.add(note);
+      final ReviewResult result =
+          ReviewResult.builder().summary("Test summary").nonBlockingNotes(List.of(note)).build();
 
       final String summary = formatter.formatSummary(result);
 
@@ -86,30 +81,35 @@ final class ReviewSummaryFormatterTest {
     @Test
     @DisplayName("should_format_result_with_multiple_issues_and_notes")
     final void should_format_result_with_multiple_issues_and_notes() {
-      final ReviewResult result = new ReviewResult();
-      result.issues = new ArrayList<>();
-      result.non_blocking_notes = new ArrayList<>();
-      result.summary = "Complete review with issues and notes";
+      final ReviewResult.Issue issue1 =
+          ReviewResult.Issue.issueBuilder()
+              .severity("HIGH")
+              .file("Auth.java")
+              .startLine(10)
+              .title("SQL injection risk")
+              .build();
 
-      final ReviewResult.Issue issue1 = new ReviewResult.Issue();
-      issue1.severity = "HIGH";
-      issue1.file = "Auth.java";
-      issue1.start_line = 10;
-      issue1.title = "SQL injection risk";
-      result.issues.add(issue1);
+      final ReviewResult.Issue issue2 =
+          ReviewResult.Issue.issueBuilder()
+              .severity("MEDIUM")
+              .file("Cache.java")
+              .startLine(25)
+              .title("Performance bottleneck")
+              .build();
 
-      final ReviewResult.Issue issue2 = new ReviewResult.Issue();
-      issue2.severity = "MEDIUM";
-      issue2.file = "Cache.java";
-      issue2.start_line = 25;
-      issue2.title = "Performance bottleneck";
-      result.issues.add(issue2);
+      final ReviewResult.Note note =
+          ReviewResult.Note.noteBuilder()
+              .file("Utils.java")
+              .line(5)
+              .note("Code duplication")
+              .build();
 
-      final ReviewResult.Note note = new ReviewResult.Note();
-      note.file = "Utils.java";
-      note.line = 5;
-      note.note = "Code duplication";
-      result.non_blocking_notes.add(note);
+      final ReviewResult result =
+          ReviewResult.builder()
+              .summary("Complete review with issues and notes")
+              .issues(List.of(issue1, issue2))
+              .nonBlockingNotes(List.of(note))
+              .build();
 
       final String summary = formatter.formatSummary(result);
 

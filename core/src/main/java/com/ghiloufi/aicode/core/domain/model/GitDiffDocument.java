@@ -4,7 +4,7 @@ import java.util.*;
 
 public class GitDiffDocument {
 
-  public List<GitFileModification> files = new ArrayList<>();
+  public List<GitFileModification> files = new ArrayList<>(20);
 
   public GitDiffDocument() {}
 

@@ -79,20 +79,20 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).contains("Code review completed successfully");
-      assertThat(result.issues).hasSize(2);
-      assertThat(result.non_blocking_notes).hasSize(1);
+      assertThat(result.getSummary()).contains("Code review completed successfully");
+      assertThat(result.getIssues()).hasSize(2);
+      assertThat(result.getNonBlockingNotes()).hasSize(1);
 
-      assertThat(result.issues.get(0).severity).isEqualTo("critical");
-      assertThat(result.issues.get(0).title).isEqualTo("SQL Injection vulnerability");
-      assertThat(result.issues.get(0).file).isEqualTo("UserController.java");
-      assertThat(result.issues.get(0).start_line).isEqualTo(45);
+      assertThat(result.getIssues().get(0).getSeverity()).isEqualTo("critical");
+      assertThat(result.getIssues().get(0).getTitle()).isEqualTo("SQL Injection vulnerability");
+      assertThat(result.getIssues().get(0).getFile()).isEqualTo("UserController.java");
+      assertThat(result.getIssues().get(0).getStartLine()).isEqualTo(45);
 
-      assertThat(result.non_blocking_notes.get(0).file).isEqualTo("Utils.java");
-      assertThat(result.non_blocking_notes.get(0).line).isEqualTo(12);
+      assertThat(result.getNonBlockingNotes().get(0).getFile()).isEqualTo("Utils.java");
+      assertThat(result.getNonBlockingNotes().get(0).getLine()).isEqualTo(12);
 
-      assertThat(result.rawLlmResponse).isNotNull();
-      assertThat(result.rawLlmResponse).contains("Code review completed successfully");
+      assertThat(result.getRawLlmResponse()).isNotNull();
+      assertThat(result.getRawLlmResponse()).contains("Code review completed successfully");
     }
 
     @Test
@@ -118,9 +118,9 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("No issues found. Code looks good!");
-      assertThat(result.issues).isEmpty();
-      assertThat(result.non_blocking_notes).hasSize(1);
+      assertThat(result.getSummary()).isEqualTo("No issues found. Code looks good!");
+      assertThat(result.getIssues()).isEmpty();
+      assertThat(result.getNonBlockingNotes()).hasSize(1);
     }
 
     @Test
@@ -148,8 +148,8 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.non_blocking_notes).isEmpty();
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getNonBlockingNotes()).isEmpty();
     }
 
     @Test
@@ -169,9 +169,9 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Minimal review");
-      assertThat(result.issues).isEmpty();
-      assertThat(result.non_blocking_notes).isEmpty();
+      assertThat(result.getSummary()).isEqualTo("Minimal review");
+      assertThat(result.getIssues()).isEmpty();
+      assertThat(result.getNonBlockingNotes()).isEmpty();
     }
   }
 
@@ -206,7 +206,7 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
+      assertThat(result.getIssues()).hasSize(1);
     }
 
     @Test
@@ -230,7 +230,7 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Review with whitespace");
+      assertThat(result.getSummary()).isEqualTo("Review with whitespace");
     }
 
     @Test
@@ -246,7 +246,7 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Split JSON review");
+      assertThat(result.getSummary()).isEqualTo("Split JSON review");
     }
 
     @Test
@@ -274,8 +274,8 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).contains("✅");
-      assertThat(result.issues.get(0).title).contains("Amélioration");
+      assertThat(result.getSummary()).contains("✅");
+      assertThat(result.getIssues().get(0).getTitle()).contains("Amélioration");
     }
 
     @Test
@@ -305,10 +305,10 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Code review completed successfully");
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).severity).isEqualTo("minor");
-      assertThat(result.issues.get(0).title).isEqualTo("Variable naming");
+      assertThat(result.getSummary()).isEqualTo("Code review completed successfully");
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSeverity()).isEqualTo("minor");
+      assertThat(result.getIssues().get(0).getTitle()).isEqualTo("Variable naming");
     }
 
     @Test
@@ -340,10 +340,10 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.summary).isEqualTo("Review complete with suggestions");
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).severity).isEqualTo("major");
-      assertThat(result.issues.get(0).title).isEqualTo("Memory leak");
+      assertThat(result.getSummary()).isEqualTo("Review complete with suggestions");
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSeverity()).isEqualTo("major");
+      assertThat(result.getIssues().get(0).getTitle()).isEqualTo("Memory leak");
     }
   }
 
@@ -521,9 +521,9 @@ class JsonParsingIntegrationTest {
 
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
-      assertThat(result.issues).hasSize(4);
-      assertThat(result.issues)
-          .extracting("severity")
+      assertThat(result.getIssues()).hasSize(4);
+      assertThat(result.getIssues())
+          .extracting(ReviewResult.Issue::getSeverity)
           .containsExactly("critical", "major", "minor", "info");
     }
 
@@ -557,7 +557,7 @@ class JsonParsingIntegrationTest {
 
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
-      assertThat(result.issues).hasSize(50);
+      assertThat(result.getIssues()).hasSize(50);
     }
   }
 
@@ -598,8 +598,8 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).suggestedFix).isNull();
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNull();
     }
 
     @Test
@@ -629,8 +629,8 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).suggestedFix).isNull();
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNull();
     }
 
     @Test
@@ -666,10 +666,10 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).suggestedFix).isNotNull();
-      assertThat(result.issues.get(0).suggestedFix).contains("```diff");
-      assertThat(result.issues.get(0).suggestedFix).contains("if (user == null)");
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNotNull();
+      assertThat(result.getIssues().get(0).getSuggestedFix()).contains("```diff");
+      assertThat(result.getIssues().get(0).getSuggestedFix()).contains("if (user == null)");
     }
 
     @Test
@@ -705,9 +705,9 @@ class JsonParsingIntegrationTest {
       final ReviewResult result = chunkAccumulator.accumulateChunks(chunks);
 
       assertThat(result).isNotNull();
-      assertThat(result.issues).hasSize(1);
-      assertThat(result.issues.get(0).suggestedFix).isNotNull();
-      assertThat(result.issues.get(0).suggestedFix).startsWith("```");
+      assertThat(result.getIssues()).hasSize(1);
+      assertThat(result.getIssues().get(0).getSuggestedFix()).isNotNull();
+      assertThat(result.getIssues().get(0).getSuggestedFix()).startsWith("```");
     }
   }
 

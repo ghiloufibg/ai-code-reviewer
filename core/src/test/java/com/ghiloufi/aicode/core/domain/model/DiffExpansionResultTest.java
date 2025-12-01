@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.core.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -98,7 +99,7 @@ final class DiffExpansionResultTest {
   @Test
   void should_make_defensive_copy_of_expanded_files() {
     final var file = new ExpandedFileContext("a.java", "content", 1, false);
-    final var mutableList = new java.util.ArrayList<>(List.of(file));
+    final var mutableList = new ArrayList<>(List.of(file));
     final var result = new DiffExpansionResult(mutableList, 1, 1, 0, null);
 
     mutableList.clear();

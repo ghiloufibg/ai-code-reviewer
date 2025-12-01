@@ -43,10 +43,10 @@ class JsonReviewResultParserConfidenceTest {
 
     final ReviewResult result = parser.parse(json);
 
-    assertThat(result.issues).hasSize(1);
-    final ReviewResult.Issue issue = result.issues.get(0);
-    assertThat(issue.confidenceScore).isEqualTo(0.85);
-    assertThat(issue.confidenceExplanation)
+    assertThat(result.getIssues()).hasSize(1);
+    final ReviewResult.Issue issue = result.getIssues().get(0);
+    assertThat(issue.getConfidenceScore()).isEqualTo(0.85);
+    assertThat(issue.getConfidenceExplanation())
         .isEqualTo("Clear SQL injection pattern with user input");
   }
 
@@ -72,8 +72,9 @@ class JsonReviewResultParserConfidenceTest {
 
     final ReviewResult result = parser.parse(json);
 
-    assertThat(result.issues).hasSize(1);
-    assertThat(result.issues.get(0).confidenceExplanation).isEqualTo("No explanation provided");
+    assertThat(result.getIssues()).hasSize(1);
+    assertThat(result.getIssues().get(0).getConfidenceExplanation())
+        .isEqualTo("No explanation provided");
   }
 
   @Test
@@ -109,9 +110,9 @@ class JsonReviewResultParserConfidenceTest {
 
     final ReviewResult result = parser.parse(json);
 
-    assertThat(result.issues).hasSize(2);
-    assertThat(result.issues.get(0).confidenceScore).isEqualTo(0.0);
-    assertThat(result.issues.get(1).confidenceScore).isEqualTo(1.0);
+    assertThat(result.getIssues()).hasSize(2);
+    assertThat(result.getIssues().get(0).getConfidenceScore()).isEqualTo(0.0);
+    assertThat(result.getIssues().get(1).getConfidenceScore()).isEqualTo(1.0);
   }
 
   @Test
@@ -156,9 +157,9 @@ class JsonReviewResultParserConfidenceTest {
 
     final ReviewResult result = parser.parse(json);
 
-    assertThat(result.issues).hasSize(3);
-    assertThat(result.issues.get(0).confidenceScore).isEqualTo(0.95);
-    assertThat(result.issues.get(1).confidenceScore).isEqualTo(0.6);
-    assertThat(result.issues.get(2).confidenceScore).isEqualTo(0.3);
+    assertThat(result.getIssues()).hasSize(3);
+    assertThat(result.getIssues().get(0).getConfidenceScore()).isEqualTo(0.95);
+    assertThat(result.getIssues().get(1).getConfidenceScore()).isEqualTo(0.6);
+    assertThat(result.getIssues().get(2).getConfidenceScore()).isEqualTo(0.3);
   }
 }

@@ -62,11 +62,11 @@ public record EnrichedDiffAnalysisBundle(
   public String getSummary() {
     final String baseSummary =
         String.format(
-            "Diff: %d file(s) modifié(s), %d ligne(s) total",
+            "Diff: %d file(s) modified, %d line(s) total",
             getModifiedFileCount(), getTotalLineCount());
 
     if (hasContext()) {
-      return baseSummary + String.format(", %d fichier(s) de contexte", getContextMatchCount());
+      return baseSummary + String.format(", %d context file(s)", getContextMatchCount());
     }
 
     return baseSummary;

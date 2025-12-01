@@ -7,6 +7,7 @@ import com.ghiloufi.aicode.core.exception.JsonValidationException;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultValidator;
 import com.ghiloufi.aicode.core.service.validation.ValidationResult;
 import com.google.json.JsonSanitizer;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -45,13 +46,12 @@ public final class JsonReviewResultParser {
 
     try {
       final ReviewResult result = objectMapper.readValue(cleanedJson, ReviewResult.class);
-      normalizeConfidenceScores(result);
-      decodeSuggestedFixes(result);
+      final ReviewResult normalizedResult = normalizeIssues(result);
       log.info(
           "Successfully parsed ReviewResult: {} issues, {} notes",
-          result.issues.size(),
-          result.non_blocking_notes.size());
-      return result;
+          normalizedResult.getIssues().size(),
+          normalizedResult.getNonBlockingNotes().size());
+      return normalizedResult;
     } catch (final Exception e) {
       log.error("Failed to parse JSON into ReviewResult", e);
       throw new JsonValidationException(
@@ -59,41 +59,89 @@ public final class JsonReviewResultParser {
     }
   }
 
-  private void decodeSuggestedFixes(final ReviewResult result) {
-    if (result.issues == null || result.issues.isEmpty()) {
-      return;
+  private ReviewResult normalizeIssues(final ReviewResult result) {
+    if (result.getIssues() == null || result.getIssues().isEmpty()) {
+      return result;
     }
 
-    for (final ReviewResult.Issue issue : result.issues) {
-      if (issue.suggestedFix != null && !issue.suggestedFix.isBlank()) {
-        try {
-          final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.suggestedFix);
-          final String decoded = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+    final List<ReviewResult.Issue> normalizedIssues =
+        result.getIssues().stream().map(this::normalizeIssue).toList();
 
-          if (!isValidMarkdownDiff(decoded)) {
-            log.error(
-                "Issue '{}' at {}:{} has invalid suggestedFix content (not a markdown diff), discarding. Content preview: {}",
-                issue.title,
-                issue.file,
-                issue.start_line,
-                decoded.substring(0, Math.min(100, decoded.length())));
-            issue.suggestedFix = null;
-          } else {
-            issue.suggestedFix = decoded;
-            log.debug(
-                "Successfully decoded and validated Base64 suggestedFix for issue: {}",
-                issue.title);
-          }
-        } catch (final IllegalArgumentException e) {
-          log.error(
-              "Issue '{}' at {}:{} has suggestedFix that is not valid Base64, discarding: {}",
-              issue.title,
-              issue.file,
-              issue.start_line,
-              e.getMessage());
-          issue.suggestedFix = null;
-        }
+    return result.withIssues(normalizedIssues);
+  }
+
+  private ReviewResult.Issue normalizeIssue(final ReviewResult.Issue issue) {
+    ReviewResult.Issue normalized = normalizeConfidenceScore(issue);
+    normalized = normalizeConfidenceExplanation(normalized);
+    normalized = decodeSuggestedFix(normalized);
+    return normalized;
+  }
+
+  private ReviewResult.Issue normalizeConfidenceScore(final ReviewResult.Issue issue) {
+    final Double score = issue.getConfidenceScore();
+
+    if (score == null) {
+      log.warn(
+          "Issue '{}' at {}:{} has null confidence score, defaulting to 0.5",
+          issue.getTitle(),
+          issue.getFile(),
+          issue.getStartLine());
+      return issue.withConfidenceScore(0.5);
+    }
+
+    if (score < 0.0) {
+      log.warn(
+          "Issue '{}' has invalid confidence score {}, clamping to 0.0", issue.getTitle(), score);
+      return issue.withConfidenceScore(0.0);
+    }
+
+    if (score > 1.0) {
+      log.warn(
+          "Issue '{}' has invalid confidence score {}, clamping to 1.0", issue.getTitle(), score);
+      return issue.withConfidenceScore(1.0);
+    }
+
+    return issue;
+  }
+
+  private ReviewResult.Issue normalizeConfidenceExplanation(final ReviewResult.Issue issue) {
+    if (issue.getConfidenceExplanation() == null || issue.getConfidenceExplanation().isBlank()) {
+      log.debug("Issue '{}' has missing confidence explanation, using default", issue.getTitle());
+      return issue.withConfidenceExplanation("No explanation provided");
+    }
+    return issue;
+  }
+
+  private ReviewResult.Issue decodeSuggestedFix(final ReviewResult.Issue issue) {
+    if (issue.getSuggestedFix() == null || issue.getSuggestedFix().isBlank()) {
+      return issue;
+    }
+
+    try {
+      final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.getSuggestedFix());
+      final String decoded = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+      if (!isValidMarkdownDiff(decoded)) {
+        log.error(
+            "Issue '{}' at {}:{} has invalid suggestedFix content (not a markdown diff), discarding. Content preview: {}",
+            issue.getTitle(),
+            issue.getFile(),
+            issue.getStartLine(),
+            decoded.substring(0, Math.min(100, decoded.length())));
+        return issue.withSuggestedFix(null);
       }
+
+      log.debug(
+          "Successfully decoded and validated Base64 suggestedFix for issue: {}", issue.getTitle());
+      return issue.withSuggestedFix(decoded);
+    } catch (final IllegalArgumentException e) {
+      log.error(
+          "Issue '{}' at {}:{} has suggestedFix that is not valid Base64, discarding: {}",
+          issue.getTitle(),
+          issue.getFile(),
+          issue.getStartLine(),
+          e.getMessage());
+      return issue.withSuggestedFix(null);
     }
   }
 
@@ -105,42 +153,6 @@ public final class JsonReviewResultParser {
     final String trimmed = content.trim();
 
     return trimmed.startsWith("```diff") || trimmed.startsWith("```");
-  }
-
-  private void normalizeConfidenceScores(final ReviewResult result) {
-    if (result.issues == null || result.issues.isEmpty()) {
-      return;
-    }
-
-    for (final ReviewResult.Issue issue : result.issues) {
-      if (issue.confidenceScore == null) {
-        log.warn(
-            "Issue '{}' at {}:{} has null confidence score, defaulting to 0.5",
-            issue.title,
-            issue.file,
-            issue.start_line);
-        issue.confidenceScore = 0.5;
-      }
-
-      if (issue.confidenceScore < 0.0) {
-        log.warn(
-            "Issue '{}' has invalid confidence score {}, clamping to 0.0",
-            issue.title,
-            issue.confidenceScore);
-        issue.confidenceScore = 0.0;
-      } else if (issue.confidenceScore > 1.0) {
-        log.warn(
-            "Issue '{}' has invalid confidence score {}, clamping to 1.0",
-            issue.title,
-            issue.confidenceScore);
-        issue.confidenceScore = 1.0;
-      }
-
-      if (issue.confidenceExplanation == null || issue.confidenceExplanation.isBlank()) {
-        log.debug("Issue '{}' has missing confidence explanation, using default", issue.title);
-        issue.confidenceExplanation = "No explanation provided";
-      }
-    }
   }
 
   private void validateJsonStructure(final String json) {

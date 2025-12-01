@@ -6,7 +6,6 @@ import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.ExpandedFileContext;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -46,8 +45,9 @@ public final class DiffExpansionService {
 
     log.info("Expanding {} of {} modified files", filesToExpand.size(), totalFiles);
 
+    final int concurrency = Math.min(filesToExpand.size(), expansionConfig.maxFilesToExpand());
     return Flux.fromIterable(filesToExpand)
-        .flatMap(path -> fetchFileContent(bundle.repositoryIdentifier(), path))
+        .flatMap(path -> fetchFileContent(bundle.repositoryIdentifier(), path), concurrency)
         .collectList()
         .map(
             expanded ->
@@ -94,15 +94,12 @@ public final class DiffExpansionService {
 
   private ExpandedFileContext createExpandedContext(final String filePath, final String content) {
     final var expansionConfig = config.diffExpansion();
-    final String[] lines = content.split("\n", -1);
-    final int lineCount = lines.length;
+    final long lineCount = content.lines().count();
 
     if (lineCount > expansionConfig.maxLineCount()) {
       final String truncatedContent =
-          Arrays.stream(lines)
-              .limit(expansionConfig.maxLineCount())
-              .collect(Collectors.joining("\n"));
-      return ExpandedFileContext.truncated(filePath, truncatedContent, lineCount);
+          content.lines().limit(expansionConfig.maxLineCount()).collect(Collectors.joining("\n"));
+      return ExpandedFileContext.truncated(filePath, truncatedContent, (int) lineCount);
     }
 
     return ExpandedFileContext.of(filePath, content);
