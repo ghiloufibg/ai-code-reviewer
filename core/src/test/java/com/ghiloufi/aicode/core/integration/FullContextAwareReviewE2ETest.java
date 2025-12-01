@@ -43,6 +43,7 @@ import com.ghiloufi.aicode.core.service.metadata.PrMetadataExtractor;
 import com.ghiloufi.aicode.core.service.policy.RepositoryPolicyProvider;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import com.ghiloufi.aicode.core.service.prompt.PromptTemplateService;
+import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -134,35 +135,36 @@ final class FullContextAwareReviewE2ETest {
                     repositoryPolicyProvider.getPolicies(testRepo).block(Duration.ofSeconds(5));
                 final PrMetadata prMetadata = createTestPrMetadata();
 
-                final String prompt =
-                    promptBuilder.buildReviewPrompt(
+                final ReviewPromptResult result =
+                    promptBuilder.buildStructuredReviewPrompt(
                         enrichedBundle,
                         ReviewConfiguration.defaults(),
                         TicketBusinessContext.empty(),
                         expansionResult,
                         prMetadata,
                         policies);
+                final String userPrompt = result.userPrompt();
 
-                assertThat(prompt).contains("[DIFF]");
-                assertThat(prompt).contains("[/DIFF]");
+                assertThat(userPrompt).contains("[DIFF]");
+                assertThat(userPrompt).contains("[/DIFF]");
 
-                assertThat(prompt).contains("[CONTEXT]");
-                assertThat(prompt).contains("test-strategy");
+                assertThat(userPrompt).contains("[CONTEXT]");
+                assertThat(userPrompt).contains("test-strategy");
 
-                assertThat(prompt).contains("[PR_METADATA]");
-                assertThat(prompt).contains("Pull Request: Feature: Add user authentication");
-                assertThat(prompt).contains("Author: john.doe");
-                assertThat(prompt).contains("Branch: feature/auth → main");
-                assertThat(prompt).contains("Labels: enhancement, backend");
-                assertThat(prompt).contains("Recent Commits:");
-                assertThat(prompt).contains("abc123: Add authentication service");
+                assertThat(userPrompt).contains("[PR_METADATA]");
+                assertThat(userPrompt).contains("Pull Request: Feature: Add user authentication");
+                assertThat(userPrompt).contains("Author: john.doe");
+                assertThat(userPrompt).contains("Branch: feature/auth → main");
+                assertThat(userPrompt).contains("Labels: enhancement, backend");
+                assertThat(userPrompt).contains("Recent Commits:");
+                assertThat(userPrompt).contains("abc123: Add authentication service");
 
-                assertThat(prompt).contains("[EXPANDED_FILES]");
-                assertThat(prompt).contains("Full content of modified files");
+                assertThat(userPrompt).contains("[EXPANDED_FILES]");
+                assertThat(userPrompt).contains("Full content of modified files");
 
-                assertThat(prompt).contains("[POLICIES]");
-                assertThat(prompt).contains("CONTRIBUTING.md");
-                assertThat(prompt).contains("Repository guidelines");
+                assertThat(userPrompt).contains("[POLICIES]");
+                assertThat(userPrompt).contains("CONTRIBUTING.md");
+                assertThat(userPrompt).contains("Repository guidelines");
               })
           .expectComplete()
           .verify(Duration.ofSeconds(10));
@@ -188,20 +190,21 @@ final class FullContextAwareReviewE2ETest {
                         "User Authentication Feature",
                         "Implement OAuth2 authentication flow");
 
-                final String prompt =
-                    promptBuilder.buildReviewPrompt(
+                final ReviewPromptResult result =
+                    promptBuilder.buildStructuredReviewPrompt(
                         enrichedBundle,
                         ReviewConfiguration.defaults(),
                         ticketContext,
                         DiffExpansionResult.empty(),
                         PrMetadata.empty(),
                         RepositoryPolicies.empty());
+                final String userPrompt = result.userPrompt();
 
-                assertThat(prompt).contains("BUSINESS CONTEXT FROM TICKET: JIRA-123");
-                assertThat(prompt).contains("Feature/Fix: User Authentication Feature");
-                assertThat(prompt).contains("Implement OAuth2 authentication flow");
-                assertThat(prompt).contains("[REVIEW_FOCUS]");
-                assertThat(prompt)
+                assertThat(userPrompt).contains("BUSINESS CONTEXT FROM TICKET: JIRA-123");
+                assertThat(userPrompt).contains("Feature/Fix: User Authentication Feature");
+                assertThat(userPrompt).contains("Implement OAuth2 authentication flow");
+                assertThat(userPrompt).contains("[REVIEW_FOCUS]");
+                assertThat(userPrompt)
                     .contains("Verify code implements business requirements from ticket");
               })
           .expectComplete()
@@ -225,23 +228,24 @@ final class FullContextAwareReviewE2ETest {
 
       StepVerifier.create(expansionMono)
           .assertNext(
-              result -> {
-                assertThat(result.hasExpandedFiles()).isTrue();
-                assertThat(result.filesExpanded()).isGreaterThan(0);
+              expansionResult -> {
+                assertThat(expansionResult.hasExpandedFiles()).isTrue();
+                assertThat(expansionResult.filesExpanded()).isGreaterThan(0);
 
-                final String prompt =
-                    promptBuilder.buildReviewPrompt(
+                final ReviewPromptResult promptResult =
+                    promptBuilder.buildStructuredReviewPrompt(
                         new EnrichedDiffAnalysisBundle(diffBundle),
                         ReviewConfiguration.defaults(),
                         TicketBusinessContext.empty(),
-                        result,
+                        expansionResult,
                         PrMetadata.empty(),
                         RepositoryPolicies.empty());
+                final String userPrompt = promptResult.userPrompt();
 
-                assertThat(prompt).contains("[EXPANDED_FILES]");
-                assertThat(prompt).contains("Full content of modified files");
-                assertThat(prompt).contains("--- FILE:");
-                assertThat(prompt).contains("--- END FILE ---");
+                assertThat(userPrompt).contains("[EXPANDED_FILES]");
+                assertThat(userPrompt).contains("Full content of modified files");
+                assertThat(userPrompt).contains("--- FILE:");
+                assertThat(userPrompt).contains("--- END FILE ---");
               })
           .expectComplete()
           .verify(Duration.ofSeconds(5));
@@ -252,21 +256,22 @@ final class FullContextAwareReviewE2ETest {
     final void should_handle_truncated_files_in_expansion() {
       final ExpandedFileContext truncatedFile =
           ExpandedFileContext.truncated("src/LargeFile.java", "// First 500 lines...", 1500);
-      final DiffExpansionResult result =
+      final DiffExpansionResult expansionResult =
           new DiffExpansionResult(List.of(truncatedFile), 1, 1, 0, null);
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
-              result,
+              expansionResult,
               PrMetadata.empty(),
               RepositoryPolicies.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("[EXPANDED_FILES]");
-      assertThat(prompt).contains("src/LargeFile.java");
-      assertThat(prompt).contains("(truncated from 1500 lines)");
+      assertThat(userPrompt).contains("[EXPANDED_FILES]");
+      assertThat(userPrompt).contains("src/LargeFile.java");
+      assertThat(userPrompt).contains("(truncated from 1500 lines)");
     }
 
     @Test
@@ -319,18 +324,19 @@ final class FullContextAwareReviewE2ETest {
                 assertThat(policies.contributingGuide().name()).isEqualTo("CONTRIBUTING.md");
                 assertThat(policies.contributingGuide().hasContent()).isTrue();
 
-                final String prompt =
-                    promptBuilder.buildReviewPrompt(
+                final ReviewPromptResult result =
+                    promptBuilder.buildStructuredReviewPrompt(
                         createMinimalEnrichedBundle(),
                         ReviewConfiguration.defaults(),
                         TicketBusinessContext.empty(),
                         DiffExpansionResult.empty(),
                         PrMetadata.empty(),
                         policies);
+                final String userPrompt = result.userPrompt();
 
-                assertThat(prompt).contains("[POLICIES]");
-                assertThat(prompt).contains("Repository guidelines to consider during review");
-                assertThat(prompt).contains("CONTRIBUTING.md");
+                assertThat(userPrompt).contains("[POLICIES]");
+                assertThat(userPrompt).contains("Repository guidelines to consider during review");
+                assertThat(userPrompt).contains("CONTRIBUTING.md");
               })
           .expectComplete()
           .verify(Duration.ofSeconds(5));
@@ -360,22 +366,23 @@ final class FullContextAwareReviewE2ETest {
       final RepositoryPolicies policies =
           new RepositoryPolicies(contributing, null, prTemplate, security);
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
               DiffExpansionResult.empty(),
               PrMetadata.empty(),
               policies);
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("[POLICIES]");
-      assertThat(prompt).contains("CONTRIBUTING.md");
-      assertThat(prompt).contains("SECURITY.md");
-      assertThat(prompt).contains("PULL_REQUEST_TEMPLATE.md");
-      assertThat(prompt).contains("# How to contribute");
-      assertThat(prompt).contains("# Security Policy");
-      assertThat(prompt).contains("## Description");
+      assertThat(userPrompt).contains("[POLICIES]");
+      assertThat(userPrompt).contains("CONTRIBUTING.md");
+      assertThat(userPrompt).contains("SECURITY.md");
+      assertThat(userPrompt).contains("PULL_REQUEST_TEMPLATE.md");
+      assertThat(userPrompt).contains("# How to contribute");
+      assertThat(userPrompt).contains("# Security Policy");
+      assertThat(userPrompt).contains("## Description");
     }
 
     @Test
@@ -427,19 +434,20 @@ final class FullContextAwareReviewE2ETest {
                 assertThat(metadata.hasLabels()).isTrue();
                 assertThat(metadata.hasCommits()).isTrue();
 
-                final String prompt =
-                    promptBuilder.buildReviewPrompt(
+                final ReviewPromptResult result =
+                    promptBuilder.buildStructuredReviewPrompt(
                         createMinimalEnrichedBundle(),
                         ReviewConfiguration.defaults(),
                         TicketBusinessContext.empty(),
                         DiffExpansionResult.empty(),
                         metadata,
                         RepositoryPolicies.empty());
+                final String userPrompt = result.userPrompt();
 
-                assertThat(prompt).contains("[PR_METADATA]");
-                assertThat(prompt).contains("Pull Request: Feature: Add user authentication");
-                assertThat(prompt).contains("Author: john.doe");
-                assertThat(prompt).contains("Labels: enhancement, backend");
+                assertThat(userPrompt).contains("[PR_METADATA]");
+                assertThat(userPrompt).contains("Pull Request: Feature: Add user authentication");
+                assertThat(userPrompt).contains("Author: john.doe");
+                assertThat(userPrompt).contains("Labels: enhancement, backend");
               })
           .expectComplete()
           .verify(Duration.ofSeconds(5));
@@ -450,18 +458,19 @@ final class FullContextAwareReviewE2ETest {
     final void should_include_commit_history_in_metadata() {
       final PrMetadata metadata = createTestPrMetadata();
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
               DiffExpansionResult.empty(),
               metadata,
               RepositoryPolicies.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("Recent Commits:");
-      assertThat(prompt).contains("abc123: Add authentication service");
-      assertThat(prompt).contains("def456: Add unit tests");
+      assertThat(userPrompt).contains("Recent Commits:");
+      assertThat(userPrompt).contains("abc123: Add authentication service");
+      assertThat(userPrompt).contains("def456: Add unit tests");
     }
 
     @Test
@@ -469,16 +478,17 @@ final class FullContextAwareReviewE2ETest {
     final void should_show_branch_information() {
       final PrMetadata metadata = createTestPrMetadata();
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
               DiffExpansionResult.empty(),
               metadata,
               RepositoryPolicies.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("Branch: feature/auth → main");
+      assertThat(userPrompt).contains("Branch: feature/auth → main");
     }
   }
 
@@ -509,27 +519,27 @@ final class FullContextAwareReviewE2ETest {
           new TicketBusinessContext(
               "JIRA-456", "User Auth Feature", "Implement secure user authentication");
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               enrichedBundle,
               ReviewConfiguration.defaults(),
               ticketContext,
               expansionResult,
               prMetadata,
               policies);
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("BUSINESS CONTEXT FROM TICKET: JIRA-456");
-      assertThat(prompt).contains("[PR_METADATA]");
-      assertThat(prompt).contains("[DIFF]");
-      assertThat(prompt).contains("[CONTEXT]");
-      assertThat(prompt).contains("[EXPANDED_FILES]");
-      assertThat(prompt).contains("[POLICIES]");
-      assertThat(prompt).contains("[REVIEW_FOCUS]");
+      assertThat(userPrompt).contains("BUSINESS CONTEXT FROM TICKET: JIRA-456");
+      assertThat(userPrompt).contains("[PR_METADATA]");
+      assertThat(userPrompt).contains("[DIFF]");
+      assertThat(userPrompt).contains("[CONTEXT]");
+      assertThat(userPrompt).contains("[EXPANDED_FILES]");
+      assertThat(userPrompt).contains("[POLICIES]");
+      assertThat(userPrompt).contains("[REVIEW_FOCUS]");
 
-      final int ticketIndex = prompt.indexOf("BUSINESS CONTEXT FROM TICKET");
-      final int prMetadataIndex = prompt.indexOf("[PR_METADATA]");
-      final int diffIndex = prompt.indexOf("[DIFF]");
-      final int contextIndex = prompt.indexOf("[CONTEXT]");
+      final int ticketIndex = userPrompt.indexOf("BUSINESS CONTEXT FROM TICKET");
+      final int prMetadataIndex = userPrompt.indexOf("[PR_METADATA]");
+      final int diffIndex = userPrompt.indexOf("[DIFF]");
 
       assertThat(ticketIndex).isLessThan(prMetadataIndex);
       assertThat(prMetadataIndex).isLessThan(diffIndex);
@@ -538,40 +548,42 @@ final class FullContextAwareReviewE2ETest {
     @Test
     @DisplayName("should_handle_partial_context_availability")
     final void should_handle_partial_context_availability() {
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
               DiffExpansionResult.empty(),
               createTestPrMetadata(),
               RepositoryPolicies.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("[PR_METADATA]");
-      assertThat(prompt).contains("[DIFF]");
-      assertThat(prompt).doesNotContain("[CONTEXT]");
-      assertThat(prompt).doesNotContain("[EXPANDED_FILES]");
-      assertThat(prompt).doesNotContain("[POLICIES]");
+      assertThat(userPrompt).contains("[PR_METADATA]");
+      assertThat(userPrompt).contains("[DIFF]");
+      assertThat(userPrompt).doesNotContain("[CONTEXT]");
+      assertThat(userPrompt).doesNotContain("[EXPANDED_FILES]");
+      assertThat(userPrompt).doesNotContain("[POLICIES]");
     }
 
     @Test
     @DisplayName("should_handle_all_context_empty")
     final void should_handle_all_context_empty() {
-      final String prompt =
-          promptBuilder.buildReviewPrompt(
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
               createMinimalEnrichedBundle(),
               ReviewConfiguration.defaults(),
               TicketBusinessContext.empty(),
               DiffExpansionResult.empty(),
               PrMetadata.empty(),
               RepositoryPolicies.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("[DIFF]");
-      assertThat(prompt).doesNotContain("[PR_METADATA]");
-      assertThat(prompt).doesNotContain("[CONTEXT]");
-      assertThat(prompt).doesNotContain("[EXPANDED_FILES]");
-      assertThat(prompt).doesNotContain("[POLICIES]");
-      assertThat(prompt).doesNotContain("[REVIEW_FOCUS]");
+      assertThat(userPrompt).contains("[DIFF]");
+      assertThat(userPrompt).doesNotContain("[PR_METADATA]");
+      assertThat(userPrompt).doesNotContain("[CONTEXT]");
+      assertThat(userPrompt).doesNotContain("[EXPANDED_FILES]");
+      assertThat(userPrompt).doesNotContain("[POLICIES]");
+      assertThat(userPrompt).doesNotContain("[REVIEW_FOCUS]");
     }
   }
 

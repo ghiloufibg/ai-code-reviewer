@@ -37,10 +37,14 @@ public final class OpenAIAdapter implements AIInteractionPort {
   }
 
   @Override
-  public Flux<String> streamCompletion(final String prompt) {
-    log.debug("Sending prompt: {} chars", prompt.length());
+  public Flux<String> streamCompletion(final String systemPrompt, final String userPrompt) {
+    log.debug(
+        "Sending prompt: system={} chars, user={} chars",
+        systemPrompt.length(),
+        userPrompt.length());
 
-    final OpenAIChatRequest request = OpenAIChatRequest.forCodeReview(model, prompt);
+    final OpenAIChatRequest request =
+        OpenAIChatRequest.forCodeReview(model, systemPrompt, userPrompt);
 
     return webClient
         .post()

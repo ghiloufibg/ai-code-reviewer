@@ -11,6 +11,7 @@ import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
 import com.ghiloufi.aicode.core.service.expansion.DiffExpansionService;
 import com.ghiloufi.aicode.core.service.policy.RepositoryPolicyProvider;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
+import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -67,7 +68,7 @@ public class AIReviewStreamingService {
 
               logContextResults(ticketContext, expansionResult, prMetadata, policies);
 
-              return promptBuilder.buildReviewPrompt(
+              return promptBuilder.buildStructuredReviewPrompt(
                   enrichedDiff,
                   configWithLlmMetadata,
                   ticketContext,
@@ -79,9 +80,11 @@ public class AIReviewStreamingService {
             prompt ->
                 log.debug(
                     "Built review prompt: {} chars (context: {})",
-                    prompt.length(),
+                    prompt.totalLength(),
                     enrichedDiff.hasContext()))
-        .flatMapMany(aiPort::streamCompletion)
+        .flatMapMany(
+            (final ReviewPromptResult prompt) ->
+                aiPort.streamCompletion(prompt.systemPrompt(), prompt.userPrompt()))
         .map(content -> ReviewChunk.of(ReviewChunk.ChunkType.ANALYSIS, content))
         .doOnNext(chunk -> log.debug("Received review chunk: {} chars", chunk.content().length()))
         .doOnComplete(() -> log.info("AI code review completed successfully"))

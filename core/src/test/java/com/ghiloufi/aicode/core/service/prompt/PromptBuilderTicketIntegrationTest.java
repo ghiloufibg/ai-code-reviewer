@@ -63,14 +63,16 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).contains("BUSINESS CONTEXT FROM TICKET: TM-123");
-    assertThat(prompt).contains("Feature/Fix: Test Feature");
-    assertThat(prompt).contains("TICKET DESCRIPTION:");
-    assertThat(prompt).contains("Test description");
-    assertThat(prompt).contains("[REVIEW_FOCUS]");
-    assertThat(prompt).contains("Verify code implements business requirements from ticket");
+    assertThat(userPrompt).contains("BUSINESS CONTEXT FROM TICKET: TM-123");
+    assertThat(userPrompt).contains("Feature/Fix: Test Feature");
+    assertThat(userPrompt).contains("TICKET DESCRIPTION:");
+    assertThat(userPrompt).contains("Test description");
+    assertThat(userPrompt).contains("[REVIEW_FOCUS]");
+    assertThat(userPrompt).contains("Verify code implements business requirements from ticket");
   }
 
   @Test
@@ -86,10 +88,12 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).contains("BUSINESS CONTEXT FROM TICKET: TM-123");
-    assertThat(prompt).contains("Feature/Fix: Test Feature");
+    assertThat(userPrompt).contains("BUSINESS CONTEXT FROM TICKET: TM-123");
+    assertThat(userPrompt).contains("Feature/Fix: Test Feature");
   }
 
   @Test
@@ -105,12 +109,14 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
-    assertThat(prompt).doesNotContain("[REVIEW_FOCUS]");
-    assertThat(prompt).contains("[REPO]");
-    assertThat(prompt).contains("[DIFF]");
+    assertThat(userPrompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
+    assertThat(userPrompt).doesNotContain("[REVIEW_FOCUS]");
+    assertThat(userPrompt).contains("[REPO]");
+    assertThat(userPrompt).contains("[DIFF]");
   }
 
   @Test
@@ -125,16 +131,18 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
-    assertThat(prompt).contains("[REPO]");
-    assertThat(prompt).contains("[DIFF]");
+    assertThat(userPrompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
+    assertThat(userPrompt).contains("[REPO]");
+    assertThat(userPrompt).contains("[DIFF]");
   }
 
   @Test
-  @DisplayName("should_include_ticket_context_before_system_prompt")
-  final void should_include_ticket_context_before_system_prompt() {
+  @DisplayName("should_have_separate_system_and_user_prompts")
+  final void should_have_separate_system_and_user_prompts() {
     final EnrichedDiffAnalysisBundle enrichedBundle =
         createEnrichedBundle("[TM-123] : Feature", null);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
@@ -145,17 +153,14 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt = promptBuilder.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
 
-    final int ticketContextIndex = prompt.indexOf("BUSINESS CONTEXT FROM TICKET");
-    final int currentPromptIndex = prompt.indexOf("code review assistant");
-    final int optimizedPromptIndex = prompt.indexOf("Senior software engineer");
-    final int systemPromptIndex =
-        currentPromptIndex > -1 ? currentPromptIndex : optimizedPromptIndex;
-
-    assertThat(ticketContextIndex).isGreaterThan(-1);
-    assertThat(systemPromptIndex).isGreaterThan(-1);
-    assertThat(ticketContextIndex).isLessThan(systemPromptIndex);
+    assertThat(result.systemPrompt()).containsAnyOf("code review assistant", "Senior software engineer");
+    assertThat(result.userPrompt()).contains("BUSINESS CONTEXT FROM TICKET");
+    assertThat(result.userPrompt())
+        .doesNotContain("code review assistant")
+        .doesNotContain("Senior software engineer");
   }
 
   @Test
@@ -179,11 +184,12 @@ final class PromptBuilderTicketIntegrationTest {
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
 
-    final String prompt =
-        builderWithNoDesc.buildReviewPrompt(enrichedBundle, config, ticketContext);
+    final ReviewPromptResult result =
+        builderWithNoDesc.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
-    assertThat(prompt).doesNotContain("[REVIEW_FOCUS]");
+    assertThat(userPrompt).doesNotContain("BUSINESS CONTEXT FROM TICKET");
+    assertThat(userPrompt).doesNotContain("[REVIEW_FOCUS]");
   }
 
   private EnrichedDiffAnalysisBundle createEnrichedBundle(

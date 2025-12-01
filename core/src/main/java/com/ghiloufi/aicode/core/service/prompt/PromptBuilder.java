@@ -41,11 +41,11 @@ public class PromptBuilder {
     return systemPrompt.toString();
   }
 
-  public String buildReviewPrompt(
+  public ReviewPromptResult buildStructuredReviewPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
       final TicketContext ticketContext) {
-    return buildReviewPrompt(
+    return buildStructuredReviewPrompt(
         enrichedDiff,
         config,
         ticketContext,
@@ -54,7 +54,7 @@ public class PromptBuilder {
         RepositoryPolicies.empty());
   }
 
-  public String buildReviewPrompt(
+  public ReviewPromptResult buildStructuredReviewPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
       final TicketContext ticketContext,
@@ -72,17 +72,20 @@ public class PromptBuilder {
     }
 
     final String ticketContextFormatted = ticketContext.formatForPrompt();
+    final String systemPrompt = buildSystemPrompt();
+    final String userPrompt =
+        buildUserPrompt(
+            enrichedDiff,
+            config,
+            ticketContextFormatted,
+            expansionResult != null ? expansionResult : DiffExpansionResult.empty(),
+            prMetadata != null ? prMetadata : PrMetadata.empty(),
+            policies != null ? policies : RepositoryPolicies.empty());
 
-    return buildFullPrompt(
-        enrichedDiff,
-        config,
-        ticketContextFormatted,
-        expansionResult != null ? expansionResult : DiffExpansionResult.empty(),
-        prMetadata != null ? prMetadata : PrMetadata.empty(),
-        policies != null ? policies : RepositoryPolicies.empty());
+    return new ReviewPromptResult(systemPrompt, userPrompt);
   }
 
-  private String buildFullPrompt(
+  private String buildUserPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
       final String ticketContext,
@@ -100,7 +103,6 @@ public class PromptBuilder {
       prompt.append("\n");
     }
 
-    prompt.append(buildSystemPrompt()).append("\n\n");
     prompt.append("[REPO]\n");
     prompt.append("language: ").append(config.programmingLanguage()).append("\n");
     prompt.append("focus: ").append(config.focus().name()).append("\n");

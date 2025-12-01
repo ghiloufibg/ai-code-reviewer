@@ -16,6 +16,7 @@ import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import com.ghiloufi.aicode.core.service.prompt.PromptTemplateService;
+import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -86,37 +87,38 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle.hasContext()).isTrue();
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(4);
 
-              final String prompt =
-                  promptBuilder.buildReviewPrompt(
+              final ReviewPromptResult result =
+                  promptBuilder.buildStructuredReviewPrompt(
                       enrichedBundle,
                       ReviewConfiguration.defaults(),
                       TicketBusinessContext.empty());
+              final String userPrompt = result.userPrompt();
 
-              assertThat(prompt).contains("[CONTEXT]");
-              assertThat(prompt)
+              assertThat(userPrompt).contains("[CONTEXT]");
+              assertThat(userPrompt)
                   .contains("Relevant files identified by context analysis (test-strategy)");
-              assertThat(prompt)
+              assertThat(userPrompt)
                   .contains("src/main/java/com/example/repository/UserRepository.java");
-              assertThat(prompt).contains("confidence: 0.95");
-              assertThat(prompt).contains("reason: Direct import");
-              assertThat(prompt).contains("Evidence: imported in UserService.java");
+              assertThat(userPrompt).contains("confidence: 0.95");
+              assertThat(userPrompt).contains("reason: Direct import");
+              assertThat(userPrompt).contains("Evidence: imported in UserService.java");
 
-              assertThat(prompt).contains("src/main/java/com/example/model/User.java");
-              assertThat(prompt).contains("confidence: 0.90");
+              assertThat(userPrompt).contains("src/main/java/com/example/model/User.java");
+              assertThat(userPrompt).contains("confidence: 0.90");
 
-              assertThat(prompt)
+              assertThat(userPrompt)
                   .contains("src/main/java/com/example/exception/UserNotFoundException.java");
-              assertThat(prompt).contains("confidence: 0.85");
+              assertThat(userPrompt).contains("confidence: 0.85");
 
-              assertThat(prompt).contains("src/test/java/com/example/service/UserServiceTest.java");
-              assertThat(prompt).contains("confidence: 0.80");
+              assertThat(userPrompt).contains("src/test/java/com/example/service/UserServiceTest.java");
+              assertThat(userPrompt).contains("confidence: 0.80");
 
-              assertThat(prompt)
+              assertThat(userPrompt)
                   .contains(
                       "These files may provide important context for understanding the changes");
 
-              assertThat(prompt).contains("[DIFF]");
-              assertThat(prompt).contains("UserService.java");
+              assertThat(userPrompt).contains("[DIFF]");
+              assertThat(userPrompt).contains("UserService.java");
             })
         .expectComplete()
         .verify(Duration.ofSeconds(5));
@@ -155,14 +157,15 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle).isNotNull();
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(0);
 
-              final String prompt =
-                  promptBuilder.buildReviewPrompt(
+              final ReviewPromptResult result =
+                  promptBuilder.buildStructuredReviewPrompt(
                       enrichedBundle,
                       ReviewConfiguration.defaults(),
                       TicketBusinessContext.empty());
+              final String userPrompt = result.userPrompt();
 
-              assertThat(prompt).doesNotContain("[CONTEXT]");
-              assertThat(prompt).contains("[DIFF]");
+              assertThat(userPrompt).doesNotContain("[CONTEXT]");
+              assertThat(userPrompt).contains("[DIFF]");
             })
         .expectComplete()
         .verify(Duration.ofSeconds(5));
@@ -203,14 +206,15 @@ final class ContextAwareReviewWorkflowTest {
               assertThat(enrichedBundle).isNotNull();
               assertThat(enrichedBundle.getContextMatchCount()).isEqualTo(0);
 
-              final String prompt =
-                  promptBuilder.buildReviewPrompt(
+              final ReviewPromptResult result =
+                  promptBuilder.buildStructuredReviewPrompt(
                       enrichedBundle,
                       ReviewConfiguration.defaults(),
                       TicketBusinessContext.empty());
+              final String userPrompt = result.userPrompt();
 
-              assertThat(prompt).doesNotContain("[CONTEXT]");
-              assertThat(prompt).contains("[DIFF]");
+              assertThat(userPrompt).doesNotContain("[CONTEXT]");
+              assertThat(userPrompt).contains("[DIFF]");
             })
         .expectComplete()
         .verify(Duration.ofSeconds(5));

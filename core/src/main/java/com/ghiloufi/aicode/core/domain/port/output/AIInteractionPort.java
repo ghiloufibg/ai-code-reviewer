@@ -4,7 +4,7 @@ import reactor.core.publisher.Flux;
 
 public interface AIInteractionPort {
 
-  Flux<String> streamCompletion(String prompt);
+  Flux<String> streamCompletion(String systemPrompt, String userPrompt);
 
   String getProviderName();
 

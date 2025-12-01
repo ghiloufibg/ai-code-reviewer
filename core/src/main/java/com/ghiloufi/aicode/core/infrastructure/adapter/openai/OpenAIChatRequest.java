@@ -16,12 +16,10 @@ public record OpenAIChatRequest(
     }
   }
 
-  public static OpenAIChatRequest forCodeReview(final String model, final String prompt) {
+  public static OpenAIChatRequest forCodeReview(
+      final String model, final String systemPrompt, final String userPrompt) {
     final List<ChatMessage> messages =
-        List.of(
-            ChatMessage.system(
-                "You are a code reviewer. Analyze code and provide constructive feedback."),
-            ChatMessage.user(prompt));
+        List.of(ChatMessage.system(systemPrompt), ChatMessage.user(userPrompt));
     return new OpenAIChatRequest(model, messages, true, 0.1);
   }
 

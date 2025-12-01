@@ -48,7 +48,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Hello")
           .verifyComplete();
     }
@@ -68,7 +68,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Hello")
           .expectNext(" World")
           .verifyComplete();
@@ -91,7 +91,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Hello")
           .verifyComplete();
     }
@@ -109,7 +109,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Test")
           .verifyComplete();
     }
@@ -127,7 +127,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Line1\nLine2")
           .verifyComplete();
     }
@@ -139,7 +139,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt")).verifyComplete();
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt")).verifyComplete();
     }
 
     @Test
@@ -157,7 +157,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("Test prompt"))
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
           .expectNext("Valid")
           .verifyComplete();
     }
@@ -172,7 +172,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      adapter.streamCompletion("Test prompt").blockLast();
+      adapter.streamCompletion("System prompt", "Test prompt").blockLast();
 
       final RecordedRequest request = mockServer.takeRequest();
       final String body = request.getBody().readUtf8();
@@ -192,7 +192,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      adapter.streamCompletion("Test prompt").blockLast();
+      adapter.streamCompletion("System prompt", "Test prompt").blockLast();
 
       final RecordedRequest request = mockServer.takeRequest();
       assertThat(request.getHeader("Authorization")).isEqualTo("Bearer test-api-key");
@@ -204,7 +204,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      adapter.streamCompletion("Test prompt").blockLast();
+      adapter.streamCompletion("System prompt", "Test prompt").blockLast();
 
       final RecordedRequest request = mockServer.takeRequest();
       assertThat(request.getHeader("Content-Type")).isEqualTo("application/json");
@@ -216,7 +216,7 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      adapter.streamCompletion("Test \"prompt\" with\nnewline").blockLast();
+      adapter.streamCompletion("System prompt", "Test \"prompt\" with\nnewline").blockLast();
 
       final RecordedRequest request = mockServer.takeRequest();
       final String body = request.getBody().readUtf8();

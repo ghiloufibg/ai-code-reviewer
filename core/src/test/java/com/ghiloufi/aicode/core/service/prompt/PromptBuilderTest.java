@@ -65,14 +65,16 @@ class PromptBuilderTest {
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt =
-        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(
+            enrichedBundle, config, TicketBusinessContext.empty());
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).contains("FILE: src/Test.java");
-    assertThat(prompt).contains("10   │   context");
-    assertThat(prompt).contains("11   │ + added line");
-    assertThat(prompt).doesNotContain("--- a/src/Test.java");
-    assertThat(prompt).doesNotContain("+++ b/src/Test.java");
+    assertThat(userPrompt).contains("FILE: src/Test.java");
+    assertThat(userPrompt).contains("10   │   context");
+    assertThat(userPrompt).contains("11   │ + added line");
+    assertThat(userPrompt).doesNotContain("--- a/src/Test.java");
+    assertThat(userPrompt).doesNotContain("+++ b/src/Test.java");
   }
 
   @Test
@@ -88,13 +90,15 @@ class PromptBuilderTest {
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt =
-        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(
+            enrichedBundle, config, TicketBusinessContext.empty());
+    final String userPrompt = result.userPrompt();
 
-    assertThat(prompt).contains("50   │   line 50");
-    assertThat(prompt).contains("51   │ + added line 51");
-    assertThat(prompt).contains("52   │   line 52");
-    assertThat(prompt).contains("53   │ + added line 53");
+    assertThat(userPrompt).contains("50   │   line 50");
+    assertThat(userPrompt).contains("51   │ + added line 51");
+    assertThat(userPrompt).contains("52   │   line 52");
+    assertThat(userPrompt).contains("53   │ + added line 53");
   }
 
   @Test
@@ -110,16 +114,18 @@ class PromptBuilderTest {
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final String prompt =
-        promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+    final ReviewPromptResult result =
+        promptBuilder.buildStructuredReviewPrompt(
+            enrichedBundle, config, TicketBusinessContext.empty());
 
-    assertThat(prompt).containsAnyOf("code review assistant", "Senior software engineer");
-    assertThat(prompt).contains("[REPO]");
-    assertThat(prompt).contains("language: Java");
-    assertThat(prompt).contains("focus: COMPREHENSIVE");
-    assertThat(prompt).contains("[/REPO]");
-    assertThat(prompt).contains("[DIFF]");
-    assertThat(prompt).contains("[/DIFF]");
+    assertThat(result.systemPrompt())
+        .containsAnyOf("code review assistant", "Senior software engineer");
+    assertThat(result.userPrompt()).contains("[REPO]");
+    assertThat(result.userPrompt()).contains("language: Java");
+    assertThat(result.userPrompt()).contains("focus: COMPREHENSIVE");
+    assertThat(result.userPrompt()).contains("[/REPO]");
+    assertThat(result.userPrompt()).contains("[DIFF]");
+    assertThat(result.userPrompt()).contains("[/DIFF]");
   }
 
   @Test
@@ -127,7 +133,10 @@ class PromptBuilderTest {
   void should_throw_exception_when_diff_bundle_is_null() {
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(null, config, null))
+    assertThatThrownBy(
+            () ->
+                promptBuilder.buildStructuredReviewPrompt(
+                    null, config, TicketBusinessContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("EnrichedDiffAnalysisBundle cannot be null");
   }
@@ -144,7 +153,10 @@ class PromptBuilderTest {
     final DiffAnalysisBundle bundle = new DiffAnalysisBundle(testRepo, diff, "raw", null);
     final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
 
-    assertThatThrownBy(() -> promptBuilder.buildReviewPrompt(enrichedBundle, null, null))
+    assertThatThrownBy(
+            () ->
+                promptBuilder.buildStructuredReviewPrompt(
+                    enrichedBundle, null, TicketBusinessContext.empty()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ReviewConfiguration cannot be null");
   }
@@ -166,12 +178,14 @@ class PromptBuilderTest {
       final EnrichedDiffAnalysisBundle enrichedBundle = new EnrichedDiffAnalysisBundle(bundle);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
+              enrichedBundle, config, TicketBusinessContext.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).doesNotContain("[CONTEXT]");
-      assertThat(prompt).doesNotContain("[/CONTEXT]");
-      assertThat(prompt).doesNotContain("Relevant files");
+      assertThat(userPrompt).doesNotContain("[CONTEXT]");
+      assertThat(userPrompt).doesNotContain("[/CONTEXT]");
+      assertThat(userPrompt).doesNotContain("Relevant files");
     }
 
     @Test
@@ -201,20 +215,22 @@ class PromptBuilderTest {
           new EnrichedDiffAnalysisBundle(bundle).withContext(contextResult);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
+              enrichedBundle, config, TicketBusinessContext.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("[CONTEXT]");
-      assertThat(prompt).contains("[/CONTEXT]");
-      assertThat(prompt).contains("Relevant files identified by context analysis");
-      assertThat(prompt).contains("metadata-based");
-      assertThat(prompt).contains("src/UserService.java");
-      assertThat(prompt).contains("confidence: 0.95");
-      assertThat(prompt).contains("reason: Direct import");
-      assertThat(prompt).contains("Evidence: imported in Test.java");
-      assertThat(prompt).contains("src/UserRepository.java");
-      assertThat(prompt).contains("confidence: 0.85");
-      assertThat(prompt).contains("reason: Type reference");
+      assertThat(userPrompt).contains("[CONTEXT]");
+      assertThat(userPrompt).contains("[/CONTEXT]");
+      assertThat(userPrompt).contains("Relevant files identified by context analysis");
+      assertThat(userPrompt).contains("metadata-based");
+      assertThat(userPrompt).contains("src/UserService.java");
+      assertThat(userPrompt).contains("confidence: 0.95");
+      assertThat(userPrompt).contains("reason: Direct import");
+      assertThat(userPrompt).contains("Evidence: imported in Test.java");
+      assertThat(userPrompt).contains("src/UserRepository.java");
+      assertThat(userPrompt).contains("confidence: 0.85");
+      assertThat(userPrompt).contains("reason: Type reference");
     }
 
     @Test
@@ -244,14 +260,16 @@ class PromptBuilderTest {
           new EnrichedDiffAnalysisBundle(bundle).withContext(contextResult);
       final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-      final String prompt =
-          promptBuilder.buildReviewPrompt(enrichedBundle, config, TicketBusinessContext.empty());
+      final ReviewPromptResult result =
+          promptBuilder.buildStructuredReviewPrompt(
+              enrichedBundle, config, TicketBusinessContext.empty());
+      final String userPrompt = result.userPrompt();
 
-      assertThat(prompt).contains("metadata-based+git-history");
-      assertThat(prompt).contains("FileA.java");
-      assertThat(prompt).contains("FileB.java");
-      assertThat(prompt).contains("FileC.java");
-      assertThat(prompt).contains("These files may provide important context");
+      assertThat(userPrompt).contains("metadata-based+git-history");
+      assertThat(userPrompt).contains("FileA.java");
+      assertThat(userPrompt).contains("FileB.java");
+      assertThat(userPrompt).contains("FileC.java");
+      assertThat(userPrompt).contains("These files may provide important context");
     }
   }
 }
