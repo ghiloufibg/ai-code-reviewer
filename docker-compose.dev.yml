@@ -78,6 +78,12 @@ services:
       TICKET_SYSTEM_JIRA_BASE_URL: "${JIRA_BASE_URL:-http://host.docker.internal:8080}"
       TICKET_SYSTEM_JIRA_TOKEN: "${JIRA_TOKEN}"
 
+      # Ticket Analysis LLM Configuration (uses same LLM provider for intelligent ticket parsing)
+      TICKET_ANALYSIS_LLM_ENABLED: "${TICKET_ANALYSIS_ENABLED:-true}"
+      TICKET_ANALYSIS_LLM_BASE_URL: "${TICKET_ANALYSIS_BASE_URL:-${LLM_BASE_URL:-https://api.openai.com/v1}}"
+      TICKET_ANALYSIS_LLM_MODEL: "${TICKET_ANALYSIS_MODEL:-${LLM_MODEL:-gpt-4o-mini}}"
+      TICKET_ANALYSIS_LLM_API_KEY: "${TICKET_ANALYSIS_API_KEY:-${LLM_API_KEY}}"
+
       # Application Configuration (more verbose logging for dev)
       LOGGING_LEVEL_COM_GHILOUFI_AICODE: "${LOG_LEVEL:-DEBUG}"
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "DEBUG"
