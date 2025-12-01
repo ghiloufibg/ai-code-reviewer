@@ -156,7 +156,8 @@ final class PromptBuilderTicketIntegrationTest {
     final ReviewPromptResult result =
         promptBuilder.buildStructuredReviewPrompt(enrichedBundle, config, ticketContext);
 
-    assertThat(result.systemPrompt()).containsAnyOf("code review assistant", "Senior software engineer");
+    assertThat(result.systemPrompt())
+        .containsAnyOf("code review assistant", "Senior software engineer");
     assertThat(result.userPrompt()).contains("BUSINESS CONTEXT FROM TICKET");
     assertThat(result.userPrompt())
         .doesNotContain("code review assistant")

@@ -110,7 +110,8 @@ final class ContextAwareReviewWorkflowTest {
                   .contains("src/main/java/com/example/exception/UserNotFoundException.java");
               assertThat(userPrompt).contains("confidence: 0.85");
 
-              assertThat(userPrompt).contains("src/test/java/com/example/service/UserServiceTest.java");
+              assertThat(userPrompt)
+                  .contains("src/test/java/com/example/service/UserServiceTest.java");
               assertThat(userPrompt).contains("confidence: 0.80");
 
               assertThat(userPrompt)

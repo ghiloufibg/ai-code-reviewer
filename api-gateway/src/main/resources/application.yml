@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  config:
+    import:
+      - classpath:application-prompts.yml
+      - classpath:application-prompts-optimized.yml
   application:
     name: ai-code-reviewer-gateway
   webflux:
@@ -45,6 +49,10 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
+
+# Prompt Configuration
+prompts:
+  variant: OPTIMIZED
 
 # SCM Provider Configuration.
 scm:

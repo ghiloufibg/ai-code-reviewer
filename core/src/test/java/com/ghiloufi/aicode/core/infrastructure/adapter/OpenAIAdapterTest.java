@@ -139,7 +139,8 @@ final class OpenAIAdapterTest {
       mockServer.enqueue(
           new MockResponse().setHeader("Content-Type", "text/event-stream").setBody(sseResponse));
 
-      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt")).verifyComplete();
+      StepVerifier.create(adapter.streamCompletion("System prompt", "Test prompt"))
+          .verifyComplete();
     }
 
     @Test
