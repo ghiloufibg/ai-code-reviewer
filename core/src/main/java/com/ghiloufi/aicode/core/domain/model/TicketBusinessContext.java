@@ -2,7 +2,8 @@ package com.ghiloufi.aicode.core.domain.model;
 
 import java.util.Objects;
 
-public record TicketBusinessContext(String ticketId, String title, String fullDescription) {
+public record TicketBusinessContext(String ticketId, String title, String fullDescription)
+    implements TicketContext {
 
   private static final TicketBusinessContext EMPTY = new TicketBusinessContext("", "", null);
 

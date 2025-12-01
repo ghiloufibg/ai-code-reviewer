@@ -8,7 +8,7 @@ import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
-import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
+import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class PromptBuilder {
   public String buildReviewPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
-      final TicketBusinessContext ticketContext) {
+      final TicketContext ticketContext) {
     return buildReviewPrompt(
         enrichedDiff,
         config,
@@ -57,7 +57,7 @@ public class PromptBuilder {
   public String buildReviewPrompt(
       final EnrichedDiffAnalysisBundle enrichedDiff,
       final ReviewConfiguration config,
-      final TicketBusinessContext ticketContext,
+      final TicketContext ticketContext,
       final DiffExpansionResult expansionResult,
       final PrMetadata prMetadata,
       final RepositoryPolicies policies) {
@@ -68,7 +68,7 @@ public class PromptBuilder {
       throw new IllegalArgumentException("ReviewConfiguration cannot be null");
     }
     if (ticketContext == null) {
-      throw new IllegalArgumentException("TicketBusinessContext cannot be null");
+      throw new IllegalArgumentException("TicketContext cannot be null");
     }
 
     final String ticketContextFormatted = ticketContext.formatForPrompt();

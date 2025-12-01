@@ -24,4 +24,11 @@ public record OpenAIChatRequest(
             ChatMessage.user(prompt));
     return new OpenAIChatRequest(model, messages, true, 0.1);
   }
+
+  public static OpenAIChatRequest forTicketAnalysis(
+      final String model, final String systemPrompt, final String ticketContent) {
+    final List<ChatMessage> messages =
+        List.of(ChatMessage.system(systemPrompt), ChatMessage.user(ticketContent));
+    return new OpenAIChatRequest(model, messages, true, 0.2);
+  }
 }

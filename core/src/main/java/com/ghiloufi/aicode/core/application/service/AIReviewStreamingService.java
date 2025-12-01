@@ -6,7 +6,7 @@ import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
-import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
+import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.port.output.AIInteractionPort;
 import com.ghiloufi.aicode.core.service.expansion.DiffExpansionService;
 import com.ghiloufi.aicode.core.service.policy.RepositoryPolicyProvider;
@@ -23,19 +23,19 @@ public class AIReviewStreamingService {
 
   private final AIInteractionPort aiPort;
   private final PromptBuilder promptBuilder;
-  private final TicketContextExtractor ticketContextExtractor;
+  private final TicketContextService ticketContextService;
   private final DiffExpansionService diffExpansionService;
   private final RepositoryPolicyProvider repositoryPolicyProvider;
 
   public AIReviewStreamingService(
       final AIInteractionPort aiPort,
       final PromptBuilder promptBuilder,
-      final TicketContextExtractor ticketContextExtractor,
+      final TicketContextService ticketContextService,
       final DiffExpansionService diffExpansionService,
       final RepositoryPolicyProvider repositoryPolicyProvider) {
     this.aiPort = aiPort;
     this.promptBuilder = promptBuilder;
-    this.ticketContextExtractor = ticketContextExtractor;
+    this.ticketContextService = ticketContextService;
     this.diffExpansionService = diffExpansionService;
     this.repositoryPolicyProvider = repositoryPolicyProvider;
   }
@@ -55,13 +55,13 @@ public class AIReviewStreamingService {
     final var prMetadata = enrichedDiff.prMetadata();
 
     return Mono.zip(
-            ticketContextExtractor.extractFromMergeRequest(
+            ticketContextService.extractFromMergeRequest(
                 prMetadata.title(), prMetadata.description()),
             diffExpansionService.expandDiff(basicBundle),
             repositoryPolicyProvider.getPolicies(repo))
         .map(
             tuple -> {
-              final TicketBusinessContext ticketContext = tuple.getT1();
+              final TicketContext ticketContext = tuple.getT1();
               final DiffExpansionResult expansionResult = tuple.getT2();
               final RepositoryPolicies policies = tuple.getT3();
 
@@ -90,7 +90,7 @@ public class AIReviewStreamingService {
   }
 
   private void logContextResults(
-      final TicketBusinessContext ticketContext,
+      final TicketContext ticketContext,
       final DiffExpansionResult expansionResult,
       final PrMetadata prMetadata,
       final RepositoryPolicies policies) {

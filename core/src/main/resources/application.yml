@@ -66,6 +66,14 @@ ticket-system:
     base-url: ${JIRA_BASE_URL:http://localhost:8080}
     token: ${JIRA_TOKEN:}
 
+# Ticket Analysis LLM Configuration (disabled by default)
+ticket-analysis:
+  llm:
+    enabled: false
+    base-url: ${TICKET_ANALYSIS_LLM_BASE_URL:http://localhost:1234/v1}
+    model: ${TICKET_ANALYSIS_LLM_MODEL:gpt-4o-mini}
+    api-key: ${TICKET_ANALYSIS_LLM_API_KEY:not-required}
+
 logging:
   level:
     com.ghiloufi.aicode.core: DEBUG

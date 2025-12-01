@@ -2,7 +2,8 @@ package com.ghiloufi.aicode.core.service.prompt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ghiloufi.aicode.core.application.service.TicketContextExtractor;
+import com.ghiloufi.aicode.core.application.service.DefaultTicketContextService;
+import com.ghiloufi.aicode.core.application.service.TicketContextService;
 import com.ghiloufi.aicode.core.config.FeaturesConfiguration;
 import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
@@ -15,6 +16,7 @@ import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
+import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.port.output.TicketSystemPort;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import java.util.List;
@@ -35,7 +37,7 @@ import reactor.core.publisher.Mono;
 final class PromptBuilderTicketIntegrationTest {
 
   private PromptBuilder promptBuilder;
-  private TicketContextExtractor ticketContextExtractor;
+  private TicketContextService ticketContextService;
   @Autowired private PromptTemplateService promptTemplateService;
   private RepositoryIdentifier testRepo;
 
@@ -43,7 +45,7 @@ final class PromptBuilderTicketIntegrationTest {
   final void setUp() {
     final DiffFormatter diffFormatter = new DiffFormatter();
     final TicketSystemPort ticketSystem = createMockTicketSystem();
-    ticketContextExtractor = new TicketContextExtractor(ticketSystem);
+    ticketContextService = new DefaultTicketContextService(ticketSystem);
     promptBuilder = new PromptBuilder(diffFormatter, promptTemplateService);
     testRepo = RepositoryIdentifier.create(SourceProvider.GITLAB, "test/repo");
   }
@@ -55,8 +57,8 @@ final class PromptBuilderTicketIntegrationTest {
         createEnrichedBundle("[TM-123] : Add user authentication", null);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        ticketContextExtractor
+    final TicketContext ticketContext =
+        ticketContextService
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
@@ -78,8 +80,8 @@ final class PromptBuilderTicketIntegrationTest {
         createEnrichedBundle("Add user authentication", "This implements [TM-123]");
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        ticketContextExtractor
+    final TicketContext ticketContext =
+        ticketContextService
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
@@ -97,8 +99,8 @@ final class PromptBuilderTicketIntegrationTest {
         createEnrichedBundle("Add user authentication", "Implementation details");
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        ticketContextExtractor
+    final TicketContext ticketContext =
+        ticketContextService
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
@@ -117,8 +119,8 @@ final class PromptBuilderTicketIntegrationTest {
     final EnrichedDiffAnalysisBundle enrichedBundle = createEnrichedBundle(null, null);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        ticketContextExtractor
+    final TicketContext ticketContext =
+        ticketContextService
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
@@ -137,8 +139,8 @@ final class PromptBuilderTicketIntegrationTest {
         createEnrichedBundle("[TM-123] : Feature", null);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        ticketContextExtractor
+    final TicketContext ticketContext =
+        ticketContextService
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();
@@ -162,8 +164,8 @@ final class PromptBuilderTicketIntegrationTest {
     final TicketSystemPort ticketSystemWithoutDescription =
         ticketId -> Mono.just(new TicketBusinessContext(ticketId, "Title only", null));
 
-    final TicketContextExtractor extractor =
-        new TicketContextExtractor(ticketSystemWithoutDescription);
+    final TicketContextService service =
+        new DefaultTicketContextService(ticketSystemWithoutDescription);
     final PromptBuilder builderWithNoDesc =
         new PromptBuilder(new DiffFormatter(), promptTemplateService);
 
@@ -171,8 +173,8 @@ final class PromptBuilderTicketIntegrationTest {
         createEnrichedBundle("[TM-999] : Feature", null);
     final ReviewConfiguration config = ReviewConfiguration.defaults();
 
-    final TicketBusinessContext ticketContext =
-        extractor
+    final TicketContext ticketContext =
+        service
             .extractFromMergeRequest(
                 enrichedBundle.prMetadata().title(), enrichedBundle.prMetadata().description())
             .block();

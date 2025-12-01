@@ -1,28 +1,24 @@
 package com.ghiloufi.aicode.core.application.service;
 
 import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
+import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.port.output.TicketSystemPort;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Slf4j
-@Service
-public final class TicketContextExtractor {
+@RequiredArgsConstructor
+public final class DefaultTicketContextService implements TicketContextService {
 
   private static final Pattern BRACKETED_TICKET_ID_PATTERN = Pattern.compile("\\[([A-Z]+-\\d+)\\]");
 
   private final TicketSystemPort ticketSystemPort;
 
-  public TicketContextExtractor(final TicketSystemPort ticketSystemPort) {
-    this.ticketSystemPort = ticketSystemPort;
-  }
-
-  public Mono<TicketBusinessContext> extractFromMergeRequest(
-      final String title, final String description) {
-
+  @Override
+  public Mono<TicketContext> extractFromMergeRequest(final String title, final String description) {
     final String ticketId = extractTicketId(title, description);
 
     if (ticketId == null) {
@@ -33,6 +29,7 @@ public final class TicketContextExtractor {
     log.debug("Extracting ticket context for: {}", ticketId);
     return ticketSystemPort
         .getTicketContext(ticketId)
+        .map(context -> (TicketContext) context)
         .defaultIfEmpty(TicketBusinessContext.empty());
   }
 
