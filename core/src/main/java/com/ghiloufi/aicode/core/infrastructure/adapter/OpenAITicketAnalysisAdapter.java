@@ -68,6 +68,7 @@ public final class OpenAITicketAnalysisAdapter implements TicketAnalysisPort {
         .filter(OpenAIStreamResponse::hasContent)
         .map(response -> response.extractFirstContent().orElse(""))
         .reduce(String::concat)
+        .doOnNext(json -> log.debug("LLM ticket analysis raw response: {}", json))
         .flatMap(json -> parseAnalysisResponse(json, rawContext))
         .doOnSuccess(result -> log.debug("Ticket analysis completed: {}", rawContext.ticketId()))
         .doOnError(error -> log.error("Ticket analysis failed: {}", error.getMessage()))
