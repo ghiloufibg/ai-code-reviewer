@@ -26,6 +26,7 @@ import org.gitlab4j.api.models.Permissions;
 import org.gitlab4j.api.models.Position;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.ProjectAccess;
+import org.gitlab4j.api.models.RepositoryFile;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -399,7 +400,7 @@ public class GitLabAdapter implements SCMPort {
               final Object projectIdOrPath = gitLabRepo.toNumericId();
 
               try {
-                final org.gitlab4j.api.models.RepositoryFile currentFile =
+                final RepositoryFile currentFile =
                     gitLabApi.getRepositoryFileApi().getFile(projectIdOrPath, filePath, branchName);
 
                 final String currentContent =
@@ -409,8 +410,7 @@ public class GitLabAdapter implements SCMPort {
 
                 final String updatedContent = applyDiffPatch(currentContent, fixDiff);
 
-                final org.gitlab4j.api.models.RepositoryFile fileToUpdate =
-                    new org.gitlab4j.api.models.RepositoryFile();
+                final RepositoryFile fileToUpdate = new RepositoryFile();
                 fileToUpdate.setFilePath(filePath);
                 fileToUpdate.setContent(updatedContent);
 
@@ -1036,8 +1036,32 @@ public class GitLabAdapter implements SCMPort {
 
   @Override
   public Mono<String> getFileContent(final RepositoryIdentifier repo, final String filePath) {
-    return Mono.error(
-        new UnsupportedOperationException("File content retrieval not yet implemented for GitLab"));
+    return Mono.fromCallable(
+            () -> {
+              final GitLabRepositoryId gitLabRepo =
+                  identifierValidator.validateGitLabRepository(repo);
+
+              log.debug("Fetching file content: {} from {}", filePath, gitLabRepo.projectId());
+
+              final Object projectIdOrPath = gitLabRepo.projectId();
+              final Project project = gitLabApi.getProjectApi().getProject(projectIdOrPath);
+              final String ref = project.getDefaultBranch();
+
+              final RepositoryFile file =
+                  gitLabApi.getRepositoryFileApi().getFile(projectIdOrPath, filePath, ref);
+              final String content = file.getDecodedContentAsString();
+
+              log.debug("Retrieved {} bytes from {}", content.length(), filePath);
+              return content;
+            })
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(
+            error ->
+                log.debug(
+                    "Failed to fetch file {} from {}: {}",
+                    filePath,
+                    repo.getDisplayName(),
+                    error.getMessage()));
   }
 
   @Override
