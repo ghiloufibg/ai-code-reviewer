@@ -84,9 +84,17 @@ services:
       TICKET_ANALYSIS_LLM_MODEL: "${TICKET_ANALYSIS_MODEL:-${LLM_MODEL:-gpt-4o-mini}}"
       TICKET_ANALYSIS_LLM_API_KEY: "${TICKET_ANALYSIS_API_KEY:-${LLM_API_KEY}}"
 
+      # Feature Flags
+      FEATURES_SUMMARY_COMMENT_ENABLED: "true"
+
       # Application Configuration (more verbose logging for dev)
       LOGGING_LEVEL_COM_GHILOUFI_AICODE: "${LOG_LEVEL:-DEBUG}"
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "DEBUG"
+
+      # Context Orchestration Debug Logging (for PR context debugging)
+      LOGGING_LEVEL_COM_GHILOUFI_AICODE_CORE_APPLICATION_SERVICE_CONTEXT: "DEBUG"
+      LOGGING_LEVEL_COM_GHILOUFI_AICODE_CORE_SERVICE_PROMPT: "DEBUG"
+      LOGGING_LEVEL_COM_GHILOUFI_AICODE_CORE_APPLICATION_SERVICE_AIREVIEWSTREAMINGSERVICE: "DEBUG"
 
       # JVM Options for development (with remote debugging enabled)
       JAVA_OPTS: "-Xmx1024m -Xms512m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"

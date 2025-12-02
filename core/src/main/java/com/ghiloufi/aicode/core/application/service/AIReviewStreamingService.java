@@ -77,11 +77,13 @@ public class AIReviewStreamingService {
                   policies);
             })
         .doOnNext(
-            prompt ->
-                log.debug(
-                    "Built review prompt: {} chars (context: {})",
-                    prompt.totalLength(),
-                    enrichedDiff.hasContext()))
+            prompt -> {
+              log.debug(
+                  "Built review prompt: {} chars (context: {})",
+                  prompt.totalLength(),
+                  enrichedDiff.hasContext());
+              logFullPromptForDebugging(prompt);
+            })
         .flatMapMany(
             (final ReviewPromptResult prompt) ->
                 aiPort.streamCompletion(prompt.systemPrompt(), prompt.userPrompt()))
@@ -125,5 +127,31 @@ public class AIReviewStreamingService {
   public ReviewConfiguration getLlmMetadata() {
     return ReviewConfiguration.defaults()
         .withLlmMetadata(aiPort.getProviderName(), aiPort.getModelName());
+  }
+
+  private void logFullPromptForDebugging(final ReviewPromptResult prompt) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
+
+    final String separator = "═".repeat(80);
+    final String sectionSeparator = "─".repeat(80);
+
+    log.debug("\n{}", separator);
+    log.debug("                    FULL LLM PROMPT FOR CODE REVIEW");
+    log.debug("{}", separator);
+
+    log.debug("\n{}  SYSTEM PROMPT ({} chars)  {}", "▶", prompt.systemPrompt().length(), "◀");
+    log.debug("{}", sectionSeparator);
+    log.debug("\n{}\n", prompt.systemPrompt());
+
+    log.debug("{}", sectionSeparator);
+    log.debug("\n{}  USER PROMPT ({} chars)  {}", "▶", prompt.userPrompt().length(), "◀");
+    log.debug("{}", sectionSeparator);
+    log.debug("\n{}\n", prompt.userPrompt());
+
+    log.debug("{}", separator);
+    log.debug("                    END OF FULL LLM PROMPT");
+    log.debug("{}\n", separator);
   }
 }

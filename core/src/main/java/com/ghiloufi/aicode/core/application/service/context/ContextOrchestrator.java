@@ -67,6 +67,7 @@ public class ContextOrchestrator {
                     "Context retrieval complete: {} matches from {} strategies",
                     enriched.getContextMatchCount(),
                     enriched.contextResult().metadata().strategyName());
+                logContextDetails(enriched);
               }
             })
         .defaultIfEmpty(new EnrichedDiffAnalysisBundle(diffBundle));
@@ -105,5 +106,33 @@ public class ContextOrchestrator {
   private boolean shouldSkipDueToSize(final DiffAnalysisBundle diffBundle) {
     return config.rollout().skipLargeDiffs()
         && diffBundle.getTotalLineCount() > config.rollout().maxDiffLines();
+  }
+
+  private void logContextDetails(final EnrichedDiffAnalysisBundle enriched) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
+
+    final var contextResult = enriched.contextResult();
+    final var metadata = contextResult.metadata();
+
+    log.debug("=== CONTEXT ORCHESTRATOR OUTPUT ===");
+    log.debug("Strategy: {}", metadata.strategyName());
+    log.debug("Execution time: {}ms", metadata.executionTime().toMillis());
+    log.debug("Total candidates evaluated: {}", metadata.totalCandidates());
+    log.debug("High confidence matches: {}", metadata.highConfidenceCount());
+    log.debug("Total matches: {}", enriched.getContextMatchCount());
+
+    for (final var match : contextResult.matches()) {
+      log.debug(
+          "  Match: {} | confidence={} | reason={} | evidence={}",
+          match.filePath(),
+          String.format("%.2f", match.confidence()),
+          match.reason(),
+          match.evidence());
+    }
+
+    log.debug("Reason distribution: {}", metadata.reasonDistribution());
+    log.debug("===================================");
   }
 }

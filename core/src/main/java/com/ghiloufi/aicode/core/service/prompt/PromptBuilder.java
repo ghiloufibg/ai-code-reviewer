@@ -12,8 +12,10 @@ import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PromptBuilder {
@@ -122,8 +124,10 @@ public class PromptBuilder {
 
     if (enrichedDiff.hasContext() && enrichedDiff.getContextMatchCount() > 0) {
       prompt.append("\n[CONTEXT]\n");
-      prompt.append(formatContextMatches(enrichedDiff));
+      final String contextSection = formatContextMatches(enrichedDiff);
+      prompt.append(contextSection);
       prompt.append("[/CONTEXT]\n");
+      logContextSectionForLlm(enrichedDiff, contextSection);
     }
 
     appendExpandedFilesSection(prompt, expansionResult);
@@ -273,5 +277,18 @@ public class PromptBuilder {
       prompt.append("\n--- END ---\n\n");
     }
     prompt.append("[/POLICIES]\n");
+  }
+
+  private void logContextSectionForLlm(
+      final EnrichedDiffAnalysisBundle enrichedDiff, final String contextSection) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
+
+    log.debug("=== CONTEXT SECTION FOR LLM PROMPT ===");
+    log.debug("Match count: {}", enrichedDiff.getContextMatchCount());
+    log.debug("Strategy: {}", enrichedDiff.contextResult().metadata().strategyName());
+    log.debug("Context section content:\n{}", contextSection);
+    log.debug("=======================================");
   }
 }
