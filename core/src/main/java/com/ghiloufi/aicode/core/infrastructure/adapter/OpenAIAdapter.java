@@ -13,7 +13,6 @@ import reactor.core.publisher.Flux;
 @Slf4j
 public final class OpenAIAdapter implements AIInteractionPort {
 
-  private static final String SSE_DATA_PREFIX = "data: ";
   private static final String SSE_DONE_MARKER = "[DONE]";
 
   private final WebClient webClient;
@@ -54,8 +53,7 @@ public final class OpenAIAdapter implements AIInteractionPort {
         .accept(MediaType.TEXT_EVENT_STREAM)
         .retrieve()
         .bodyToFlux(String.class)
-        .filter(this::isValidSseLine)
-        .map(this::extractJsonFromSseLine)
+        .filter(this::isValidSseData)
         .map(this::parseStreamResponse)
         .filter(OpenAIStreamResponse::hasContent)
         .map(response -> response.extractFirstContent().orElse(""))
@@ -72,19 +70,13 @@ public final class OpenAIAdapter implements AIInteractionPort {
     }
   }
 
-  private boolean isValidSseLine(final String line) {
-    final String trimmed = line.trim();
-    return !trimmed.isEmpty() && !trimmed.equals(SSE_DATA_PREFIX + SSE_DONE_MARKER);
+  private boolean isValidSseData(final String data) {
+    final String trimmed = data.trim();
+    return !trimmed.isEmpty() && !trimmed.equals(SSE_DONE_MARKER);
   }
 
-  private String extractJsonFromSseLine(final String line) {
-    if (line.startsWith(SSE_DATA_PREFIX)) {
-      return line.substring(SSE_DATA_PREFIX.length());
-    }
-    return line;
-  }
-
-  private OpenAIStreamResponse parseStreamResponse(final String json) {
+  private OpenAIStreamResponse parseStreamResponse(final String data) {
+    final String json = data.trim();
     try {
       return objectMapper.readValue(json, OpenAIStreamResponse.class);
     } catch (final JsonProcessingException e) {
