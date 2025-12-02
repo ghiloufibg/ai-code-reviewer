@@ -185,16 +185,17 @@ public class ReviewManagementService implements ReviewManagementUseCase {
             + "_"
             + repository.getProvider().name().toLowerCase();
 
-    return scmPort
-        .publishReview(repository, changeRequest, result)
-        .transform(resilience.criticalMono("scm-publish-review"))
-        .doOnSuccess(
-            v ->
-                log.info(
-                    "Review published successfully for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName()))
-        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, result)))
+    return publishSummaryComment(repository, changeRequest, result)
+        .then(
+            scmPort
+                .publishReview(repository, changeRequest, result)
+                .transform(resilience.criticalMono("scm-publish-review"))
+                .doOnSuccess(
+                    v ->
+                        log.info(
+                            "Inline comments published successfully for {}/{}",
+                            repository.getDisplayName(),
+                            changeRequest.getDisplayName())))
         .then(
             Mono.defer(
                     () -> {
@@ -249,23 +250,24 @@ public class ReviewManagementService implements ReviewManagementUseCase {
     final ReviewResult enrichedResult =
         reviewResult.withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
 
-    return scmPort
-        .publishReview(repository, changeRequest, enrichedResult)
-        .transform(resilience.criticalMono("scm-publish-review"))
-        .doOnSuccess(
-            v ->
-                log.info(
-                    "Review published for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName()))
-        .doOnError(
-            error ->
-                log.error(
-                    "Failed to publish review for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName(),
-                    error))
-        .then(Mono.defer(() -> publishSummaryComment(repository, changeRequest, enrichedResult)))
+    return publishSummaryComment(repository, changeRequest, enrichedResult)
+        .then(
+            scmPort
+                .publishReview(repository, changeRequest, enrichedResult)
+                .transform(resilience.criticalMono("scm-publish-review"))
+                .doOnSuccess(
+                    v ->
+                        log.info(
+                            "Inline comments published for {}/{}",
+                            repository.getDisplayName(),
+                            changeRequest.getDisplayName()))
+                .doOnError(
+                    error ->
+                        log.error(
+                            "Failed to publish inline comments for {}/{}",
+                            repository.getDisplayName(),
+                            changeRequest.getDisplayName(),
+                            error)))
         .then(
             Mono.defer(
                     () -> {
