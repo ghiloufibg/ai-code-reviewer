@@ -44,7 +44,7 @@ final class ContextAwareReviewWorkflowTest {
             "test system", "test fix", "test confidence", "test schema", "test output");
     final OptimizedPromptProperties optimizedProperties =
         new OptimizedPromptProperties(
-            "test system", "test fix", "test confidence", "test schema", "test output");
+            "test system", "test fix", "test confidence", "test schema", "", "test output");
     final PromptVariantProperties variantProperties = new PromptVariantProperties(Variant.CURRENT);
     final PromptPropertiesFactory factory =
         new PromptPropertiesFactory(variantProperties, currentProperties, optimizedProperties);

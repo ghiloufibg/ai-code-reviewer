@@ -114,7 +114,7 @@ final class PromptTemplateServiceTest {
         new PromptProperties(system, fixGeneration, confidence, schema, outputRequirements);
     final OptimizedPromptProperties optimizedProperties =
         new OptimizedPromptProperties(
-            system, fixGeneration, confidence, schema, outputRequirements);
+            system, fixGeneration, confidence, schema, "", outputRequirements);
     final PromptVariantProperties variantProperties =
         new PromptVariantProperties(PromptVariantProperties.Variant.CURRENT);
     return new PromptPropertiesFactory(variantProperties, currentProperties, optimizedProperties);

@@ -82,29 +82,48 @@ prompts:
           },
           "issues": {
             "type": "array",
+            "description": "Blocking issues requiring fixes",
             "items": {
               "type": "object",
-              "required": ["file", "start_line", "severity", "title", "suggestion", "confidenceScore", "confidenceExplanation"],
+              "required": ["file", "start_line", "severity", "title", "suggestion"],
               "properties": {
-                "file": {"type": "string"},
-                "start_line": {"type": "integer"},
-                "end_line": {"type": "integer"},
-                "severity": {"enum": ["critical", "major", "minor", "info"]},
-                "category": {"enum": ["correctness", "security", "concurrency", "performance", "maintainability", "test_gaps"]},
-                "title": {"type": "string", "maxLength": 100},
-                "suggestion": {"type": "string", "maxLength": 500},
+                "file": {"type": "string", "description": "File path"},
+                "start_line": {"type": "integer", "minimum": 1, "description": "Line number where issue starts"},
+                "severity": {"type": "string", "enum": ["critical", "major", "minor", "info"]},
+                "title": {"type": "string", "maxLength": 100, "description": "Brief issue title"},
+                "suggestion": {"type": "string", "maxLength": 500, "description": "How to fix"},
                 "confidenceScore": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                 "confidenceExplanation": {"type": "string", "maxLength": 200},
-                "suggestedFix": {"type": "string", "description": "Base64-encoded markdown diff"}
+                "suggestedFix": {"type": "string", "description": "Base64-encoded markdown diff (optional, for high-confidence fixes)"}
               }
             }
           },
           "non_blocking_notes": {
             "type": "array",
-            "items": {"type": "string"}
+            "description": "Non-blocking observations with file location",
+            "items": {
+              "type": "object",
+              "required": ["file", "line", "note"],
+              "properties": {
+                "file": {"type": "string", "description": "File path"},
+                "line": {"type": "integer", "minimum": 1, "description": "Line number"},
+                "note": {"type": "string", "description": "The observation or suggestion"}
+              }
+            }
           }
         }
       }
+
+    schema-reminder: |
+      <critical_schema_rules>
+      DO NOT add fields not in schema:
+      ❌ NO "end_line" field - only use "start_line"
+      ❌ NO "category" field - severity is sufficient
+
+      non_blocking_notes MUST be objects with file, line, note:
+      ✅ CORRECT: {"file": "src/Main.java", "line": 10, "note": "Consider renaming"}
+      ❌ WRONG: "Consider renaming variable"
+      </critical_schema_rules>
 
     output-requirements: |
       <output_requirements>

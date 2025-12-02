@@ -36,6 +36,12 @@ public class PromptBuilder {
             ═══════════════════════════════════════════════════════════════════════
             """);
     systemPrompt.append(promptTemplateService.compileSchema()).append("\n\n");
+
+    final String schemaReminder = promptTemplateService.compileSchemaReminder();
+    if (schemaReminder != null && !schemaReminder.isBlank()) {
+      systemPrompt.append(schemaReminder).append("\n\n");
+    }
+
     systemPrompt.append(promptTemplateService.compileOutputRequirements());
 
     return systemPrompt.toString();

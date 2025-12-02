@@ -90,6 +90,7 @@ final class FullContextAwareReviewE2ETest {
             "test fix instructions",
             "test confidence",
             "test schema",
+            "",
             "test output");
     final PromptVariantProperties variantProperties = new PromptVariantProperties(Variant.CURRENT);
     final PromptPropertiesFactory factory =

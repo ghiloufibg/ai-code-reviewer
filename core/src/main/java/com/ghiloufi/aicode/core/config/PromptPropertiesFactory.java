@@ -37,6 +37,8 @@ public class PromptPropertiesFactory {
 
     String getSchema();
 
+    String getSchemaReminder();
+
     String getOutputRequirements();
   }
 
@@ -60,6 +62,11 @@ public class PromptPropertiesFactory {
     @Override
     public String getSchema() {
       return delegate.getSchema();
+    }
+
+    @Override
+    public String getSchemaReminder() {
+      return "";
     }
 
     @Override
@@ -88,6 +95,11 @@ public class PromptPropertiesFactory {
     @Override
     public String getSchema() {
       return delegate.getSchema();
+    }
+
+    @Override
+    public String getSchemaReminder() {
+      return delegate.getSchemaReminder();
     }
 
     @Override

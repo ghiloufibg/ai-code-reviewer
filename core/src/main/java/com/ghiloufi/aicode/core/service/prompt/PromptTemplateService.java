@@ -28,6 +28,10 @@ public class PromptTemplateService {
     return getActivePromptProperties().getSchema();
   }
 
+  public String compileSchemaReminder() {
+    return getActivePromptProperties().getSchemaReminder();
+  }
+
   public String compileOutputRequirements() {
     return getActivePromptProperties().getOutputRequirements();
   }
