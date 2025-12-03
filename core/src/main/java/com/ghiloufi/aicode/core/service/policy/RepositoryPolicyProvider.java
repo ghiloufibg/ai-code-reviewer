@@ -2,12 +2,10 @@ package com.ghiloufi.aicode.core.service.policy;
 
 import com.ghiloufi.aicode.core.config.ContextRetrievalConfig;
 import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
-import com.ghiloufi.aicode.core.domain.model.PolicyType;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,91 +27,42 @@ public final class RepositoryPolicyProvider {
     }
 
     final var policiesConfig = config.policies();
+    final List<String> files = policiesConfig.files();
 
-    return Mono.zip(
-            fetchContributing(repo, policiesConfig),
-            fetchCodeOfConduct(repo, policiesConfig),
-            fetchPrTemplate(repo, policiesConfig),
-            fetchSecurity(repo, policiesConfig))
-        .map(
-            tuple ->
-                new RepositoryPolicies(
-                    tuple.getT1().orElse(null),
-                    tuple.getT2().orElse(null),
-                    tuple.getT3().orElse(null),
-                    tuple.getT4().orElse(null)));
-  }
-
-  private Mono<Optional<PolicyDocument>> fetchContributing(
-      final RepositoryIdentifier repo,
-      final ContextRetrievalConfig.RepositoryPoliciesConfig policiesConfig) {
-    if (!policiesConfig.includeContributing()) {
-      return Mono.just(Optional.empty());
+    if (files.isEmpty()) {
+      log.debug("No policy files configured");
+      return Mono.just(RepositoryPolicies.empty());
     }
-    return fetchFirstAvailable(
-        repo, policiesConfig.getContributingPaths(), PolicyType.CONTRIBUTING);
+
+    return Flux.fromIterable(files)
+        .flatMap(path -> fetchFile(repo, path, policiesConfig.maxContentChars()))
+        .collectList()
+        .map(RepositoryPolicies::new)
+        .doOnNext(
+            policies ->
+                log.debug("Loaded {} policy documents for {}", policies.policyCount(), repo));
   }
 
-  private Mono<Optional<PolicyDocument>> fetchCodeOfConduct(
-      final RepositoryIdentifier repo,
-      final ContextRetrievalConfig.RepositoryPoliciesConfig policiesConfig) {
-    if (!policiesConfig.includeCodeOfConduct()) {
-      return Mono.just(Optional.empty());
-    }
-    return fetchFirstAvailable(
-        repo, policiesConfig.getCodeOfConductPaths(), PolicyType.CODE_OF_CONDUCT);
-  }
-
-  private Mono<Optional<PolicyDocument>> fetchPrTemplate(
-      final RepositoryIdentifier repo,
-      final ContextRetrievalConfig.RepositoryPoliciesConfig policiesConfig) {
-    if (!policiesConfig.includePrTemplate()) {
-      return Mono.just(Optional.empty());
-    }
-    return fetchFirstAvailable(repo, policiesConfig.getPrTemplatePaths(), PolicyType.PR_TEMPLATE);
-  }
-
-  private Mono<Optional<PolicyDocument>> fetchSecurity(
-      final RepositoryIdentifier repo,
-      final ContextRetrievalConfig.RepositoryPoliciesConfig policiesConfig) {
-    if (!policiesConfig.includeSecurity()) {
-      return Mono.just(Optional.empty());
-    }
-    return fetchFirstAvailable(repo, policiesConfig.getSecurityPaths(), PolicyType.SECURITY);
-  }
-
-  private Mono<Optional<PolicyDocument>> fetchFirstAvailable(
-      final RepositoryIdentifier repo, final List<String> paths, final PolicyType type) {
-    return Flux.fromIterable(paths)
-        .concatMap(path -> fetchPolicy(repo, path, type))
-        .filter(Optional::isPresent)
-        .next()
-        .defaultIfEmpty(Optional.empty());
-  }
-
-  private Mono<Optional<PolicyDocument>> fetchPolicy(
-      final RepositoryIdentifier repo, final String path, final PolicyType type) {
+  private Mono<PolicyDocument> fetchFile(
+      final RepositoryIdentifier repo, final String path, final int maxChars) {
     return scmPort
         .getFileContent(repo, path)
-        .map(content -> Optional.of(createPolicyDocument(path, content, type)))
+        .map(content -> createDocument(path, content, maxChars))
         .onErrorResume(
             error -> {
               log.trace("Policy file not found: {}", path);
-              return Mono.just(Optional.empty());
+              return Mono.empty();
             });
   }
 
-  private PolicyDocument createPolicyDocument(
-      final String path, final String content, final PolicyType type) {
-    final var policiesConfig = config.policies();
+  private PolicyDocument createDocument(
+      final String path, final String content, final int maxChars) {
     final String name = extractFileName(path);
-    final boolean truncated = content.length() > policiesConfig.maxContentChars();
+    final boolean truncated = content.length() > maxChars;
     final String finalContent =
-        truncated
-            ? content.substring(0, policiesConfig.maxContentChars()) + "\n... (truncated)"
-            : content;
+        truncated ? content.substring(0, maxChars) + "\n... (truncated)" : content;
 
-    return new PolicyDocument(name, path, finalContent, type, truncated);
+    return new PolicyDocument(name, path, finalContent, truncated);
   }
 
   private String extractFileName(final String path) {

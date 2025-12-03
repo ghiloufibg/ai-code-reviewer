@@ -105,41 +105,17 @@ public record ContextRetrievalConfig(
     }
   }
 
-  public record RepositoryPoliciesConfig(
-      boolean enabled,
-      int maxContentChars,
-      boolean includeContributing,
-      boolean includeCodeOfConduct,
-      boolean includePrTemplate,
-      boolean includeSecurity) {
+  public record RepositoryPoliciesConfig(boolean enabled, int maxContentChars, List<String> files) {
 
     public RepositoryPoliciesConfig {
       if (maxContentChars <= 0) {
         throw new IllegalArgumentException("Max content chars must be positive");
       }
+      files = files != null ? List.copyOf(files) : List.of();
     }
 
     public static RepositoryPoliciesConfig defaults() {
-      return new RepositoryPoliciesConfig(true, 5000, true, false, true, true);
-    }
-
-    public List<String> getContributingPaths() {
-      return List.of("CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONTRIBUTING.md");
-    }
-
-    public List<String> getCodeOfConductPaths() {
-      return List.of("CODE_OF_CONDUCT.md", ".github/CODE_OF_CONDUCT.md");
-    }
-
-    public List<String> getPrTemplatePaths() {
-      return List.of(
-          ".github/PULL_REQUEST_TEMPLATE.md",
-          ".github/pull_request_template.md",
-          "PULL_REQUEST_TEMPLATE.md");
-    }
-
-    public List<String> getSecurityPaths() {
-      return List.of("SECURITY.md", ".github/SECURITY.md");
+      return new RepositoryPoliciesConfig(true, 5000, List.of());
     }
   }
 

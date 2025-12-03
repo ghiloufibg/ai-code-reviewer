@@ -8,7 +8,6 @@ import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitHubRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
-import com.ghiloufi.aicode.core.domain.model.PolicyType;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
@@ -40,7 +39,7 @@ final class RepositoryPolicyProviderTest {
 
     @Test
     void should_return_empty_policies_when_feature_disabled() {
-      final var config = createConfig(false, 5000, true, true, true, true);
+      final var config = createConfig(false, 5000, List.of("CONTRIBUTING.md"));
       provider = new RepositoryPolicyProvider(scmPort, config);
 
       final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
@@ -53,117 +52,94 @@ final class RepositoryPolicyProviderTest {
   class WhenEnabled {
 
     @Test
-    void should_fetch_contributing_guide() {
-      final var config = createConfig(true, 5000, true, false, false, false);
+    void should_fetch_configured_file() {
+      final var config = createConfig(true, 5000, List.of("CONTRIBUTING.md"));
       provider = new RepositoryPolicyProvider(scmPort, config);
       scmPort.setFileContent("CONTRIBUTING.md", "# Contributing\nFollow these rules.");
 
       final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
 
       assertThat(result.hasPolicies()).isTrue();
-      assertThat(result.contributingGuide()).isNotNull();
-      assertThat(result.contributingGuide().name()).isEqualTo("CONTRIBUTING.md");
-      assertThat(result.contributingGuide().type()).isEqualTo(PolicyType.CONTRIBUTING);
-      assertThat(result.contributingGuide().content()).contains("Contributing");
+      assertThat(result.allPolicies()).hasSize(1);
+      assertThat(result.allPolicies().get(0).name()).isEqualTo("CONTRIBUTING.md");
+      assertThat(result.allPolicies().get(0).content()).contains("Contributing");
     }
 
     @Test
-    void should_fetch_security_policy() {
-      final var config = createConfig(true, 5000, false, false, false, true);
+    void should_fetch_multiple_files() {
+      final var config =
+          createConfig(true, 5000, List.of("CONTRIBUTING.md", "SECURITY.md", "README.md"));
       provider = new RepositoryPolicyProvider(scmPort, config);
-      scmPort.setFileContent("SECURITY.md", "# Security Policy\nReport issues.");
+      scmPort.setFileContent("CONTRIBUTING.md", "# Contributing");
+      scmPort.setFileContent("SECURITY.md", "# Security");
+      scmPort.setFileContent("README.md", "# Readme");
 
       final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
 
-      assertThat(result.securityPolicy()).isNotNull();
-      assertThat(result.securityPolicy().type()).isEqualTo(PolicyType.SECURITY);
-    }
-
-    @Test
-    void should_fetch_pr_template() {
-      final var config = createConfig(true, 5000, false, false, true, false);
-      provider = new RepositoryPolicyProvider(scmPort, config);
-      scmPort.setFileContent(".github/PULL_REQUEST_TEMPLATE.md", "## Description\n- What");
-
-      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
-
-      assertThat(result.prTemplate()).isNotNull();
-      assertThat(result.prTemplate().type()).isEqualTo(PolicyType.PR_TEMPLATE);
-    }
-
-    @Test
-    void should_try_alternative_paths() {
-      final var config = createConfig(true, 5000, true, false, false, false);
-      provider = new RepositoryPolicyProvider(scmPort, config);
-      scmPort.setFileContent(".github/CONTRIBUTING.md", "# Alt Contributing");
-
-      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
-
-      assertThat(result.contributingGuide()).isNotNull();
-      assertThat(result.contributingGuide().path()).isEqualTo(".github/CONTRIBUTING.md");
+      assertThat(result.allPolicies()).hasSize(3);
     }
 
     @Test
     void should_truncate_large_content() {
-      final var config = createConfig(true, 50, true, false, false, false);
+      final var config = createConfig(true, 50, List.of("CONTRIBUTING.md"));
       provider = new RepositoryPolicyProvider(scmPort, config);
       scmPort.setFileContent("CONTRIBUTING.md", "A".repeat(100));
 
       final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
 
-      assertThat(result.contributingGuide().truncated()).isTrue();
-      assertThat(result.contributingGuide().content()).contains("(truncated)");
-      assertThat(result.contributingGuide().content().length()).isLessThan(100);
+      assertThat(result.allPolicies().get(0).truncated()).isTrue();
+      assertThat(result.allPolicies().get(0).content()).contains("(truncated)");
+      assertThat(result.allPolicies().get(0).content().length()).isLessThan(100);
     }
 
     @Test
-    void should_return_null_for_missing_policy() {
-      final var config = createConfig(true, 5000, true, false, false, false);
-      provider = new RepositoryPolicyProvider(scmPort, config);
-
-      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
-
-      assertThat(result.contributingGuide()).isNull();
-      assertThat(result.hasPolicies()).isFalse();
-    }
-
-    @Test
-    void should_fetch_multiple_policies() {
-      final var config = createConfig(true, 5000, true, false, true, true);
-      provider = new RepositoryPolicyProvider(scmPort, config);
-      scmPort.setFileContent("CONTRIBUTING.md", "# Contributing");
-      scmPort.setFileContent(".github/PULL_REQUEST_TEMPLATE.md", "# PR Template");
-      scmPort.setFileContent("SECURITY.md", "# Security");
-
-      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
-
-      assertThat(result.contributingGuide()).isNotNull();
-      assertThat(result.prTemplate()).isNotNull();
-      assertThat(result.securityPolicy()).isNotNull();
-      assertThat(result.codeOfConduct()).isNull();
-      assertThat(result.allPolicies()).hasSize(3);
-    }
-
-    @Test
-    void should_not_fetch_disabled_policies() {
-      final var config = createConfig(true, 5000, false, false, false, false);
+    void should_skip_missing_files() {
+      final var config =
+          createConfig(true, 5000, List.of("CONTRIBUTING.md", "NONEXISTENT.md", "SECURITY.md"));
       provider = new RepositoryPolicyProvider(scmPort, config);
       scmPort.setFileContent("CONTRIBUTING.md", "# Contributing");
       scmPort.setFileContent("SECURITY.md", "# Security");
 
       final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
 
+      assertThat(result.allPolicies()).hasSize(2);
+    }
+
+    @Test
+    void should_return_empty_when_no_files_configured() {
+      final var config = createConfig(true, 5000, List.of());
+      provider = new RepositoryPolicyProvider(scmPort, config);
+
+      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
+
       assertThat(result.hasPolicies()).isFalse();
+    }
+
+    @Test
+    void should_return_empty_when_all_files_missing() {
+      final var config = createConfig(true, 5000, List.of("MISSING1.md", "MISSING2.md"));
+      provider = new RepositoryPolicyProvider(scmPort, config);
+
+      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
+
+      assertThat(result.hasPolicies()).isFalse();
+    }
+
+    @Test
+    void should_extract_file_name_from_path() {
+      final var config = createConfig(true, 5000, List.of(".github/CONTRIBUTING.md"));
+      provider = new RepositoryPolicyProvider(scmPort, config);
+      scmPort.setFileContent(".github/CONTRIBUTING.md", "# Content");
+
+      final var result = provider.getPolicies(new GitHubRepositoryId("owner", "repo")).block();
+
+      assertThat(result.allPolicies().get(0).name()).isEqualTo("CONTRIBUTING.md");
+      assertThat(result.allPolicies().get(0).path()).isEqualTo(".github/CONTRIBUTING.md");
     }
   }
 
   private ContextRetrievalConfig createConfig(
-      final boolean enabled,
-      final int maxContentChars,
-      final boolean includeContributing,
-      final boolean includeCodeOfConduct,
-      final boolean includePrTemplate,
-      final boolean includeSecurity) {
+      final boolean enabled, final int maxContentChars, final List<String> files) {
     return new ContextRetrievalConfig(
         true,
         5,
@@ -171,13 +147,7 @@ final class RepositoryPolicyProviderTest {
         new ContextRetrievalConfig.RolloutConfig(100, true, 5000),
         ContextRetrievalConfig.DiffExpansionConfig.defaults(),
         ContextRetrievalConfig.PrMetadataConfig.defaults(),
-        new ContextRetrievalConfig.RepositoryPoliciesConfig(
-            enabled,
-            maxContentChars,
-            includeContributing,
-            includeCodeOfConduct,
-            includePrTemplate,
-            includeSecurity));
+        new ContextRetrievalConfig.RepositoryPoliciesConfig(enabled, maxContentChars, files));
   }
 
   private static class TestSCMPort implements SCMPort {

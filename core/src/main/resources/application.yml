@@ -54,10 +54,11 @@ context-retrieval:
   policies:
     enabled: true
     max-content-chars: 5000
-    include-contributing: true
-    include-code-of-conduct: false
-    include-pr-template: true
-    include-security: true
+    files:
+      - CONTRIBUTING.md
+      - .github/CONTRIBUTING.md
+      - SECURITY.md
+      - .github/PULL_REQUEST_TEMPLATE.md
 
 # Ticket System Configuration
 ticket-system:

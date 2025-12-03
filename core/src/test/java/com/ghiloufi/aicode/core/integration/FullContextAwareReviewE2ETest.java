@@ -23,7 +23,6 @@ import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.MatchReason;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
-import com.ghiloufi.aicode.core.domain.model.PolicyType;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.PullRequestId;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -320,9 +319,9 @@ final class FullContextAwareReviewE2ETest {
           .assertNext(
               policies -> {
                 assertThat(policies.hasPolicies()).isTrue();
-                assertThat(policies.contributingGuide()).isNotNull();
-                assertThat(policies.contributingGuide().name()).isEqualTo("CONTRIBUTING.md");
-                assertThat(policies.contributingGuide().hasContent()).isTrue();
+                assertThat(policies.allPolicies()).isNotEmpty();
+                assertThat(policies.allPolicies().get(0).name()).isEqualTo("CONTRIBUTING.md");
+                assertThat(policies.allPolicies().get(0).hasContent()).isTrue();
 
                 final ReviewPromptResult result =
                     promptBuilder.buildStructuredReviewPrompt(
@@ -343,28 +342,21 @@ final class FullContextAwareReviewE2ETest {
     }
 
     @Test
-    @DisplayName("should_include_multiple_policy_types")
-    final void should_include_multiple_policy_types() {
+    @DisplayName("should_include_multiple_policy_files")
+    final void should_include_multiple_policy_files() {
       final PolicyDocument contributing =
-          new PolicyDocument(
-              "CONTRIBUTING.md",
-              "CONTRIBUTING.md",
-              "# How to contribute",
-              PolicyType.CONTRIBUTING,
-              false);
+          new PolicyDocument("CONTRIBUTING.md", "CONTRIBUTING.md", "# How to contribute", false);
       final PolicyDocument security =
-          new PolicyDocument(
-              "SECURITY.md", "SECURITY.md", "# Security Policy", PolicyType.SECURITY, false);
+          new PolicyDocument("SECURITY.md", "SECURITY.md", "# Security Policy", false);
       final PolicyDocument prTemplate =
           new PolicyDocument(
               "PULL_REQUEST_TEMPLATE.md",
               ".github/PULL_REQUEST_TEMPLATE.md",
               "## Description",
-              PolicyType.PR_TEMPLATE,
               false);
 
       final RepositoryPolicies policies =
-          new RepositoryPolicies(contributing, null, prTemplate, security);
+          new RepositoryPolicies(List.of(contributing, security, prTemplate));
 
       final ReviewPromptResult result =
           promptBuilder.buildStructuredReviewPrompt(
@@ -396,8 +388,7 @@ final class FullContextAwareReviewE2ETest {
               new ContextRetrievalConfig.RolloutConfig(100, false, 1000),
               null,
               null,
-              new ContextRetrievalConfig.RepositoryPoliciesConfig(
-                  false, 5000, true, true, true, true));
+              new ContextRetrievalConfig.RepositoryPoliciesConfig(false, 5000, List.of()));
 
       final RepositoryPolicyProvider disabledProvider =
           new RepositoryPolicyProvider(testSCMPort, disabledConfig);
@@ -595,7 +586,8 @@ final class FullContextAwareReviewE2ETest {
         new ContextRetrievalConfig.RolloutConfig(100, false, 1000),
         new ContextRetrievalConfig.DiffExpansionConfig(true, 100, 500, 10, Set.of(".lock", ".svg")),
         new ContextRetrievalConfig.PrMetadataConfig(true, true, true, true, 5),
-        new ContextRetrievalConfig.RepositoryPoliciesConfig(true, 5000, true, false, true, true));
+        new ContextRetrievalConfig.RepositoryPoliciesConfig(
+            true, 5000, List.of("CONTRIBUTING.md", "SECURITY.md")));
   }
 
   private PrMetadata createTestPrMetadata() {

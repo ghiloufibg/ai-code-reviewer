@@ -350,14 +350,12 @@ final class ContextRetrievalConfigTest {
 
     @Test
     void should_create_valid_policies_config() {
-      final var config = new RepositoryPoliciesConfig(true, 10000, true, true, false, true);
+      final var files = List.of("CONTRIBUTING.md", "SECURITY.md");
+      final var config = new RepositoryPoliciesConfig(true, 10000, files);
 
       assertThat(config.enabled()).isTrue();
       assertThat(config.maxContentChars()).isEqualTo(10000);
-      assertThat(config.includeContributing()).isTrue();
-      assertThat(config.includeCodeOfConduct()).isTrue();
-      assertThat(config.includePrTemplate()).isFalse();
-      assertThat(config.includeSecurity()).isTrue();
+      assertThat(config.files()).containsExactly("CONTRIBUTING.md", "SECURITY.md");
     }
 
     @Test
@@ -366,58 +364,36 @@ final class ContextRetrievalConfigTest {
 
       assertThat(config.enabled()).isTrue();
       assertThat(config.maxContentChars()).isEqualTo(5000);
-      assertThat(config.includeContributing()).isTrue();
-      assertThat(config.includeCodeOfConduct()).isFalse();
-      assertThat(config.includePrTemplate()).isTrue();
-      assertThat(config.includeSecurity()).isTrue();
+      assertThat(config.files()).isEmpty();
     }
 
     @Test
     void should_throw_when_max_content_chars_is_zero() {
-      assertThatThrownBy(() -> new RepositoryPoliciesConfig(true, 0, true, true, true, true))
+      assertThatThrownBy(() -> new RepositoryPoliciesConfig(true, 0, List.of()))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Max content chars must be positive");
     }
 
     @Test
     void should_throw_when_max_content_chars_is_negative() {
-      assertThatThrownBy(() -> new RepositoryPoliciesConfig(true, -1, true, true, true, true))
+      assertThatThrownBy(() -> new RepositoryPoliciesConfig(true, -1, List.of()))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Max content chars must be positive");
     }
 
     @Test
-    void should_return_contributing_paths() {
-      final var config = RepositoryPoliciesConfig.defaults();
+    void should_handle_null_files_list() {
+      final var config = new RepositoryPoliciesConfig(true, 5000, null);
 
-      assertThat(config.getContributingPaths())
-          .containsExactly("CONTRIBUTING.md", ".github/CONTRIBUTING.md", "docs/CONTRIBUTING.md");
+      assertThat(config.files()).isEmpty();
     }
 
     @Test
-    void should_return_code_of_conduct_paths() {
-      final var config = RepositoryPoliciesConfig.defaults();
+    void should_create_immutable_files_list() {
+      final var files = List.of("CONTRIBUTING.md");
+      final var config = new RepositoryPoliciesConfig(true, 5000, files);
 
-      assertThat(config.getCodeOfConductPaths())
-          .containsExactly("CODE_OF_CONDUCT.md", ".github/CODE_OF_CONDUCT.md");
-    }
-
-    @Test
-    void should_return_pr_template_paths() {
-      final var config = RepositoryPoliciesConfig.defaults();
-
-      assertThat(config.getPrTemplatePaths())
-          .containsExactly(
-              ".github/PULL_REQUEST_TEMPLATE.md",
-              ".github/pull_request_template.md",
-              "PULL_REQUEST_TEMPLATE.md");
-    }
-
-    @Test
-    void should_return_security_paths() {
-      final var config = RepositoryPoliciesConfig.defaults();
-
-      assertThat(config.getSecurityPaths()).containsExactly("SECURITY.md", ".github/SECURITY.md");
+      assertThat(config.files()).isUnmodifiable();
     }
   }
 
