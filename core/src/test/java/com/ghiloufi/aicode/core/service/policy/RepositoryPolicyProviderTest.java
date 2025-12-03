@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.config.ContextRetrievalConfig;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
-import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitHubRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
@@ -242,21 +241,6 @@ final class RepositoryPolicyProviderTest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITHUB;
-    }
-
-    @Override
-    public Mono<CommitResult> applyFix(
-        final RepositoryIdentifier r,
-        final String b,
-        final String f,
-        final String d,
-        final String m) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier r) {
-      return Mono.just(false);
     }
 
     @Override

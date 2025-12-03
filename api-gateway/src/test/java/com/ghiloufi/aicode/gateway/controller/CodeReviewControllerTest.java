@@ -3,10 +3,8 @@ package com.ghiloufi.aicode.gateway.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
-import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitLabRepositoryId;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestId;
@@ -24,7 +22,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,20 +40,13 @@ final class CodeReviewControllerTest {
     reviewManagementUseCase = new TestReviewManagementUseCase();
     final ObjectMapper objectMapper = new ObjectMapper();
     final SSEFormatter sseFormatter = new SSEFormatter(objectMapper);
-    final TestSCMPort testSCMPort = new TestSCMPort();
     final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
         mockRepository =
             org.mockito.Mockito.mock(
                 com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
                     .class);
-    final FixApplicationService fixApplicationService =
-        new FixApplicationService(testSCMPort, mockRepository);
     final CodeReviewController controller =
-        new CodeReviewController(
-            reviewManagementUseCase,
-            Optional.of(fixApplicationService),
-            sseFormatter,
-            mockRepository);
+        new CodeReviewController(reviewManagementUseCase, sseFormatter, mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)
@@ -408,21 +398,6 @@ final class CodeReviewControllerTest {
   }
 
   private static final class TestSCMPort implements SCMPort {
-
-    @Override
-    public Mono<CommitResult> applyFix(
-        final RepositoryIdentifier repo,
-        final String branchName,
-        final String filePath,
-        final String fixDiff,
-        final String commitMessage) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
-      return Mono.just(true);
-    }
 
     @Override
     public Mono<DiffAnalysisBundle> getDiff(

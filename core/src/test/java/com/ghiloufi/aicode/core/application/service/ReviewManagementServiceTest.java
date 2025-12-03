@@ -6,7 +6,6 @@ import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
-import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
@@ -530,21 +529,6 @@ final class ReviewManagementServiceTest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITLAB;
-    }
-
-    @Override
-    public Mono<CommitResult> applyFix(
-        final RepositoryIdentifier repo,
-        final String branchName,
-        final String filePath,
-        final String fixDiff,
-        final String commitMessage) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
-      return Mono.just(true);
     }
 
     @Override

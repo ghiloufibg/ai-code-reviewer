@@ -116,15 +116,6 @@ ticket-system:
 
 # Feature Flags
 features:
-  fix-application:
-    enabled: false  # ⚠️ EXPERIMENTAL FEATURE - Disabled by default
-    # When enabled, allows automatic application of AI-generated fixes to GitLab
-    # Requires security hardening before production use
-    # See: trackings/expert-panel-review-2025-01-16.md for critical blockers
-    minimum-confidence-threshold: 0.7
-    max-concurrent-applications: 5
-    application-timeout-seconds: 30
-
   summary-comment:
     enabled: false  # Disabled by default for GitLab-only MVP
     # When enabled, posts a summary-only comment to GitLab MR

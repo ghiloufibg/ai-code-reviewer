@@ -293,21 +293,6 @@ final class ReviewManagementServiceSummaryCommentTest {
     }
 
     @Override
-    public Mono<CommitResult> applyFix(
-        final RepositoryIdentifier repo,
-        final String branchName,
-        final String filePath,
-        final String fixDiff,
-        final String commitMessage) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
-      return Mono.just(true);
-    }
-
-    @Override
     public Mono<List<String>> listRepositoryFiles() {
       return Mono.just(List.of());
     }

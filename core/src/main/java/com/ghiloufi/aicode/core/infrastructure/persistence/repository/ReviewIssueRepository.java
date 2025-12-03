@@ -16,13 +16,4 @@ public interface ReviewIssueRepository extends JpaRepository<ReviewIssueEntity, 
           + "LEFT JOIN FETCH i.review r "
           + "WHERE i.id = :issueId")
   Optional<ReviewIssueEntity> findByIdWithReview(@Param("issueId") UUID issueId);
-
-  @Query(
-      "SELECT i FROM ReviewIssueEntity i "
-          + "WHERE i.id = :issueId "
-          + "AND i.fixApplied = false "
-          + "AND i.suggestedFix IS NOT NULL "
-          + "AND i.fixDiff IS NOT NULL "
-          + "AND i.confidenceScore >= 0.70")
-  Optional<ReviewIssueEntity> findApplicableFixById(@Param("issueId") UUID issueId);
 }

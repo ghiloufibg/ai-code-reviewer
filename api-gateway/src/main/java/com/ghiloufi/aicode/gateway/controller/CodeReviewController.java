@@ -1,6 +1,5 @@
 package com.ghiloufi.aicode.gateway.controller;
 
-import com.ghiloufi.aicode.core.application.service.FixApplicationService;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -38,7 +37,6 @@ import reactor.core.publisher.Mono;
 public class CodeReviewController {
 
   private final ReviewManagementUseCase reviewManagementUseCase;
-  private final Optional<FixApplicationService> fixApplicationService;
   private final SSEFormatter sseFormatter;
   private final ReviewIssueRepository reviewIssueRepository;
 
@@ -361,19 +359,7 @@ public class CodeReviewController {
                                             : ""),
                                     Map.entry(
                                         "fixDiff",
-                                        issue.getFixDiff() != null ? issue.getFixDiff() : ""),
-                                    Map.entry("canApplyFix", issue.canApplyFix()),
-                                    Map.entry("fixApplied", issue.isFixApplied()),
-                                    Map.entry(
-                                        "appliedAt",
-                                        issue.getAppliedAt() != null
-                                            ? issue.getAppliedAt().toEpochMilli()
-                                            : null),
-                                    Map.entry(
-                                        "appliedCommitSha",
-                                        issue.getAppliedCommitSha() != null
-                                            ? issue.getAppliedCommitSha()
-                                            : ""))))
+                                        issue.getFixDiff() != null ? issue.getFixDiff() : ""))))
                     .orElseGet(
                         () ->
                             Mono.just(
@@ -388,200 +374,4 @@ public class CodeReviewController {
         .doOnError(error -> log.error("Failed to retrieve issue: {}", issueId, error))
         .timeout(Duration.ofSeconds(10));
   }
-
-  @PostMapping(
-      value =
-          "/{provider}/{repositoryId}/change-requests/{changeRequestId}/issues/{issueId}/apply-fix",
-      produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<Map<String, Object>> applyFixByIssueId(
-      @PathVariable final String provider,
-      @PathVariable final String repositoryId,
-      @PathVariable @Positive final int changeRequestId,
-      @PathVariable final UUID issueId) {
-
-    final SourceProvider sourceProvider = SourceProvider.fromString(provider);
-    final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);
-
-    log.info(
-        "Applying AI-generated fix: provider={}, repository={}, changeRequest={}, issueId={}",
-        sourceProvider,
-        decodedRepositoryId,
-        changeRequestId,
-        issueId);
-
-    final RepositoryIdentifier repository =
-        RepositoryIdentifier.create(sourceProvider, decodedRepositoryId);
-    final ChangeRequestIdentifier changeRequest =
-        ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
-
-    log.debug(
-        "Created domain identifiers for fix application: repository={}, changeRequest={}",
-        repository.getClass().getSimpleName(),
-        changeRequest.getClass().getSimpleName());
-
-    return fixApplicationService
-        .map(service -> service.applyFixByIssueId(repository, changeRequest, issueId))
-        .orElseGet(
-            () ->
-                Mono.error(
-                    new UnsupportedOperationException(
-                        "Fix application feature is disabled. Enable it in configuration: features.fix-application.enabled=true")))
-        .map(
-            commitResult ->
-                Map.<String, Object>of(
-                    "status",
-                    "success",
-                    "message",
-                    "Fix applied successfully",
-                    "commitSha",
-                    commitResult.commitSha(),
-                    "commitUrl",
-                    commitResult.commitUrl(),
-                    "branchName",
-                    commitResult.branchName(),
-                    "filesModified",
-                    commitResult.filesModified(),
-                    "timestamp",
-                    commitResult.createdAt().toEpochMilli()))
-        .doOnSubscribe(
-            s ->
-                log.info(
-                    "Client initiated fix application: provider={}, repo={}, cr={}, issueId={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    issueId))
-        .doOnSuccess(
-            response ->
-                log.info(
-                    "Fix applied successfully: provider={}, repo={}, cr={}, issueId={}, commit={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    issueId,
-                    response.get("commitSha")))
-        .doOnError(
-            error ->
-                log.error(
-                    "Fix application error: provider={}, repo={}, cr={}, issueId={}, error={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    issueId,
-                    error.getMessage()))
-        .onErrorResume(
-            error ->
-                Mono.just(
-                    Map.<String, Object>of(
-                        "status",
-                        "error",
-                        "message",
-                        error.getMessage() != null ? error.getMessage() : "Failed to apply fix",
-                        "provider",
-                        sourceProvider.name(),
-                        "repository",
-                        decodedRepositoryId,
-                        "changeRequestId",
-                        changeRequestId,
-                        "issueId",
-                        issueId.toString(),
-                        "timestamp",
-                        System.currentTimeMillis())))
-        .timeout(Duration.ofSeconds(30));
-  }
-
-  @Deprecated(forRemoval = true)
-  @PostMapping(
-      value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/apply-fix",
-      consumes = MediaType.APPLICATION_JSON_VALUE,
-      produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<Map<String, Object>> applyFixDeprecated(
-      @PathVariable final String provider,
-      @PathVariable final String repositoryId,
-      @PathVariable @Positive final int changeRequestId,
-      @RequestBody @jakarta.validation.Valid final FixApplicationRequest request) {
-
-    final SourceProvider sourceProvider = SourceProvider.fromString(provider);
-    final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);
-
-    log.warn(
-        "DEPRECATED: Using deprecated apply-fix endpoint. Please migrate to /issues/{{issueId}}/apply-fix");
-    log.info(
-        "Applying fix: provider={}, repository={}, changeRequest={}, file={}",
-        sourceProvider,
-        decodedRepositoryId,
-        changeRequestId,
-        request.filePath());
-
-    final RepositoryIdentifier repository =
-        RepositoryIdentifier.create(sourceProvider, decodedRepositoryId);
-    final ChangeRequestIdentifier changeRequest =
-        ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
-
-    return fixApplicationService
-        .map(
-            service ->
-                service.applyFix(
-                    repository,
-                    changeRequest,
-                    request.filePath(),
-                    request.fixDiff(),
-                    request.issueTitle()))
-        .orElseGet(
-            () ->
-                Mono.error(
-                    new UnsupportedOperationException(
-                        "Fix application feature is disabled. Enable it in configuration: features.fix-application.enabled=true")))
-        .map(
-            commitResult ->
-                Map.<String, Object>of(
-                    "status",
-                    "success",
-                    "message",
-                    "Fix applied successfully",
-                    "commitSha",
-                    commitResult.commitSha(),
-                    "commitUrl",
-                    commitResult.commitUrl(),
-                    "branchName",
-                    commitResult.branchName(),
-                    "filesModified",
-                    commitResult.filesModified(),
-                    "timestamp",
-                    commitResult.createdAt().toEpochMilli()))
-        .doOnSuccess(
-            response ->
-                log.info(
-                    "Fix applied successfully: provider={}, repo={}, cr={}, file={}, commit={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    request.filePath(),
-                    response.get("commitSha")))
-        .onErrorResume(
-            error ->
-                Mono.just(
-                    Map.<String, Object>of(
-                        "status",
-                        "error",
-                        "message",
-                        error.getMessage() != null ? error.getMessage() : "Failed to apply fix",
-                        "provider",
-                        sourceProvider.name(),
-                        "repository",
-                        decodedRepositoryId,
-                        "changeRequestId",
-                        changeRequestId,
-                        "filePath",
-                        request.filePath(),
-                        "timestamp",
-                        System.currentTimeMillis())))
-        .timeout(Duration.ofSeconds(30));
-  }
-
-  public record FixApplicationRequest(
-      @jakarta.validation.constraints.NotBlank(message = "File path is required") String filePath,
-      @jakarta.validation.constraints.NotBlank(message = "Fix diff is required") String fixDiff,
-      @jakarta.validation.constraints.NotBlank(message = "Issue title is required")
-          String issueTitle) {}
 }

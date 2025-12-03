@@ -240,29 +240,6 @@ class DatabaseMigrationV3IntegrationTest {
   }
 
   @Test
-  @DisplayName("should_support_canApplyFix_helper_method")
-  void should_support_canApplyFix_helper_method() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    issue.setConfidenceScore(new BigDecimal("0.85"));
-    issue.setSuggestedFix("corrected code");
-    issue.setFixApplied(false);
-    assertThat(issue.canApplyFix()).isTrue();
-
-    issue.setFixApplied(true);
-    assertThat(issue.canApplyFix()).isFalse();
-
-    issue.setFixApplied(false);
-    issue.setConfidenceScore(new BigDecimal("0.65"));
-    assertThat(issue.canApplyFix()).isFalse();
-
-    issue.setConfidenceScore(new BigDecimal("0.75"));
-    issue.setSuggestedFix(null);
-    assertThat(issue.canApplyFix()).isFalse();
-  }
-
-  @Test
   @DisplayName("should_handle_multiple_issues_with_different_confidence_levels")
   void should_handle_multiple_issues_with_different_confidence_levels() {
     final ReviewEntity review = createReviewWithMultipleIssues();

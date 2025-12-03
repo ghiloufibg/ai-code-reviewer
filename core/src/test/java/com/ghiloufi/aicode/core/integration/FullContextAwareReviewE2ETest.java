@@ -12,7 +12,6 @@ import com.ghiloufi.aicode.core.config.PromptVariantProperties;
 import com.ghiloufi.aicode.core.config.PromptVariantProperties.Variant;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
-import com.ghiloufi.aicode.core.domain.model.CommitResult;
 import com.ghiloufi.aicode.core.domain.model.ContextMatch;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
@@ -778,21 +777,6 @@ final class FullContextAwareReviewE2ETest {
     @Override
     public SourceProvider getProviderType() {
       return SourceProvider.GITHUB;
-    }
-
-    @Override
-    public Mono<CommitResult> applyFix(
-        final RepositoryIdentifier repo,
-        final String branchName,
-        final String filePath,
-        final String fixDiff,
-        final String commitMessage) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Boolean> hasWriteAccess(final RepositoryIdentifier repo) {
-      return Mono.just(true);
     }
 
     @Override

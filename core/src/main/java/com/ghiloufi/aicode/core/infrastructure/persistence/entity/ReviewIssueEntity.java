@@ -101,8 +101,4 @@ public class ReviewIssueEntity {
   public boolean hasFixSuggestion() {
     return suggestedFix != null && !suggestedFix.isBlank();
   }
-
-  public boolean canApplyFix() {
-    return hasFixSuggestion() && !fixApplied && isHighConfidence();
-  }
 }
