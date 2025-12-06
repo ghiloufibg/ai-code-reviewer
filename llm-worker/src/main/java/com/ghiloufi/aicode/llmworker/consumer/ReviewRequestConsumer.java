@@ -116,7 +116,7 @@ public class ReviewRequestConsumer {
           requestId,
           Thread.currentThread());
 
-      processor.process(requestId, payload);
+      processor.process(requestId, payload, payload);
 
       redisTemplate
           .opsForStream()

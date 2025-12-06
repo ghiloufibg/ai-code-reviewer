@@ -395,6 +395,15 @@ final class CodeReviewControllerTest {
     public Flux<RepositoryInfo> getAllRepositories(final SourceProvider provider) {
       return Flux.fromIterable(repositories);
     }
+
+    @Override
+    public Mono<Void> publishReviewFromAsync(
+        final SourceProvider provider,
+        final String repositoryId,
+        final int changeRequestId,
+        final ReviewResult reviewResult) {
+      return Mono.empty();
+    }
   }
 
   private static final class TestSCMPort implements SCMPort {

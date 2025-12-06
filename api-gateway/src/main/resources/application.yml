@@ -50,6 +50,14 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 10s
+
 # Prompt Configuration
 prompts:
   variant: OPTIMIZED
@@ -122,6 +130,12 @@ features:
     # providing high-level overview of the AI code review
     include-statistics: true  # Include issue/note counts
     include-severity-breakdown: true  # Show severity distribution
+
+# Async Review Processing
+async:
+  review:
+    consumer:
+      enabled: ${ASYNC_CONSUMER_ENABLED:false}
 
 # Management endpoints.
 management:

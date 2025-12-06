@@ -20,7 +20,7 @@ public class ReviewProcessor {
   private final ReviewResultPublisher resultPublisher;
   private final ProviderProperties providerProperties;
 
-  public void process(String requestId, String userPrompt) {
+  public void process(String requestId, String requestPayload, String userPrompt) {
     log.info("Processing review request: {}", requestId);
 
     final long startTime = System.currentTimeMillis();
@@ -32,7 +32,8 @@ public class ReviewProcessor {
 
       final long processingTime = System.currentTimeMillis() - startTime;
 
-      resultPublisher.publish(requestId, result, getLlmProvider(), getLlmModel(), processingTime);
+      resultPublisher.publish(
+          requestId, requestPayload, result, getLlmProvider(), getLlmModel(), processingTime);
 
       log.info("Review completed: {} in {}ms", requestId, processingTime);
 

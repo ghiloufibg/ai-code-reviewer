@@ -24,6 +24,7 @@ public class ReviewResultPublisher {
 
   public void publish(
       String requestId,
+      String requestPayload,
       ReviewResult result,
       String llmProvider,
       String llmModel,
@@ -32,6 +33,7 @@ public class ReviewResultPublisher {
       final Map<String, String> resultData = new HashMap<>();
       resultData.put("requestId", requestId);
       resultData.put("status", "COMPLETED");
+      resultData.put("request", requestPayload);
       resultData.put("result", objectMapper.writeValueAsString(result));
       resultData.put("llmProvider", llmProvider);
       resultData.put("llmModel", llmModel);
