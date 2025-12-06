@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: llm-worker
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+llm:
+  provider: ${LLM_PROVIDER:openai}
+  timeout: ${LLM_TIMEOUT:120s}
+
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o}
+    base-url: ${OPENAI_BASE_URL:}
+
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-sonnet-4-20250514}
+
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-1.5-pro}
+
+  ollama:
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL:llama3}
+
+worker:
+  consumer-group: ${WORKER_CONSUMER_GROUP:llm-workers}
+  consumer-id: ${WORKER_CONSUMER_ID:}
+  stream-key: ${WORKER_STREAM_KEY:review:requests}
+  batch-size: ${WORKER_BATCH_SIZE:10}
+  timeout-seconds: ${WORKER_TIMEOUT_SECONDS:120}
+
+logging:
+  level:
+    com.ghiloufi.aicode.llmworker: ${LOG_LEVEL:INFO}
+    dev.langchain4j: ${LANGCHAIN4J_LOG_LEVEL:INFO}

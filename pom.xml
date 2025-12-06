@@ -12,6 +12,7 @@
         <module>core</module>
         <module>api-gateway</module>
         <module>security-analysis-api</module>
+        <module>llm-worker</module>
     </modules>
 
     <properties>
@@ -21,6 +22,7 @@
         <spring-boot.version>3.5.5</spring-boot.version>
         <resilience4j.version>2.1.0</resilience4j.version>
         <wiremock.version>2.35.0</wiremock.version>
+        <langchain4j.version>0.36.2</langchain4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencyManagement>
