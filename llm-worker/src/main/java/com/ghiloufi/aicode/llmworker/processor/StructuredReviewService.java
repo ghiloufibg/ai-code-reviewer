@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class StructuredReviewService {
+public class StructuredReviewService implements ReviewService {
 
   private final CodeReviewAiService aiService;
 
@@ -19,6 +19,7 @@ public class StructuredReviewService {
     log.info("StructuredReviewService initialized with LangChain4j AI Service");
   }
 
+  @Override
   public ReviewResultSchema performReview(String userPrompt) {
     log.debug("Performing structured review, prompt length: {} chars", userPrompt.length());
 

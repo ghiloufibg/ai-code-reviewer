@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ReviewProcessor {
 
-  private final StructuredReviewService reviewService;
+  private final ReviewService reviewService;
   private final ReviewResultPublisher resultPublisher;
   private final ProviderProperties providerProperties;
 
