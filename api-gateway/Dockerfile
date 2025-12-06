@@ -1,20 +1,32 @@
-# Simplified single-stage Dockerfile for ai-code-reviewer (no caching)
-FROM maven:3.9-eclipse-temurin-21
+# Multi-stage Dockerfile for ai-code-reviewer api-gateway
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Copy all project files
+# Copy all module pom.xml files first (required for parent pom resolution)
 COPY pom.xml .
+COPY core/pom.xml core/pom.xml
+COPY api-gateway/pom.xml api-gateway/pom.xml
+COPY security-analysis-api/pom.xml security-analysis-api/pom.xml
+COPY llm-worker/pom.xml llm-worker/pom.xml
+
+# Download dependencies (may fail for some, but caches what it can)
+RUN mvn dependency:go-offline -pl api-gateway -am -B || true
+
+# Copy source code for modules we need to build
 COPY core/ core/
 COPY api-gateway/ api-gateway/
-COPY security-analysis-api/ security-analysis-api/
 
-# Build the application (no caching, always fresh build)
-# Use -pl to build only api-gateway module and its dependencies
+# Build the application
 RUN mvn clean package -pl api-gateway -am -DskipTests -B
 
-# Copy the uber jar to app directory
-RUN cp api-gateway/target/*.jar app.jar
+# Runtime stage - smaller image
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Copy the built jar from builder stage
+COPY --from=builder /app/api-gateway/target/*.jar app.jar
 
 # Create logs directory
 RUN mkdir -p /app/logs
