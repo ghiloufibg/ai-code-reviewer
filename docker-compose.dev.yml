@@ -121,8 +121,8 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
 
-      # Async Review Consumer (disabled - llm-worker handles this)
-      ASYNC_CONSUMER_ENABLED: "false"
+      # Async Review Consumer (enables automatic SCM publishing after LLM worker completes)
+      ASYNC_CONSUMER_ENABLED: "true"
 
       # Feature Flags
       FEATURES_SUMMARY_COMMENT_ENABLED: "true"
