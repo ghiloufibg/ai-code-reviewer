@@ -71,14 +71,24 @@ public class ReviewRequestConsumer {
   }
 
   private void createConsumerGroupIfNotExists() {
+    final String streamKey = workerProperties.getStreamKey();
+    final String consumerGroup = workerProperties.getConsumerGroup();
     try {
-      redisTemplate
-          .opsForStream()
-          .createGroup(workerProperties.getStreamKey(), workerProperties.getConsumerGroup());
-      log.info("Created consumer group: {}", workerProperties.getConsumerGroup());
+      redisTemplate.opsForStream().createGroup(streamKey, ReadOffset.from("0"), consumerGroup);
+      log.info("Created consumer group '{}' on stream '{}'", consumerGroup, streamKey);
     } catch (Exception e) {
-      log.debug("Consumer group already exists: {}", workerProperties.getConsumerGroup());
+      if (isBusyGroupError(e)) {
+        log.debug("Consumer group '{}' already exists on stream '{}'", consumerGroup, streamKey);
+      } else {
+        log.error("Failed to create consumer group '{}': {}", consumerGroup, e.getMessage());
+        throw new IllegalStateException("Cannot initialize Redis consumer group", e);
+      }
     }
+  }
+
+  private boolean isBusyGroupError(Exception e) {
+    Throwable cause = e.getCause();
+    return cause != null && cause.getMessage() != null && cause.getMessage().contains("BUSYGROUP");
   }
 
   @Scheduled(fixedDelay = 100)
