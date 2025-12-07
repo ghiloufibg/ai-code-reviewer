@@ -99,6 +99,18 @@ context-retrieval:
 prompts:
   variant: ${PROMPTS_VARIANT:OPTIMIZED}
 
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
 logging:
   level:
     com.ghiloufi.aicode.llmworker: ${LOG_LEVEL:INFO}

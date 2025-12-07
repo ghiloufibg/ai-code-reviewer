@@ -17,6 +17,8 @@ RUN mvn clean package -pl llm-worker -am -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
 
+RUN apk add --no-cache wget
+
 WORKDIR /app
 
 COPY --from=builder /app/llm-worker/target/*.jar app.jar
