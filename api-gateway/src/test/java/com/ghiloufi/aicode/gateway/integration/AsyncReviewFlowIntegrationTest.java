@@ -28,15 +28,13 @@ final class AsyncReviewFlowIntegrationTest {
     final void should_serialize_async_review_request_to_json() throws Exception {
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(
-              requestId, SourceProvider.GITLAB, "my-project/my-repo", 42, "Review this code diff");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "my-project/my-repo", 42);
 
       final String json = objectMapper.writeValueAsString(request);
 
       assertThat(json).contains("\"provider\":\"GITLAB\"");
       assertThat(json).contains("\"repositoryId\":\"my-project/my-repo\"");
       assertThat(json).contains("\"changeRequestId\":42");
-      assertThat(json).contains("\"userPrompt\":\"Review this code diff\"");
       assertThat(json).contains("\"requestId\"");
     }
 
@@ -50,7 +48,6 @@ final class AsyncReviewFlowIntegrationTest {
             "provider": "GITHUB",
             "repositoryId": "owner/repo",
             "changeRequestId": 99,
-            "userPrompt": "Please review",
             "createdAt": "2024-01-15T10:30:00Z"
           }
           """;
@@ -62,7 +59,6 @@ final class AsyncReviewFlowIntegrationTest {
       assertThat(request.provider()).isEqualTo(SourceProvider.GITHUB);
       assertThat(request.repositoryId()).isEqualTo("owner/repo");
       assertThat(request.changeRequestId()).isEqualTo(99);
-      assertThat(request.userPrompt()).isEqualTo("Please review");
     }
   }
 
@@ -101,9 +97,9 @@ final class AsyncReviewFlowIntegrationTest {
       final String id1 = UUID.randomUUID().toString();
       final String id2 = UUID.randomUUID().toString();
       final AsyncReviewRequest request1 =
-          AsyncReviewRequest.create(id1, SourceProvider.GITLAB, "repo", 1, "prompt");
+          AsyncReviewRequest.create(id1, SourceProvider.GITLAB, "repo", 1);
       final AsyncReviewRequest request2 =
-          AsyncReviewRequest.create(id2, SourceProvider.GITLAB, "repo", 1, "prompt");
+          AsyncReviewRequest.create(id2, SourceProvider.GITLAB, "repo", 1);
 
       assertThat(request1.requestId()).isNotEqualTo(request2.requestId());
     }
@@ -113,7 +109,7 @@ final class AsyncReviewFlowIntegrationTest {
     final void should_generate_non_empty_request_id() {
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "repo", 1, "prompt");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "repo", 1);
 
       assertThat(request.requestId()).isNotBlank();
     }
@@ -124,7 +120,7 @@ final class AsyncReviewFlowIntegrationTest {
       final Instant before = Instant.now();
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "repo", 1, "prompt");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "repo", 1);
       final Instant after = Instant.now();
 
       assertThat(request.createdAt()).isAfterOrEqualTo(before);
@@ -141,8 +137,7 @@ final class AsyncReviewFlowIntegrationTest {
     final void should_format_message_for_redis_stream() throws Exception {
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(
-              requestId, SourceProvider.GITLAB, "my-repo", 123, "Review prompt");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "my-repo", 123);
 
       final String payload = objectMapper.writeValueAsString(request);
       final Map<String, String> redisMessage =
@@ -166,7 +161,6 @@ final class AsyncReviewFlowIntegrationTest {
             "provider": "GITLAB",
             "repositoryId": "group/project",
             "changeRequestId": 789,
-            "userPrompt": "Test prompt",
             "createdAt": "2024-03-20T15:00:00Z"
           }
           """;
@@ -241,7 +235,7 @@ final class AsyncReviewFlowIntegrationTest {
     final void should_support_gitlab_provider() {
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "group/project", 1, "prompt");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITLAB, "group/project", 1);
 
       assertThat(request.provider()).isEqualTo(SourceProvider.GITLAB);
     }
@@ -251,7 +245,7 @@ final class AsyncReviewFlowIntegrationTest {
     final void should_support_github_provider() {
       final String requestId = UUID.randomUUID().toString();
       final AsyncReviewRequest request =
-          AsyncReviewRequest.create(requestId, SourceProvider.GITHUB, "owner/repo", 100, "prompt");
+          AsyncReviewRequest.create(requestId, SourceProvider.GITHUB, "owner/repo", 100);
 
       assertThat(request.provider()).isEqualTo(SourceProvider.GITHUB);
     }

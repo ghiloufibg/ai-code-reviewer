@@ -61,8 +61,7 @@ public class AsyncReviewController {
         changeRequestId);
 
     final AsyncReviewRequest request =
-        AsyncReviewRequest.create(
-            requestId, sourceProvider, decodedRepositoryId, changeRequestId, "");
+        AsyncReviewRequest.create(requestId, sourceProvider, decodedRepositoryId, changeRequestId);
 
     return producer
         .send(request)

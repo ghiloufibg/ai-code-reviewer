@@ -8,16 +8,11 @@ public record AsyncReviewRequest(
     SourceProvider provider,
     String repositoryId,
     int changeRequestId,
-    String userPrompt,
     Instant createdAt) {
 
   public static AsyncReviewRequest create(
-      String requestId,
-      SourceProvider provider,
-      String repositoryId,
-      int changeRequestId,
-      String userPrompt) {
+      String requestId, SourceProvider provider, String repositoryId, int changeRequestId) {
     return new AsyncReviewRequest(
-        requestId, provider, repositoryId, changeRequestId, userPrompt, Instant.now());
+        requestId, provider, repositoryId, changeRequestId, Instant.now());
   }
 }

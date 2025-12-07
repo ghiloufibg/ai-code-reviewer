@@ -96,7 +96,7 @@ final class ReviewRequestConsumerIntegrationTest {
       messageData.put("requestId", "test-req-001");
       messageData.put(
           "payload",
-          "{\"requestId\":\"test-req-001\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":1,\"userPrompt\":\"Review this\",\"createdAt\":\"2024-01-01T00:00:00Z\"}");
+          "{\"requestId\":\"test-req-001\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":1,\"createdAt\":\"2024-01-01T00:00:00Z\"}");
 
       final RecordId recordId =
           redisTemplate.opsForStream().add(workerProperties.getStreamKey(), messageData);
@@ -130,7 +130,7 @@ final class ReviewRequestConsumerIntegrationTest {
         messageData.put(
             "payload",
             String.format(
-                "{\"requestId\":\"batch-req-%d\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":%d,\"userPrompt\":\"Review\",\"createdAt\":\"2024-01-01T00:00:00Z\"}",
+                "{\"requestId\":\"batch-req-%d\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":%d,\"createdAt\":\"2024-01-01T00:00:00Z\"}",
                 i, i));
         redisTemplate.opsForStream().add(workerProperties.getStreamKey(), messageData);
       }
