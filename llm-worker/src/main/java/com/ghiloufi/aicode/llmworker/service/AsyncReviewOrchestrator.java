@@ -7,6 +7,9 @@ import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.ExpandedFileContext;
+import com.ghiloufi.aicode.core.domain.model.GitFileModification;
+import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
@@ -20,6 +23,9 @@ import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
 import com.ghiloufi.aicode.llmworker.processor.ReviewService;
 import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
 import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -129,19 +135,32 @@ public final class AsyncReviewOrchestrator {
     }
 
     final var expansionConfig = contextRetrievalConfig.diffExpansion();
-    final var filePaths = extractModifiedFilePaths(diffBundle);
+    final List<GitFileModification> allFiles = diffBundle.structuredDiff().files;
+    final List<GitFileModification> modifiedFiles = extractFilesNeedingExpansion(allFiles);
+    final int newFilesSkipped = countNewFiles(allFiles);
 
-    if (filePaths.isEmpty()) {
+    if (modifiedFiles.isEmpty()) {
+      if (newFilesSkipped > 0) {
+        log.debug(
+            "No files to expand: {} new file(s) skipped (full content already in diff)",
+            newFilesSkipped);
+      }
       return DiffExpansionResult.empty();
     }
 
-    final var filesToExpand =
-        filePaths.stream()
+    final List<String> filesToExpand =
+        modifiedFiles.stream()
+            .map(GitFileModification::getEffectivePath)
             .filter(path -> shouldIncludeFile(path, expansionConfig))
             .limit(expansionConfig.maxFilesToExpand())
             .toList();
 
-    log.debug("Expanding {} of {} modified files", filesToExpand.size(), filePaths.size());
+    final int totalCandidates = modifiedFiles.size();
+    log.info(
+        "Expanding {} of {} modified files ({} new files skipped - full content in diff)",
+        filesToExpand.size(),
+        totalCandidates,
+        newFilesSkipped);
 
     final var expandedFiles =
         filesToExpand.stream()
@@ -155,26 +174,43 @@ public final class AsyncReviewOrchestrator {
                     return createExpandedContext(path, content, expansionConfig.maxLineCount());
                   } catch (final Exception e) {
                     log.warn("Failed to expand file {}: {}", path, e.getMessage());
-                    return com.ghiloufi.aicode.core.domain.model.ExpandedFileContext.empty(path);
+                    return ExpandedFileContext.empty(path);
                   }
                 })
-            .filter(com.ghiloufi.aicode.core.domain.model.ExpandedFileContext::hasContent)
+            .filter(ExpandedFileContext::hasContent)
             .toList();
 
+    final int totalRequested = totalCandidates + newFilesSkipped;
+    final int skipped = totalRequested - expandedFiles.size();
+    final String skipReason = buildSkipReason(totalRequested, expansionConfig, newFilesSkipped);
+
     return new DiffExpansionResult(
-        expandedFiles,
-        filePaths.size(),
-        expandedFiles.size(),
-        filePaths.size() - expandedFiles.size(),
-        filePaths.size() > expansionConfig.maxFilesToExpand() ? "max files limit" : null);
+        expandedFiles, totalRequested, expandedFiles.size(), skipped, skipReason);
   }
 
-  private java.util.List<String> extractModifiedFilePaths(final DiffAnalysisBundle bundle) {
-    return bundle.structuredDiff().files.stream()
-        .map(file -> file.newPath)
-        .filter(java.util.Objects::nonNull)
-        .filter(path -> !path.equals("/dev/null"))
+  private List<GitFileModification> extractFilesNeedingExpansion(
+      final List<GitFileModification> files) {
+    return files.stream()
+        .filter(file -> !file.isNewFile())
+        .filter(file -> !file.isDeleted())
         .toList();
+  }
+
+  private int countNewFiles(final List<GitFileModification> files) {
+    return (int) files.stream().filter(GitFileModification::isNewFile).count();
+  }
+
+  private String buildSkipReason(
+      final int totalRequested,
+      final ContextRetrievalConfig.DiffExpansionConfig expansionConfig,
+      final int newFilesSkipped) {
+    if (totalRequested > expansionConfig.maxFilesToExpand()) {
+      return "max files limit";
+    }
+    if (newFilesSkipped > 0) {
+      return newFilesSkipped + " new file(s) skipped (full content in diff)";
+    }
+    return null;
   }
 
   private boolean shouldIncludeFile(
@@ -190,21 +226,20 @@ public final class AsyncReviewOrchestrator {
     return true;
   }
 
-  private com.ghiloufi.aicode.core.domain.model.ExpandedFileContext createExpandedContext(
+  private ExpandedFileContext createExpandedContext(
       final String filePath, final String content, final int maxLineCount) {
     if (content == null) {
-      return com.ghiloufi.aicode.core.domain.model.ExpandedFileContext.empty(filePath);
+      return ExpandedFileContext.empty(filePath);
     }
 
     final long lineCount = content.lines().count();
     if (lineCount > maxLineCount) {
       final String truncatedContent =
-          content.lines().limit(maxLineCount).collect(java.util.stream.Collectors.joining("\n"));
-      return com.ghiloufi.aicode.core.domain.model.ExpandedFileContext.truncated(
-          filePath, truncatedContent, (int) lineCount);
+          content.lines().limit(maxLineCount).collect(Collectors.joining("\n"));
+      return ExpandedFileContext.truncated(filePath, truncatedContent, (int) lineCount);
     }
 
-    return com.ghiloufi.aicode.core.domain.model.ExpandedFileContext.of(filePath, content);
+    return ExpandedFileContext.of(filePath, content);
   }
 
   private RepositoryPolicies fetchPolicies(final SCMPort scmPort, final RepositoryIdentifier repo) {
@@ -232,15 +267,15 @@ public final class AsyncReviewOrchestrator {
                     return null;
                   }
                 })
-            .filter(java.util.Objects::nonNull)
-            .filter(com.ghiloufi.aicode.core.domain.model.PolicyDocument::hasContent)
+            .filter(Objects::nonNull)
+            .filter(PolicyDocument::hasContent)
             .toList();
 
     log.debug("Loaded {} policy documents for {}", policyDocuments.size(), repo.getDisplayName());
     return new RepositoryPolicies(policyDocuments);
   }
 
-  private com.ghiloufi.aicode.core.domain.model.PolicyDocument createPolicyDocument(
+  private PolicyDocument createPolicyDocument(
       final String path, final String content, final int maxChars) {
     if (content == null) {
       return null;
@@ -251,8 +286,7 @@ public final class AsyncReviewOrchestrator {
     final String finalContent =
         truncated ? content.substring(0, maxChars) + "\n... (truncated)" : content;
 
-    return new com.ghiloufi.aicode.core.domain.model.PolicyDocument(
-        name, path, finalContent, truncated);
+    return new PolicyDocument(name, path, finalContent, truncated);
   }
 
   private String extractFileName(final String path) {
