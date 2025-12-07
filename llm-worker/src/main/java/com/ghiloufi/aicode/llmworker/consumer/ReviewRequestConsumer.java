@@ -1,5 +1,7 @@
 package com.ghiloufi.aicode.llmworker.consumer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.llmworker.config.WorkerProperties;
 import com.ghiloufi.aicode.llmworker.processor.ReviewProcessor;
 import jakarta.annotation.PostConstruct;
@@ -29,15 +31,18 @@ public class ReviewRequestConsumer {
   private final StringRedisTemplate redisTemplate;
   private final ReviewProcessor processor;
   private final WorkerProperties workerProperties;
+  private final ObjectMapper objectMapper;
   private final ExecutorService executor;
 
   public ReviewRequestConsumer(
-      StringRedisTemplate redisTemplate,
-      ReviewProcessor processor,
-      WorkerProperties workerProperties) {
+      final StringRedisTemplate redisTemplate,
+      final ReviewProcessor processor,
+      final WorkerProperties workerProperties,
+      final ObjectMapper objectMapper) {
     this.redisTemplate = redisTemplate;
     this.processor = processor;
     this.workerProperties = workerProperties;
+    this.objectMapper = objectMapper;
     this.executor = Executors.newVirtualThreadPerTaskExecutor();
   }
 
@@ -104,7 +109,7 @@ public class ReviewRequestConsumer {
     }
   }
 
-  private void processMessage(MapRecord<String, Object, Object> message) {
+  private void processMessage(final MapRecord<String, Object, Object> message) {
     final String messageId = message.getId().getValue();
     try {
       final String requestId = extractRequestId(message);
@@ -116,7 +121,14 @@ public class ReviewRequestConsumer {
           requestId,
           Thread.currentThread());
 
-      processor.process(requestId, payload, payload);
+      final AsyncReviewRequest request = objectMapper.readValue(payload, AsyncReviewRequest.class);
+      log.debug(
+          "Parsed async review request: {} for {} PR #{}",
+          request.requestId(),
+          request.provider(),
+          request.changeRequestId());
+
+      processor.process(requestId, request);
 
       redisTemplate
           .opsForStream()
@@ -127,7 +139,7 @@ public class ReviewRequestConsumer {
 
       log.debug("Acknowledged message: {}", messageId);
 
-    } catch (Exception e) {
+    } catch (final Exception e) {
       log.error("Failed to process message: {}", messageId, e);
     }
   }

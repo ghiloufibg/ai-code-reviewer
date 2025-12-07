@@ -31,4 +31,9 @@ public interface CodeReviewAiService {
       """)
   @UserMessage("{{prompt}}")
   ReviewResultSchema reviewCode(@V("prompt") String prompt);
+
+  @SystemMessage("{{systemPrompt}}")
+  @UserMessage("{{userPrompt}}")
+  ReviewResultSchema reviewCodeWithCustomPrompt(
+      @V("systemPrompt") String systemPrompt, @V("userPrompt") String userPrompt);
 }

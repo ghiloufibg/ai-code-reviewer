@@ -20,7 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("ReviewProcessor Tests")
+@DisplayName("ReviewProcessor Tests (Legacy Mode)")
+@SuppressWarnings("deprecation")
 final class ReviewProcessorTest {
 
   @Nested
@@ -50,7 +51,8 @@ final class ReviewProcessorTest {
                       null)),
               List.of()));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-123", "{}", "Review this code");
 
@@ -76,7 +78,8 @@ final class ReviewProcessorTest {
               List.of(),
               List.of(new NoteSchema("src/Utils.java", 25, "Consider using Optional"))));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-456", "{}", "Review");
 
@@ -97,7 +100,8 @@ final class ReviewProcessorTest {
 
       reviewService.setResult(new ReviewResultSchema("Clean code", null, null));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-789", "{}", "Review");
 
@@ -126,7 +130,8 @@ final class ReviewProcessorTest {
                       "d.java", 4, Severity.info, "Info", "Consider", null, null, null)),
               List.of()));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-sev", "{}", "Review");
 
@@ -151,7 +156,8 @@ final class ReviewProcessorTest {
               List.of(new IssueSchema("a.java", 1, null, "Issue", "Fix", null, null, null)),
               List.of()));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-null-sev", "{}", "Review");
 
@@ -176,7 +182,8 @@ final class ReviewProcessorTest {
 
       reviewService.setResult(new ReviewResultSchema("Summary", List.of(), List.of()));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-provider", "{}", "Review");
 
@@ -198,7 +205,8 @@ final class ReviewProcessorTest {
 
       reviewService.setResult(new ReviewResultSchema("Summary", List.of(), List.of()));
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-anthropic", "{}", "Review");
 
@@ -222,7 +230,8 @@ final class ReviewProcessorTest {
           new TestPublisher(capturedErrorRequestId, capturedErrorMessage);
       final TestProviderProperties properties = new TestProviderProperties("openai", "gpt-4o");
 
-      final ReviewProcessor processor = new ReviewProcessor(reviewService, publisher, properties);
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
 
       processor.process("req-error", "{}", "Review");
 
@@ -245,6 +254,14 @@ final class ReviewProcessorTest {
 
     @Override
     public ReviewResultSchema performReview(final String userPrompt) {
+      if (shouldThrow) {
+        throw new RuntimeException("LLM call failed");
+      }
+      return result;
+    }
+
+    @Override
+    public ReviewResultSchema performReview(final String systemPrompt, final String userPrompt) {
       if (shouldThrow) {
         throw new RuntimeException("LLM call failed");
       }

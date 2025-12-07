@@ -3,6 +3,9 @@ package com.ghiloufi.aicode.llmworker.consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.llmworker.config.WorkerProperties;
 import com.ghiloufi.aicode.llmworker.processor.ReviewProcessor;
 import java.time.Duration;
@@ -24,6 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 @DisplayName("ReviewRequestConsumer Integration Tests")
+@SuppressWarnings("deprecation")
 final class ReviewRequestConsumerIntegrationTest {
 
   @Container
@@ -33,6 +37,7 @@ final class ReviewRequestConsumerIntegrationTest {
   private StringRedisTemplate redisTemplate;
   private WorkerProperties workerProperties;
   private TestProcessor testProcessor;
+  private ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {
@@ -45,6 +50,8 @@ final class ReviewRequestConsumerIntegrationTest {
     workerProperties =
         new WorkerProperties("test-workers", "test-worker-1", "test:review:requests", 10, 120);
 
+    objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
     testProcessor = new TestProcessor();
 
     final String streamKey = workerProperties.getStreamKey();
@@ -62,7 +69,7 @@ final class ReviewRequestConsumerIntegrationTest {
     @DisplayName("should_create_consumer_group_on_init")
     final void should_create_consumer_group_on_init() {
       final ReviewRequestConsumer consumer =
-          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties);
+          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties, objectMapper);
 
       consumer.init();
 
@@ -81,13 +88,15 @@ final class ReviewRequestConsumerIntegrationTest {
     @DisplayName("should_process_message_from_stream")
     final void should_process_message_from_stream() {
       final ReviewRequestConsumer consumer =
-          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties);
+          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties, objectMapper);
 
       consumer.init();
 
       final Map<String, String> messageData = new HashMap<>();
       messageData.put("requestId", "test-req-001");
-      messageData.put("payload", "{\"code\": \"test\"}");
+      messageData.put(
+          "payload",
+          "{\"requestId\":\"test-req-001\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":1,\"userPrompt\":\"Review this\",\"createdAt\":\"2024-01-01T00:00:00Z\"}");
 
       final RecordId recordId =
           redisTemplate.opsForStream().add(workerProperties.getStreamKey(), messageData);
@@ -111,14 +120,18 @@ final class ReviewRequestConsumerIntegrationTest {
     @DisplayName("should_process_multiple_messages")
     final void should_process_multiple_messages() {
       final ReviewRequestConsumer consumer =
-          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties);
+          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties, objectMapper);
 
       consumer.init();
 
       for (int i = 0; i < 3; i++) {
         final Map<String, String> messageData = new HashMap<>();
         messageData.put("requestId", "batch-req-" + i);
-        messageData.put("payload", "{\"index\": " + i + "}");
+        messageData.put(
+            "payload",
+            String.format(
+                "{\"requestId\":\"batch-req-%d\",\"provider\":\"GITLAB\",\"repositoryId\":\"test/repo\",\"changeRequestId\":%d,\"userPrompt\":\"Review\",\"createdAt\":\"2024-01-01T00:00:00Z\"}",
+                i, i));
         redisTemplate.opsForStream().add(workerProperties.getStreamKey(), messageData);
       }
 
@@ -143,7 +156,7 @@ final class ReviewRequestConsumerIntegrationTest {
     @DisplayName("should_shutdown_gracefully")
     final void should_shutdown_gracefully() {
       final ReviewRequestConsumer consumer =
-          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties);
+          new ReviewRequestConsumer(redisTemplate, testProcessor, workerProperties, objectMapper);
 
       consumer.init();
       consumer.shutdown();
@@ -155,7 +168,13 @@ final class ReviewRequestConsumerIntegrationTest {
     private final Map<String, String> processedRequests = new ConcurrentHashMap<>();
 
     TestProcessor() {
-      super(null, null, null);
+      super(null, null, null, null);
+    }
+
+    @Override
+    public void process(final String requestId, final AsyncReviewRequest request) {
+      processedCount.incrementAndGet();
+      processedRequests.put(requestId, request != null ? request.requestId() : "null");
     }
 
     @Override

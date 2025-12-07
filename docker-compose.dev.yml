@@ -196,6 +196,20 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
 
+      # SCM Provider Configuration
+      GITLAB_ENABLED: ${GITLAB_ENABLED:-true}
+      GITLAB_API_URL: ${GITLAB_API_URL:-http://host.docker.internal:80}
+      GITLAB_TOKEN: ${GITLAB_TOKEN}
+
+      GITHUB_ENABLED: ${GITHUB_ENABLED:-false}
+      GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+
+      # Ticket System Configuration (enabled by default, graceful failure when no token)
+      JIRA_ENABLED: ${JIRA_ENABLED:-true}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-http://host.docker.internal:8080}
+      JIRA_TOKEN: ${JIRA_TOKEN:-}
+
       # Worker Configuration
       WORKER_CONSUMER_GROUP: llm-workers
       WORKER_CONSUMER_ID: worker-1
@@ -204,6 +218,7 @@ services:
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORE_LOG_LEVEL: ${CORE_LOG_LEVEL:-INFO}
       LANGCHAIN4J_LOG_LEVEL: ${LANGCHAIN4J_LOG_LEVEL:-INFO}
 
       # JVM Options

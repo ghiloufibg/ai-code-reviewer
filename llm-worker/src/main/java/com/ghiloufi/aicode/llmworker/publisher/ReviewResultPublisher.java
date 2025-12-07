@@ -3,6 +3,7 @@ package com.ghiloufi.aicode.llmworker.publisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,12 +24,51 @@ public class ReviewResultPublisher {
   private final ObjectMapper objectMapper;
 
   public void publish(
-      String requestId,
-      String requestPayload,
-      ReviewResult result,
-      String llmProvider,
-      String llmModel,
-      long processingTimeMs) {
+      final String requestId,
+      final AsyncReviewRequest request,
+      final ReviewResult result,
+      final String llmProvider,
+      final String llmModel,
+      final long processingTimeMs) {
+    try {
+      final Map<String, String> resultData = new HashMap<>();
+      resultData.put("requestId", requestId);
+      resultData.put("status", "COMPLETED");
+      resultData.put("request", objectMapper.writeValueAsString(request));
+      resultData.put("result", objectMapper.writeValueAsString(result));
+      resultData.put("provider", request.provider().name());
+      resultData.put("repositoryId", request.repositoryId());
+      resultData.put("changeRequestId", String.valueOf(request.changeRequestId()));
+      resultData.put("llmProvider", llmProvider);
+      resultData.put("llmModel", llmModel);
+      resultData.put("processingTimeMs", String.valueOf(processingTimeMs));
+      resultData.put("completedAt", Instant.now().toString());
+
+      final String resultKey = RESULT_KEY_PREFIX + requestId;
+      redisTemplate.opsForHash().putAll(resultKey, resultData);
+
+      redisTemplate.convertAndSend(STATUS_CHANNEL_PREFIX + requestId, "COMPLETED");
+
+      log.info(
+          "Published result for request {} ({} PR #{}) to {}",
+          requestId,
+          request.provider(),
+          request.changeRequestId(),
+          resultKey);
+    } catch (final JsonProcessingException e) {
+      log.error("Failed to serialize result for request {}", requestId, e);
+      publishError(requestId, "Serialization error: " + e.getMessage());
+    }
+  }
+
+  @Deprecated
+  public void publish(
+      final String requestId,
+      final String requestPayload,
+      final ReviewResult result,
+      final String llmProvider,
+      final String llmModel,
+      final long processingTimeMs) {
     try {
       final Map<String, String> resultData = new HashMap<>();
       resultData.put("requestId", requestId);
@@ -46,7 +86,7 @@ public class ReviewResultPublisher {
       redisTemplate.convertAndSend(STATUS_CHANNEL_PREFIX + requestId, "COMPLETED");
 
       log.info("Published result for request {} to {}", requestId, resultKey);
-    } catch (JsonProcessingException e) {
+    } catch (final JsonProcessingException e) {
       log.error("Failed to serialize result for request {}", requestId, e);
       publishError(requestId, "Serialization error: " + e.getMessage());
     }

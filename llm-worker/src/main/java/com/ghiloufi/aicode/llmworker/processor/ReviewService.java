@@ -5,4 +5,6 @@ import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
 public interface ReviewService {
 
   ReviewResultSchema performReview(String userPrompt);
+
+  ReviewResultSchema performReview(String systemPrompt, String userPrompt);
 }

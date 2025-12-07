@@ -1,11 +1,13 @@
 package com.ghiloufi.aicode.llmworker.processor;
 
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.llmworker.config.ProviderProperties;
 import com.ghiloufi.aicode.llmworker.publisher.ReviewResultPublisher;
 import com.ghiloufi.aicode.llmworker.schema.IssueSchema;
 import com.ghiloufi.aicode.llmworker.schema.NoteSchema;
 import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
+import com.ghiloufi.aicode.llmworker.service.AsyncReviewOrchestrator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,11 +19,39 @@ import org.springframework.stereotype.Service;
 public class ReviewProcessor {
 
   private final ReviewService reviewService;
+  private final AsyncReviewOrchestrator asyncReviewOrchestrator;
   private final ReviewResultPublisher resultPublisher;
   private final ProviderProperties providerProperties;
 
-  public void process(String requestId, String requestPayload, String userPrompt) {
-    log.info("Processing review request: {}", requestId);
+  public void process(final String requestId, final AsyncReviewRequest request) {
+    log.info(
+        "Processing async review request: {} for {} PR #{}",
+        requestId,
+        request.provider(),
+        request.changeRequestId());
+
+    final long startTime = System.currentTimeMillis();
+
+    try {
+      final ReviewResultSchema schema = asyncReviewOrchestrator.performAsyncReview(request);
+      final ReviewResult result = mapToDomain(schema);
+      final long processingTime = System.currentTimeMillis() - startTime;
+
+      resultPublisher.publish(
+          requestId, request, result, getLlmProvider(), getLlmModel(), processingTime);
+
+      log.info("Async review completed: {} in {}ms", requestId, processingTime);
+
+    } catch (final Exception e) {
+      log.error("Async review failed: {}", requestId, e);
+      resultPublisher.publishError(requestId, e.getMessage());
+    }
+  }
+
+  @Deprecated
+  public void process(
+      final String requestId, final String requestPayload, final String userPrompt) {
+    log.info("Processing review request (legacy): {}", requestId);
 
     final long startTime = System.currentTimeMillis();
 
@@ -37,7 +67,7 @@ public class ReviewProcessor {
 
       log.info("Review completed: {} in {}ms", requestId, processingTime);
 
-    } catch (Exception e) {
+    } catch (final Exception e) {
       log.error("Review failed: {}", requestId, e);
       resultPublisher.publishError(requestId, e.getMessage());
     }
