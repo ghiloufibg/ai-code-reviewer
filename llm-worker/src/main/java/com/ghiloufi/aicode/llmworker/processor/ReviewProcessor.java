@@ -75,13 +75,18 @@ public class ReviewProcessor {
     }
   }
 
-  private ReviewResult mapToDomain(ReviewResultSchema schema) {
+  private ReviewResult mapToDomain(final ReviewResultSchema schema) {
     final List<ReviewResult.Issue> issues =
-        schema.issues() != null ? schema.issues().stream().map(this::mapIssue).toList() : List.of();
+        schema.issues() != null
+            ? schema.issues().stream().filter(this::isValidIssue).map(this::mapIssue).toList()
+            : List.of();
 
     final List<ReviewResult.Note> notes =
         schema.nonBlockingNotes() != null
-            ? schema.nonBlockingNotes().stream().map(this::mapNote).toList()
+            ? schema.nonBlockingNotes().stream()
+                .filter(this::isValidNote)
+                .map(this::mapNote)
+                .toList()
             : List.of();
 
     return ReviewResult.builder()
@@ -93,7 +98,33 @@ public class ReviewProcessor {
         .build();
   }
 
-  private ReviewResult.Issue mapIssue(IssueSchema issueSchema) {
+  private boolean isValidIssue(final IssueSchema issueSchema) {
+    if (issueSchema.startLine() <= 0) {
+      log.warn(
+          "LLM returned invalid startLine={} for issue in file '{}': {}. "
+              + "Issue will be skipped. Consider improving prompt constraints.",
+          issueSchema.startLine(),
+          issueSchema.file(),
+          issueSchema.title());
+      return false;
+    }
+    return true;
+  }
+
+  private boolean isValidNote(final NoteSchema noteSchema) {
+    if (noteSchema.line() <= 0) {
+      log.warn(
+          "LLM returned invalid line={} for note in file '{}': {}. "
+              + "Note will be skipped. Consider improving prompt constraints.",
+          noteSchema.line(),
+          noteSchema.file(),
+          noteSchema.note());
+      return false;
+    }
+    return true;
+  }
+
+  private ReviewResult.Issue mapIssue(final IssueSchema issueSchema) {
     return ReviewResult.Issue.issueBuilder()
         .file(issueSchema.file())
         .startLine(issueSchema.startLine())
@@ -106,7 +137,7 @@ public class ReviewProcessor {
         .build();
   }
 
-  private ReviewResult.Note mapNote(NoteSchema noteSchema) {
+  private ReviewResult.Note mapNote(final NoteSchema noteSchema) {
     return ReviewResult.Note.noteBuilder()
         .file(noteSchema.file())
         .line(noteSchema.line())

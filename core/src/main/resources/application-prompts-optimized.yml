@@ -16,6 +16,13 @@ prompts:
       5. Context: Surrounding code, dependencies, patterns
 
       Focus on changed lines ±5 context. Prioritize critical/major over style.
+
+      CRITICAL LINE NUMBER RULE:
+      Every issue MUST reference a specific line number from the diff (start_line >= 1).
+      - NEVER use start_line: 0 - this is INVALID
+      - For architectural issues, reference the most relevant line where the pattern occurs
+      - For cross-file issues, pick the primary location in the diff
+      - If an issue cannot be tied to any line in the diff, report it in non_blocking_notes instead
       </task>
 
       <json_requirements>
@@ -120,9 +127,19 @@ prompts:
       ❌ NO "end_line" field - only use "start_line"
       ❌ NO "category" field - severity is sufficient
 
+      LINE NUMBER REQUIREMENTS (CRITICAL):
+      ✅ start_line MUST be >= 1 (reference actual line from diff)
+      ❌ start_line: 0 is INVALID and will cause the issue to be rejected
+      ❌ line: 0 is INVALID for non_blocking_notes
+
+      For issues that span multiple lines or are architectural:
+      → Use the line number where the pattern FIRST appears in the diff
+      → If no specific line applies, move to non_blocking_notes with a valid line
+
       non_blocking_notes MUST be objects with file, line, note:
       ✅ CORRECT: {"file": "src/Main.java", "line": 10, "note": "Consider renaming"}
       ❌ WRONG: "Consider renaming variable"
+      ❌ WRONG: {"file": "src/Main.java", "line": 0, "note": "..."}
       </critical_schema_rules>
 
     output-requirements: |
@@ -135,6 +152,7 @@ prompts:
       ☐ NO text before { or after }
       ☐ suggestedFix is Base64-encoded or omitted
       ☐ Parseable by standard JSON parser
+      ☐ ALL start_line and line values are >= 1 (NO zeros!)
 
       If NO to any → FIX before responding
       </output_requirements>
