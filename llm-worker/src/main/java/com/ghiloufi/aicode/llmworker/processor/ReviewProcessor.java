@@ -8,6 +8,7 @@ import com.ghiloufi.aicode.llmworker.schema.IssueSchema;
 import com.ghiloufi.aicode.llmworker.schema.NoteSchema;
 import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
 import com.ghiloufi.aicode.llmworker.service.AsyncReviewOrchestrator;
+import com.ghiloufi.aicode.llmworker.service.AsyncReviewResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +34,9 @@ public class ReviewProcessor {
     final long startTime = System.currentTimeMillis();
 
     try {
-      final ReviewResultSchema schema = asyncReviewOrchestrator.performAsyncReview(request);
-      final ReviewResult result = mapToDomain(schema);
+      final AsyncReviewResult asyncResult = asyncReviewOrchestrator.performAsyncReview(request);
+      final ReviewResult result =
+          mapToDomain(asyncResult.schema()).withFilesAnalyzed(asyncResult.filesAnalyzed());
       final long processingTime = System.currentTimeMillis() - startTime;
 
       resultPublisher.publish(

@@ -22,6 +22,7 @@ public final class ReviewResult {
   private final String llmProvider;
   private final String llmModel;
   private final String rawLlmResponse;
+  private final int filesAnalyzed;
 
   private ReviewResult(final Builder builder) {
     this.summary = builder.summary;
@@ -31,6 +32,7 @@ public final class ReviewResult {
     this.llmProvider = builder.llmProvider;
     this.llmModel = builder.llmModel;
     this.rawLlmResponse = builder.rawLlmResponse;
+    this.filesAnalyzed = builder.filesAnalyzed;
   }
 
   public ReviewResult withLlmMetadata(final String provider, final String model) {
@@ -41,6 +43,7 @@ public final class ReviewResult {
         .llmProvider(provider)
         .llmModel(model)
         .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(this.filesAnalyzed)
         .build();
   }
 
@@ -52,6 +55,7 @@ public final class ReviewResult {
         .llmProvider(this.llmProvider)
         .llmModel(this.llmModel)
         .rawLlmResponse(rawResponse)
+        .filesAnalyzed(this.filesAnalyzed)
         .build();
   }
 
@@ -63,6 +67,19 @@ public final class ReviewResult {
         .llmProvider(this.llmProvider)
         .llmModel(this.llmModel)
         .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(this.filesAnalyzed)
+        .build();
+  }
+
+  public ReviewResult withFilesAnalyzed(final int count) {
+    return builder()
+        .summary(this.summary)
+        .issues(this.issues)
+        .nonBlockingNotes(this.nonBlockingNotes)
+        .llmProvider(this.llmProvider)
+        .llmModel(this.llmModel)
+        .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(count)
         .build();
   }
 
@@ -85,6 +102,7 @@ public final class ReviewResult {
     private String llmProvider;
     private String llmModel;
     private String rawLlmResponse;
+    private int filesAnalyzed;
 
     private Builder() {}
 
@@ -115,6 +133,11 @@ public final class ReviewResult {
 
     public Builder rawLlmResponse(final String rawLlmResponse) {
       this.rawLlmResponse = rawLlmResponse;
+      return this;
+    }
+
+    public Builder filesAnalyzed(final int filesAnalyzed) {
+      this.filesAnalyzed = filesAnalyzed;
       return this;
     }
 

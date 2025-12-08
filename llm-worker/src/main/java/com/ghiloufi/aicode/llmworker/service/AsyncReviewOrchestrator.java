@@ -21,7 +21,6 @@ import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
 import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
 import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
 import com.ghiloufi.aicode.llmworker.processor.ReviewService;
-import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -45,7 +44,7 @@ public final class AsyncReviewOrchestrator {
   private final ContextRetrievalConfig contextRetrievalConfig;
   private final ReviewService reviewService;
 
-  public ReviewResultSchema performAsyncReview(final AsyncReviewRequest request) {
+  public AsyncReviewResult performAsyncReview(final AsyncReviewRequest request) {
     log.info(
         "Starting async review for {} PR #{} (requestId={})",
         request.provider(),
@@ -60,10 +59,8 @@ public final class AsyncReviewOrchestrator {
     final SCMPort scmPort = scmProviderFactory.getProvider(request.provider());
 
     final DiffAnalysisBundle diffBundle = fetchDiff(scmPort, repo, cr);
-    log.debug(
-        "Fetched diff: {} files, {} lines",
-        diffBundle.structuredDiff().files.size(),
-        diffBundle.getTotalLineCount());
+    final int filesAnalyzed = diffBundle.structuredDiff().files.size();
+    log.debug("Fetched diff: {} files, {} lines", filesAnalyzed, diffBundle.getTotalLineCount());
 
     final EnrichedDiffAnalysisBundle enrichedDiff = enrichDiff(diffBundle);
     log.debug("Context enrichment: {} matches", enrichedDiff.getContextMatchCount());
@@ -81,7 +78,8 @@ public final class AsyncReviewOrchestrator {
 
     logPromptDetails(prompt, enrichedDiff, ticketContext, expansionResult, policies);
 
-    return reviewService.performReview(prompt.systemPrompt(), prompt.userPrompt());
+    final var schema = reviewService.performReview(prompt.systemPrompt(), prompt.userPrompt());
+    return new AsyncReviewResult(schema, filesAnalyzed);
   }
 
   private DiffAnalysisBundle fetchDiff(
