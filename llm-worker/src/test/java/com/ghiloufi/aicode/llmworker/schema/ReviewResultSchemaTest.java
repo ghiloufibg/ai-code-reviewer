@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.llmworker.schema;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,8 +26,7 @@ final class ReviewResultSchemaTest {
               "Null check missing",
               "Add null check",
               0.9,
-              "High confidence",
-              null);
+              "High confidence");
       final NoteSchema note = new NoteSchema("src/Main.java", 20, "Consider using Optional");
 
       final ReviewResultSchema schema =
@@ -69,8 +69,7 @@ final class ReviewResultSchemaTest {
               "Security vulnerability",
               "Fix immediately",
               0.95,
-              "Critical issue",
-              null);
+              "Critical issue");
       final IssueSchema issue2 =
           new IssueSchema(
               "src/Utils.java",
@@ -79,8 +78,7 @@ final class ReviewResultSchemaTest {
               "Code style",
               "Follow convention",
               0.7,
-              "Style issue",
-              null);
+              "Style issue");
 
       final ReviewResultSchema schema =
           new ReviewResultSchema("Found issues", List.of(issue1, issue2), List.of());
@@ -101,16 +99,15 @@ final class ReviewResultSchemaTest {
       for (final Severity severity : Severity.values()) {
         final IssueSchema issue =
             new IssueSchema(
-                "src/Test.java", 1, severity, "Test issue", "Test suggestion", null, null, null);
+                "src/Test.java", 1, severity, "Test issue", "Test suggestion", null, null);
 
         assertThat(issue.severity()).isEqualTo(severity);
       }
     }
 
     @Test
-    @DisplayName("should_create_issue_with_suggested_fix")
-    final void should_create_issue_with_suggested_fix() {
-      final String base64Fix = "ZGlmZiAtLWdpdCBhL3NyYy9NYWluLmphdmE=";
+    @DisplayName("should_create_issue_with_confidence_fields")
+    final void should_create_issue_with_confidence_fields() {
       final IssueSchema issue =
           new IssueSchema(
               "src/Main.java",
@@ -119,11 +116,10 @@ final class ReviewResultSchemaTest {
               "Bug fix needed",
               "Apply the fix",
               0.85,
-              "Confident",
-              base64Fix);
+              "Confident");
 
-      assertThat(issue.suggestedFix()).isEqualTo(base64Fix);
       assertThat(issue.confidenceScore()).isEqualTo(0.85);
+      assertThat(issue.confidenceExplanation()).isEqualTo("Confident");
     }
 
     @Test
@@ -131,11 +127,10 @@ final class ReviewResultSchemaTest {
     final void should_create_issue_without_optional_fields() {
       final IssueSchema issue =
           new IssueSchema(
-              "src/Main.java", 5, Severity.info, "Observation", "Consider this", null, null, null);
+              "src/Main.java", 5, Severity.info, "Observation", "Consider this", null, null);
 
       assertThat(issue.confidenceScore()).isNull();
       assertThat(issue.confidenceExplanation()).isNull();
-      assertThat(issue.suggestedFix()).isNull();
     }
 
     @Test
@@ -148,7 +143,6 @@ final class ReviewResultSchemaTest {
               Severity.major,
               "Title",
               "Suggestion",
-              null,
               null,
               null);
 
@@ -202,6 +196,123 @@ final class ReviewResultSchemaTest {
       assertThat(Severity.major.name()).isEqualTo("major");
       assertThat(Severity.minor.name()).isEqualTo("minor");
       assertThat(Severity.info.name()).isEqualTo("info");
+    }
+  }
+
+  @Nested
+  @DisplayName("JSON Deserialization Tests")
+  final class JsonDeserializationTests {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    @DisplayName("should_deserialize_camelCase_fields_from_llm_response")
+    final void should_deserialize_camelCase_fields_from_llm_response() throws Exception {
+      final String camelCaseJson =
+          """
+          {
+            "summary": "Code review summary",
+            "issues": [{
+              "file": "src/Main.java",
+              "startLine": 268,
+              "severity": "major",
+              "title": "Missing check",
+              "suggestion": "Add validation",
+              "confidenceScore": 0.9,
+              "confidenceExplanation": "High confidence"
+            }],
+            "nonBlockingNotes": [{
+              "file": "src/Test.java",
+              "line": 10,
+              "note": "Consider refactoring"
+            }]
+          }
+          """;
+
+      final ReviewResultSchema result =
+          objectMapper.readValue(camelCaseJson, ReviewResultSchema.class);
+
+      assertThat(result.summary()).isEqualTo("Code review summary");
+      assertThat(result.issues()).hasSize(1);
+      assertThat(result.issues().get(0).startLine()).isEqualTo(268);
+      assertThat(result.issues().get(0).confidenceScore()).isEqualTo(0.9);
+      assertThat(result.issues().get(0).confidenceExplanation()).isEqualTo("High confidence");
+      assertThat(result.nonBlockingNotes()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("should_deserialize_snake_case_fields_from_llm_response")
+    final void should_deserialize_snake_case_fields_from_llm_response() throws Exception {
+      final String snakeCaseJson =
+          """
+          {
+            "summary": "Code review summary",
+            "issues": [{
+              "file": "src/Main.java",
+              "start_line": 100,
+              "severity": "critical",
+              "title": "Security issue",
+              "suggestion": "Fix immediately",
+              "confidence_score": 0.95,
+              "confidence_explanation": "Very confident"
+            }],
+            "non_blocking_notes": [{
+              "file": "src/Utils.java",
+              "line": 50,
+              "note": "Style suggestion"
+            }]
+          }
+          """;
+
+      final ReviewResultSchema result =
+          objectMapper.readValue(snakeCaseJson, ReviewResultSchema.class);
+
+      assertThat(result.summary()).isEqualTo("Code review summary");
+      assertThat(result.issues()).hasSize(1);
+      assertThat(result.issues().get(0).startLine()).isEqualTo(100);
+      assertThat(result.issues().get(0).confidenceScore()).isEqualTo(0.95);
+      assertThat(result.issues().get(0).confidenceExplanation()).isEqualTo("Very confident");
+      assertThat(result.nonBlockingNotes()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("should_deserialize_actual_llm_response_format")
+    final void should_deserialize_actual_llm_response_format() throws Exception {
+      final String actualLlmResponse =
+          """
+          {
+            "summary": "The PR introduces a bulk status update endpoint",
+            "issues": [
+              {
+                "file": "src/main/java/com/example/taskmanager/service/TaskService.java",
+                "startLine": 268,
+                "severity": "major",
+                "title": "Lack of Authorization Check",
+                "suggestion": "Ensure that the user has permission to update each task",
+                "confidenceScore": 0.9,
+                "confidenceExplanation": "The business rules specify authorization checks"
+              }
+            ],
+            "nonBlockingNotes": [
+              {
+                "file": "src/main/java/com/example/taskmanager/service/TaskService.java",
+                "line": 301,
+                "note": "Consider logging exceptions for better traceability"
+              }
+            ]
+          }
+          """;
+
+      final ReviewResultSchema result =
+          objectMapper.readValue(actualLlmResponse, ReviewResultSchema.class);
+
+      assertThat(result.summary()).contains("bulk status update endpoint");
+      assertThat(result.issues()).hasSize(1);
+      assertThat(result.issues().get(0).startLine()).isEqualTo(268);
+      assertThat(result.issues().get(0).severity()).isEqualTo(Severity.major);
+      assertThat(result.issues().get(0).confidenceScore()).isEqualTo(0.9);
+      assertThat(result.nonBlockingNotes()).hasSize(1);
+      assertThat(result.nonBlockingNotes().get(0).line()).isEqualTo(301);
     }
   }
 }
