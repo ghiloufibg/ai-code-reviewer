@@ -11,7 +11,6 @@ import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import java.lang.reflect.Method;
-import org.gitlab4j.api.GitLabApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,6 @@ final class GitLabInlineCommentFormattingTest {
         GitLabAdapter.class.getDeclaredMethod("formatInlineComment", ReviewResult.Issue.class);
     formatInlineCommentMethod.setAccessible(true);
 
-    final GitLabApi mockGitLabApi = Mockito.mock(GitLabApi.class);
     gitLabAdapter =
         new GitLabAdapter(
             "https://gitlab.com",
@@ -44,8 +42,8 @@ final class GitLabInlineCommentFormattingTest {
   }
 
   @Test
-  @DisplayName("should_include_suggested_fix_for_high_confidence_issues")
-  void should_include_suggested_fix_for_high_confidence_issues() throws Exception {
+  @DisplayName("should_include_confidence_for_high_confidence_issues")
+  void should_include_confidence_for_high_confidence_issues() throws Exception {
     final ReviewResult.Issue issue =
         ReviewResult.Issue.issueBuilder()
             .file("Test.java")
@@ -54,20 +52,17 @@ final class GitLabInlineCommentFormattingTest {
             .title("Potential null pointer dereference")
             .suggestion("Add null check before accessing the object")
             .confidenceScore(0.85)
-            .suggestedFix(
-                "```diff\n  String name = user.getName();\n+ if (user != null) {\n+   user.getName();\n+ }\n```")
             .build();
 
     final String result = invokeFormatInlineComment(issue);
 
     assertThat(result).contains("**Confidence: 85%**");
-    assertThat(result).contains("```suggestion:");
-    assertThat(result).contains("if (user != null)");
+    assertThat(result).contains("**Recommendation:**");
   }
 
   @Test
-  @DisplayName("should_not_include_suggested_fix_for_low_confidence_issues")
-  void should_not_include_suggested_fix_for_low_confidence_issues() throws Exception {
+  @DisplayName("should_not_include_confidence_for_low_confidence_issues")
+  void should_not_include_confidence_for_low_confidence_issues() throws Exception {
     final ReviewResult.Issue issue =
         ReviewResult.Issue.issueBuilder()
             .file("Test.java")
@@ -76,33 +71,11 @@ final class GitLabInlineCommentFormattingTest {
             .title("Consider using a more descriptive variable name")
             .suggestion("Rename 'x' to 'userCount' for better clarity")
             .confidenceScore(0.55)
-            .suggestedFix(
-                "```diff\n- int x = getUserCount();\n+ int userCount = getUserCount();\n```")
             .build();
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).doesNotContain("```suggestion:");
-    assertThat(result).contains("**Recommendation:**");
-  }
-
-  @Test
-  @DisplayName("should_not_include_suggested_fix_when_fix_is_missing")
-  void should_not_include_suggested_fix_when_fix_is_missing() throws Exception {
-    final ReviewResult.Issue issue =
-        ReviewResult.Issue.issueBuilder()
-            .file("Test.java")
-            .startLine(10)
-            .severity("critical")
-            .title("SQL injection vulnerability")
-            .suggestion("Use parameterized queries instead of string concatenation")
-            .confidenceScore(0.95)
-            .suggestedFix(null)
-            .build();
-
-    final String result = invokeFormatInlineComment(issue);
-
-    assertThat(result).doesNotContain("```suggestion:");
+    assertThat(result).doesNotContain("**Confidence:");
     assertThat(result).contains("**Recommendation:**");
   }
 
@@ -117,8 +90,6 @@ final class GitLabInlineCommentFormattingTest {
             .title("Missing authentication check")
             .suggestion("Add authentication validation before processing the request")
             .confidenceScore(0.92)
-            .suggestedFix(
-                "```diff\n  processRequest(request);\n+ if (!isAuthenticated(request)) {\n+   throw new UnauthorizedException();\n+ }\n```")
             .build();
 
     final String result = invokeFormatInlineComment(issue);
@@ -126,29 +97,6 @@ final class GitLabInlineCommentFormattingTest {
     assertThat(result).contains("issue (blocking), critical: Missing authentication check");
     assertThat(result).contains("**Recommendation:** Add authentication validation");
     assertThat(result).contains("**Confidence: 92%**");
-    assertThat(result).contains("```suggestion:");
-    assertThat(result).contains("if (!isAuthenticated(request))");
-  }
-
-  @Test
-  @DisplayName("should_handle_suggested_fix_without_trailing_newline")
-  void should_handle_suggested_fix_without_trailing_newline() throws Exception {
-    final ReviewResult.Issue issue =
-        ReviewResult.Issue.issueBuilder()
-            .file("Test.java")
-            .startLine(5)
-            .severity("major")
-            .title("Resource leak")
-            .suggestion("Use try-with-resources")
-            .confidenceScore(0.88)
-            .suggestedFix(
-                "```diff\n- InputStream is = new FileInputStream(file);\n+ try (InputStream is = new FileInputStream(file)) {\n+   // process\n+ }\n```")
-            .build();
-
-    final String result = invokeFormatInlineComment(issue);
-
-    assertThat(result).contains("```suggestion:");
-    assertThat(result).endsWith("\n");
   }
 
   @Test
@@ -162,7 +110,6 @@ final class GitLabInlineCommentFormattingTest {
             .title("Test issue")
             .suggestion("Test suggestion")
             .confidenceScore(0.73)
-            .suggestedFix("```diff\n- broken code\n+ fixed code\n```")
             .build();
 
     final String result = invokeFormatInlineComment(issue);
@@ -181,13 +128,30 @@ final class GitLabInlineCommentFormattingTest {
             .title("Test issue")
             .suggestion("Test suggestion")
             .confidenceScore(0.70)
-            .suggestedFix("```diff\n- broken code\n+ fixed code\n```")
             .build();
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("```suggestion:");
     assertThat(result).contains("**Confidence: 70%**");
+  }
+
+  @Test
+  @DisplayName("should_not_include_confidence_when_score_is_null")
+  void should_not_include_confidence_when_score_is_null() throws Exception {
+    final ReviewResult.Issue issue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("major")
+            .title("Test issue")
+            .suggestion("Test suggestion")
+            .confidenceScore(null)
+            .build();
+
+    final String result = invokeFormatInlineComment(issue);
+
+    assertThat(result).doesNotContain("**Confidence:");
+    assertThat(result).contains("**Recommendation:**");
   }
 
   private String invokeFormatInlineComment(final ReviewResult.Issue issue) throws Exception {

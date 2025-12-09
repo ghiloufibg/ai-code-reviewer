@@ -459,45 +459,6 @@ public class GitLabAdapter implements SCMPort {
     return position;
   }
 
-  private String convertMarkdownDiffToGitLabSuggestion(final String markdownDiff) {
-    if (markdownDiff == null || markdownDiff.isBlank()) {
-      return "";
-    }
-
-    final StringBuilder suggestion = new StringBuilder();
-    final String[] lines = markdownDiff.split("\\n");
-    int linesAbove = 0;
-    int linesBelow = 0;
-    final StringBuilder suggestionContent = new StringBuilder();
-
-    for (final String line : lines) {
-      if (line.startsWith("```diff") || line.startsWith("```")) {
-        continue;
-      }
-
-      if (line.startsWith("+")) {
-        suggestionContent.append(line.substring(1)).append("\n");
-      } else if (line.startsWith("-")) {
-        linesAbove++;
-      } else if (line.trim().startsWith("@@")) {
-        continue;
-      } else if (!line.trim().isEmpty()) {
-        suggestionContent.append(line).append("\n");
-      }
-    }
-
-    suggestion
-        .append("```suggestion:-")
-        .append(linesAbove)
-        .append("+")
-        .append(linesBelow)
-        .append("\n");
-    suggestion.append(suggestionContent);
-    suggestion.append("```\n");
-
-    return suggestion.toString();
-  }
-
   private String formatInlineComment(final ReviewResult.Issue issue) {
     final String label = "issue";
 
@@ -528,17 +489,8 @@ public class GitLabAdapter implements SCMPort {
       comment.append(String.format("**Recommendation:** %s\n\n", issue.getSuggestion()));
     }
 
-    if (issue.isHighConfidence() && issue.hasFixSuggestion()) {
-      if (issue.getConfidenceScore() != null) {
-        comment.append(
-            String.format("**Confidence: %.0f%%**\n\n", issue.getConfidenceScore() * 100));
-      }
-      final String gitlabSuggestion =
-          convertMarkdownDiffToGitLabSuggestion(issue.getSuggestedFix());
-      comment.append(gitlabSuggestion);
-      if (!gitlabSuggestion.endsWith("\n")) {
-        comment.append("\n");
-      }
+    if (issue.isHighConfidence() && issue.getConfidenceScore() != null) {
+      comment.append(String.format("**Confidence: %.0f%%**\n\n", issue.getConfidenceScore() * 100));
     }
 
     return comment.toString();

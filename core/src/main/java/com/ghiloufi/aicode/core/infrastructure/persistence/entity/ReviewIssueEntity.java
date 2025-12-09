@@ -73,22 +73,6 @@ public class ReviewIssueEntity {
   @Column(name = "confidence_explanation", columnDefinition = "TEXT")
   private String confidenceExplanation;
 
-  @Column(name = "suggested_fix", columnDefinition = "TEXT")
-  private String suggestedFix;
-
-  @Column(name = "fix_diff", columnDefinition = "TEXT")
-  private String fixDiff;
-
-  @Column(name = "fix_applied", nullable = false)
-  @Builder.Default
-  private boolean fixApplied = false;
-
-  @Column(name = "applied_at")
-  private Instant appliedAt;
-
-  @Column(name = "applied_commit_sha", length = 40)
-  private String appliedCommitSha;
-
   @PrePersist
   protected void onCreate() {
     createdAt = Instant.now();
@@ -96,9 +80,5 @@ public class ReviewIssueEntity {
 
   public boolean isHighConfidence() {
     return confidenceScore != null && confidenceScore.compareTo(new BigDecimal("0.70")) >= 0;
-  }
-
-  public boolean hasFixSuggestion() {
-    return suggestedFix != null && !suggestedFix.isBlank();
   }
 }

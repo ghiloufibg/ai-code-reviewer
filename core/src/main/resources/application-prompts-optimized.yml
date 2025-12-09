@@ -35,32 +35,6 @@ prompts:
       ENTIRE response must parse with JSON.parse()
       </json_requirements>
 
-    fix-generation: |
-      <fix_generation>
-      For high-confidence issues (≥ 0.7) with clear, safe fixes:
-
-      Base64-encode suggestedFix to avoid JSON escaping:
-      1. Create markdown diff: ```diff with +/- prefixes
-      2. Base64-encode entire block
-      3. Insert: "suggestedFix": "[BASE64_STRING]"
-
-      Provide fixes for:
-      • Security vulnerabilities (SQL injection, XSS)
-      • Null checks and resource leaks
-      • API misuse with documented alternatives
-
-      Skip fixes for:
-      • Architecture changes
-      • Subjective style preferences
-      • Complex refactorings
-      </fix_generation>
-
-      <examples>
-      SQL Injection Fix (Python, Base64): YGBgZGlmZgotIHF1ZXJ5ID0gZiJTRUxFQ1QgKiBGUk9NIHVzZXJzIFdIRVJFIGlkID0ge3VzZXJfaWR9Igotcursor.execute(query)CisgcXVlcnkgPSAiU0VMRUNUICogRlJPTSB1c2VycyBXSEVSRSBpZCA9ICVzIgorIGN1cnNvci5leGVjdXRlKHF1ZXJ5LCAodXNlcl9pZCwpKQpgYGA=
-
-      Resource Leak Fix (Python, Base64): YGBgZGlmZgotIGZpbGUgPSBvcGVuKCdkYXRhLnR4dCcsICdyJykKLSBjb250ZW50ID0gZmlsZS5yZWFkKCkKKyB3aXRoIG9wZW4oJ2RhdGEudHh0JywgJ3InKSBhcyBmaWxlOgorICAgY29udGVudCA9IGZpbGUucmVhZCgpCmBgYA==
-      </examples>
-
     confidence: |
       <confidence_scoring>
       Score issues 0.0-1.0:
@@ -99,9 +73,8 @@ prompts:
                 "severity": {"type": "string", "enum": ["critical", "major", "minor", "info"]},
                 "title": {"type": "string", "maxLength": 100, "description": "Brief issue title"},
                 "suggestion": {"type": "string", "maxLength": 500, "description": "How to fix"},
-                "confidenceScore": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "confidenceExplanation": {"type": "string", "maxLength": 200},
-                "suggestedFix": {"type": "string", "description": "Base64-encoded markdown diff (optional, for high-confidence fixes)"}
+                "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "confidence_explanation": {"type": "string", "maxLength": 200}
               }
             }
           },
@@ -150,7 +123,6 @@ prompts:
       ☐ All strings escaped (no literal newlines, quotes escaped)
       ☐ NO markdown code blocks (```json)
       ☐ NO text before { or after }
-      ☐ suggestedFix is Base64-encoded or omitted
       ☐ Parseable by standard JSON parser
       ☐ ALL start_line and line values are >= 1 (NO zeros!)
 

@@ -133,7 +133,6 @@ public class ReviewProcessor {
         .suggestion(issueSchema.suggestion())
         .confidenceScore(issueSchema.confidenceScore())
         .confidenceExplanation(issueSchema.confidenceExplanation())
-        .suggestedFix(issueSchema.suggestedFix())
         .build();
   }
 

@@ -73,7 +73,6 @@ public final class JsonReviewResultParser {
   private ReviewResult.Issue normalizeIssue(final ReviewResult.Issue issue) {
     ReviewResult.Issue normalized = normalizeConfidenceScore(issue);
     normalized = normalizeConfidenceExplanation(normalized);
-    normalized = decodeSuggestedFix(normalized);
     return normalized;
   }
 
@@ -110,49 +109,6 @@ public final class JsonReviewResultParser {
       return issue.withConfidenceExplanation("No explanation provided");
     }
     return issue;
-  }
-
-  private ReviewResult.Issue decodeSuggestedFix(final ReviewResult.Issue issue) {
-    if (issue.getSuggestedFix() == null || issue.getSuggestedFix().isBlank()) {
-      return issue;
-    }
-
-    try {
-      final byte[] decodedBytes = java.util.Base64.getDecoder().decode(issue.getSuggestedFix());
-      final String decoded = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
-
-      if (!isValidMarkdownDiff(decoded)) {
-        log.error(
-            "Issue '{}' at {}:{} has invalid suggestedFix content (not a markdown diff), discarding. Content preview: {}",
-            issue.getTitle(),
-            issue.getFile(),
-            issue.getStartLine(),
-            decoded.substring(0, Math.min(100, decoded.length())));
-        return issue.withSuggestedFix(null);
-      }
-
-      log.debug(
-          "Successfully decoded and validated Base64 suggestedFix for issue: {}", issue.getTitle());
-      return issue.withSuggestedFix(decoded);
-    } catch (final IllegalArgumentException e) {
-      log.error(
-          "Issue '{}' at {}:{} has suggestedFix that is not valid Base64, discarding: {}",
-          issue.getTitle(),
-          issue.getFile(),
-          issue.getStartLine(),
-          e.getMessage());
-      return issue.withSuggestedFix(null);
-    }
-  }
-
-  private boolean isValidMarkdownDiff(final String content) {
-    if (content == null || content.isBlank()) {
-      return false;
-    }
-
-    final String trimmed = content.trim();
-
-    return trimmed.startsWith("```diff") || trimmed.startsWith("```");
   }
 
   private void validateJsonStructure(final String json) {

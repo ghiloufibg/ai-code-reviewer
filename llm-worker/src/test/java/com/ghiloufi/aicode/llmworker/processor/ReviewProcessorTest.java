@@ -47,8 +47,7 @@ final class ReviewProcessorTest {
                       "Null check",
                       "Add null check",
                       0.9,
-                      "High confidence",
-                      null)),
+                      "High confidence")),
               List.of()));
 
       final ReviewProcessor processor =
@@ -122,12 +121,10 @@ final class ReviewProcessorTest {
           new ReviewResultSchema(
               "Multi-severity",
               List.of(
-                  new IssueSchema(
-                      "a.java", 1, Severity.critical, "Critical", "Fix", null, null, null),
-                  new IssueSchema("b.java", 2, Severity.major, "Major", "Fix", null, null, null),
-                  new IssueSchema("c.java", 3, Severity.minor, "Minor", "Fix", null, null, null),
-                  new IssueSchema(
-                      "d.java", 4, Severity.info, "Info", "Consider", null, null, null)),
+                  new IssueSchema("a.java", 1, Severity.critical, "Critical", "Fix", null, null),
+                  new IssueSchema("b.java", 2, Severity.major, "Major", "Fix", null, null),
+                  new IssueSchema("c.java", 3, Severity.minor, "Minor", "Fix", null, null),
+                  new IssueSchema("d.java", 4, Severity.info, "Info", "Consider", null, null)),
               List.of()));
 
       final ReviewProcessor processor =
@@ -153,7 +150,7 @@ final class ReviewProcessorTest {
       reviewService.setResult(
           new ReviewResultSchema(
               "Null severity",
-              List.of(new IssueSchema("a.java", 1, null, "Issue", "Fix", null, null, null)),
+              List.of(new IssueSchema("a.java", 1, null, "Issue", "Fix", null, null)),
               List.of()));
 
       final ReviewProcessor processor =

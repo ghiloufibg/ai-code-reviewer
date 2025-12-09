@@ -2,7 +2,7 @@ package com.ghiloufi.aicode.llmworker.processor;
 
 import com.ghiloufi.aicode.llmworker.schema.ReviewResultSchema;
 import com.ghiloufi.aicode.llmworker.service.CodeReviewAiService;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,9 +13,8 @@ public class StructuredReviewService implements ReviewService {
 
   private final CodeReviewAiService aiService;
 
-  public StructuredReviewService(ChatLanguageModel chatModel) {
-    this.aiService =
-        AiServices.builder(CodeReviewAiService.class).chatLanguageModel(chatModel).build();
+  public StructuredReviewService(ChatModel chatModel) {
+    this.aiService = AiServices.builder(CodeReviewAiService.class).chatModel(chatModel).build();
     log.info("StructuredReviewService initialized with LangChain4j AI Service");
   }
 
