@@ -489,10 +489,6 @@ public class GitLabAdapter implements SCMPort {
       comment.append(String.format("**Recommendation:** %s\n\n", issue.getSuggestion()));
     }
 
-    if (issue.isHighConfidence() && issue.getConfidenceScore() != null) {
-      comment.append(String.format("**Confidence: %.0f%%**\n\n", issue.getConfidenceScore() * 100));
-    }
-
     return comment.toString();
   }
 

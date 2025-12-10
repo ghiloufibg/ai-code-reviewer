@@ -184,11 +184,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
             + changeRequest.getNumber()
             + "_"
             + repository.getProvider().name().toLowerCase();
+    final ReviewResult filteredResult = filterHighConfidenceIssues(result);
 
     return publishSummaryComment(repository, changeRequest, result)
         .then(
             scmPort
-                .publishReview(repository, changeRequest, result)
+                .publishReview(repository, changeRequest, filteredResult)
                 .transform(resilience.criticalMono("scm-publish-review"))
                 .doOnSuccess(
                     v ->
@@ -249,11 +250,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
     final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
     final ReviewResult enrichedResult =
         reviewResult.withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+    final ReviewResult filteredResult = filterHighConfidenceIssues(enrichedResult);
 
     return publishSummaryComment(repository, changeRequest, enrichedResult)
         .then(
             scmPort
-                .publishReview(repository, changeRequest, enrichedResult)
+                .publishReview(repository, changeRequest, filteredResult)
                 .transform(resilience.criticalMono("scm-publish-review"))
                 .doOnSuccess(
                     v ->
@@ -354,11 +356,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
     final ChangeRequestIdentifier changeRequest =
         ChangeRequestIdentifier.create(provider, changeRequestId);
     final SCMPort scmPort = scmProviderFactory.getProvider(provider);
+    final ReviewResult filteredResult = filterHighConfidenceIssues(reviewResult);
 
     return publishSummaryComment(repository, changeRequest, reviewResult)
         .then(
             scmPort
-                .publishReview(repository, changeRequest, reviewResult)
+                .publishReview(repository, changeRequest, filteredResult)
                 .transform(resilience.criticalMono("scm-publish-review"))
                 .doOnSuccess(
                     v ->
@@ -392,5 +395,20 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     repository.getDisplayName(),
                     changeRequest.getDisplayName(),
                     error));
+  }
+
+  private ReviewResult filterHighConfidenceIssues(final ReviewResult reviewResult) {
+    final List<ReviewResult.Issue> highConfidenceIssues =
+        reviewResult.getIssues().stream().filter(ReviewResult.Issue::isHighConfidence).toList();
+
+    final int filteredCount = reviewResult.getIssues().size() - highConfidenceIssues.size();
+    if (filteredCount > 0) {
+      log.info(
+          "Filtered {} low-confidence issues from SCM publishing (kept {} high-confidence)",
+          filteredCount,
+          highConfidenceIssues.size());
+    }
+
+    return reviewResult.withIssues(highConfidenceIssues);
   }
 }

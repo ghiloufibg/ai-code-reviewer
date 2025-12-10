@@ -308,6 +308,61 @@ final class ReviewManagementServiceTest {
   }
 
   @Test
+  @DisplayName("should_only_publish_high_confidence_issues_to_scm")
+  final void should_only_publish_high_confidence_issues_to_scm() {
+    final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
+    final MergeRequestId changeRequest = new MergeRequestId(1);
+
+    final ReviewResult.Issue highConfidenceIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(10)
+            .severity("CRITICAL")
+            .title("High confidence issue")
+            .suggestion("Fix this")
+            .confidenceScore(0.9)
+            .build();
+
+    final ReviewResult.Issue lowConfidenceIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(20)
+            .severity("MEDIUM")
+            .title("Low confidence issue")
+            .suggestion("Maybe fix this")
+            .confidenceScore(0.5)
+            .build();
+
+    final ReviewResult.Issue noConfidenceIssue =
+        ReviewResult.Issue.issueBuilder()
+            .file("Test.java")
+            .startLine(30)
+            .severity("LOW")
+            .title("No confidence issue")
+            .suggestion("Not sure about this")
+            .build();
+
+    final ReviewResult reviewResult =
+        ReviewResult.builder()
+            .summary("Test review")
+            .issues(List.of(highConfidenceIssue, lowConfidenceIssue, noConfidenceIssue))
+            .build();
+
+    testSCMPort.setShouldFailPublish(false);
+
+    final Mono<Void> result =
+        reviewManagementService.publishReview(repository, changeRequest, reviewResult);
+
+    StepVerifier.create(result).verifyComplete();
+
+    assertThat(testSCMPort.isPublishReviewCalled()).isTrue();
+    assertThat(testSCMPort.getLastPublishedResult()).isNotNull();
+    assertThat(testSCMPort.getLastPublishedResult().getIssues()).hasSize(1);
+    assertThat(testSCMPort.getLastPublishedResult().getIssues().get(0).getTitle())
+        .isEqualTo("High confidence issue");
+  }
+
+  @Test
   @DisplayName("should_stream_chunks_and_publish_review_when_successful")
   final void should_stream_chunks_and_publish_review_when_successful() {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
@@ -441,6 +496,7 @@ final class ReviewManagementServiceTest {
     private boolean shouldFailPublish = false;
     private DiffAnalysisBundle diffAnalysisBundle;
     private final AtomicBoolean publishReviewCalled = new AtomicBoolean(false);
+    private ReviewResult lastPublishedResult;
 
     final void setMergeRequests(final List<MergeRequestSummary> mergeRequests) {
       this.mergeRequests = mergeRequests;
@@ -470,6 +526,10 @@ final class ReviewManagementServiceTest {
       return publishReviewCalled.get();
     }
 
+    final ReviewResult getLastPublishedResult() {
+      return lastPublishedResult;
+    }
+
     @Override
     public Mono<DiffAnalysisBundle> getDiff(
         final RepositoryIdentifier repo, final ChangeRequestIdentifier changeRequest) {
@@ -485,6 +545,7 @@ final class ReviewManagementServiceTest {
         final ChangeRequestIdentifier changeRequest,
         final ReviewResult reviewResult) {
       publishReviewCalled.set(true);
+      lastPublishedResult = reviewResult;
       if (shouldFailPublish) {
         return Mono.error(new RuntimeException("Publish review failed"));
       }
