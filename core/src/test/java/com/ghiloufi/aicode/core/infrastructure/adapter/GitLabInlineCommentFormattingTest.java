@@ -42,8 +42,8 @@ final class GitLabInlineCommentFormattingTest {
   }
 
   @Test
-  @DisplayName("should_include_confidence_for_high_confidence_issues")
-  void should_include_confidence_for_high_confidence_issues() throws Exception {
+  @DisplayName("should_format_high_confidence_issue_without_confidence_display")
+  void should_format_high_confidence_issue_without_confidence_display() throws Exception {
     final ReviewResult.Issue issue =
         ReviewResult.Issue.issueBuilder()
             .file("Test.java")
@@ -56,8 +56,9 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("**Confidence: 85%**");
+    assertThat(result).doesNotContain("**Confidence:");
     assertThat(result).contains("**Recommendation:**");
+    assertThat(result).contains("issue (blocking), major: Potential null pointer dereference");
   }
 
   @Test
@@ -96,12 +97,12 @@ final class GitLabInlineCommentFormattingTest {
 
     assertThat(result).contains("issue (blocking), critical: Missing authentication check");
     assertThat(result).contains("**Recommendation:** Add authentication validation");
-    assertThat(result).contains("**Confidence: 92%**");
+    assertThat(result).doesNotContain("**Confidence:");
   }
 
   @Test
-  @DisplayName("should_include_confidence_percentage_when_available")
-  void should_include_confidence_percentage_when_available() throws Exception {
+  @DisplayName("should_not_display_confidence_in_inline_comments")
+  void should_not_display_confidence_in_inline_comments() throws Exception {
     final ReviewResult.Issue issue =
         ReviewResult.Issue.issueBuilder()
             .file("Test.java")
@@ -114,12 +115,14 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("**Confidence: 73%**");
+    assertThat(result).doesNotContain("**Confidence:");
+    assertThat(result).contains("issue (blocking), major: Test issue");
+    assertThat(result).contains("**Recommendation:** Test suggestion");
   }
 
   @Test
-  @DisplayName("should_work_with_exactly_70_percent_confidence_threshold")
-  void should_work_with_exactly_70_percent_confidence_threshold() throws Exception {
+  @DisplayName("should_format_issue_at_threshold_without_confidence")
+  void should_format_issue_at_threshold_without_confidence() throws Exception {
     final ReviewResult.Issue issue =
         ReviewResult.Issue.issueBuilder()
             .file("Test.java")
@@ -132,7 +135,8 @@ final class GitLabInlineCommentFormattingTest {
 
     final String result = invokeFormatInlineComment(issue);
 
-    assertThat(result).contains("**Confidence: 70%**");
+    assertThat(result).doesNotContain("**Confidence:");
+    assertThat(result).contains("issue (blocking), major: Test issue");
   }
 
   @Test
