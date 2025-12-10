@@ -23,6 +23,10 @@ public final class SummaryCommentFormatter {
   }
 
   public String formatSummaryComment(final ReviewResult reviewResult) {
+    return formatSummaryComment(reviewResult, reviewResult.getFilesAnalyzed());
+  }
+
+  public String formatSummaryComment(final ReviewResult reviewResult, final int totalFilesInDiff) {
     final StringBuilder comment = new StringBuilder();
 
     comment.append(HEADER);
@@ -35,7 +39,7 @@ public final class SummaryCommentFormatter {
     }
 
     if (config.isIncludeStatistics()) {
-      appendStatistics(comment, reviewResult);
+      appendStatistics(comment, reviewResult, totalFilesInDiff);
     }
 
     if (config.isIncludeSeverityBreakdown() && !reviewResult.getIssues().isEmpty()) {
@@ -47,15 +51,17 @@ public final class SummaryCommentFormatter {
     return comment.toString();
   }
 
-  private void appendStatistics(final StringBuilder comment, final ReviewResult reviewResult) {
+  private void appendStatistics(
+      final StringBuilder comment, final ReviewResult reviewResult, final int totalFilesInDiff) {
     final int issueCount = reviewResult.getIssues().size();
     final int suggestionCount = reviewResult.getNonBlockingNotes().size();
-    final int uniqueFileCount = countUniqueFiles(reviewResult);
+    final int fileCount =
+        totalFilesInDiff > 0 ? totalFilesInDiff : countUniqueFilesFromIssues(reviewResult);
 
     comment.append("### 📈 Review Statistics\n\n");
     comment.append("- **Issues Found**: ").append(issueCount).append("\n");
     comment.append("- **Suggestions**: ").append(suggestionCount).append("\n");
-    comment.append("- **Files Analyzed**: ").append(uniqueFileCount).append("\n\n");
+    comment.append("- **Files Analyzed**: ").append(fileCount).append("\n\n");
   }
 
   private void appendSeverityBreakdown(
@@ -72,7 +78,7 @@ public final class SummaryCommentFormatter {
     comment.append("\n");
   }
 
-  private int countUniqueFiles(final ReviewResult reviewResult) {
+  private int countUniqueFilesFromIssues(final ReviewResult reviewResult) {
     final Set<String> uniqueFiles = new HashSet<>();
     reviewResult.getIssues().forEach(issue -> uniqueFiles.add(issue.getFile()));
     reviewResult.getNonBlockingNotes().forEach(note -> uniqueFiles.add(note.getFile()));

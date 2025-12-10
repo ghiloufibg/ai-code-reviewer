@@ -90,10 +90,54 @@ final class GitLabDiffBuilderTest {
       assertThat(result).contains("+++ b/new/NewName.java");
     }
 
+    @Test
+    @DisplayName("should_use_dev_null_for_new_file_old_path")
+    final void should_use_dev_null_for_new_file_old_path() {
+      final Diff diff = createNewFileDiff("src/NewFile.java", "@@ -0,0 +1,5 @@\n+new content");
+
+      final String result = diffBuilder.buildRawDiff(List.of(diff));
+
+      assertThat(result).contains("diff --git a/src/NewFile.java b/src/NewFile.java");
+      assertThat(result).contains("--- /dev/null");
+      assertThat(result).contains("+++ b/src/NewFile.java");
+      assertThat(result).doesNotContain("--- a/src/NewFile.java");
+    }
+
+    @Test
+    @DisplayName("should_use_dev_null_for_deleted_file_new_path")
+    final void should_use_dev_null_for_deleted_file_new_path() {
+      final Diff diff = createDeletedFileDiff("src/DeletedFile.java", "@@ -1,5 +0,0 @@\n-deleted");
+
+      final String result = diffBuilder.buildRawDiff(List.of(diff));
+
+      assertThat(result).contains("diff --git a/src/DeletedFile.java b/src/DeletedFile.java");
+      assertThat(result).contains("--- a/src/DeletedFile.java");
+      assertThat(result).contains("+++ /dev/null");
+      assertThat(result).doesNotContain("+++ b/src/DeletedFile.java");
+    }
+
     private Diff createDiff(final String oldPath, final String newPath, final String diffContent) {
       final Diff diff = new Diff();
       diff.setOldPath(oldPath);
       diff.setNewPath(newPath);
+      diff.setDiff(diffContent);
+      return diff;
+    }
+
+    private Diff createNewFileDiff(final String path, final String diffContent) {
+      final Diff diff = new Diff();
+      diff.setOldPath(path);
+      diff.setNewPath(path);
+      diff.setNewFile(true);
+      diff.setDiff(diffContent);
+      return diff;
+    }
+
+    private Diff createDeletedFileDiff(final String path, final String diffContent) {
+      final Diff diff = new Diff();
+      diff.setOldPath(path);
+      diff.setNewPath(path);
+      diff.setDeletedFile(true);
       diff.setDiff(diffContent);
       return diff;
     }

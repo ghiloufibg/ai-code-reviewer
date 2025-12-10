@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.core.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -19,9 +20,17 @@ public final class ReviewResult {
   @JsonProperty("non_blocking_notes")
   private final List<Note> nonBlockingNotes;
 
+  @JsonProperty("llm_provider")
   private final String llmProvider;
+
+  @JsonProperty("llm_model")
   private final String llmModel;
+
+  @JsonProperty("raw_llm_response")
   private final String rawLlmResponse;
+
+  @JsonProperty("files_analyzed")
+  private final int filesAnalyzed;
 
   private ReviewResult(final Builder builder) {
     this.summary = builder.summary;
@@ -31,6 +40,7 @@ public final class ReviewResult {
     this.llmProvider = builder.llmProvider;
     this.llmModel = builder.llmModel;
     this.rawLlmResponse = builder.rawLlmResponse;
+    this.filesAnalyzed = builder.filesAnalyzed;
   }
 
   public ReviewResult withLlmMetadata(final String provider, final String model) {
@@ -41,6 +51,7 @@ public final class ReviewResult {
         .llmProvider(provider)
         .llmModel(model)
         .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(this.filesAnalyzed)
         .build();
   }
 
@@ -52,6 +63,7 @@ public final class ReviewResult {
         .llmProvider(this.llmProvider)
         .llmModel(this.llmModel)
         .rawLlmResponse(rawResponse)
+        .filesAnalyzed(this.filesAnalyzed)
         .build();
   }
 
@@ -63,6 +75,19 @@ public final class ReviewResult {
         .llmProvider(this.llmProvider)
         .llmModel(this.llmModel)
         .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(this.filesAnalyzed)
+        .build();
+  }
+
+  public ReviewResult withFilesAnalyzed(final int count) {
+    return builder()
+        .summary(this.summary)
+        .issues(this.issues)
+        .nonBlockingNotes(this.nonBlockingNotes)
+        .llmProvider(this.llmProvider)
+        .llmModel(this.llmModel)
+        .rawLlmResponse(this.rawLlmResponse)
+        .filesAnalyzed(count)
         .build();
   }
 
@@ -80,11 +105,20 @@ public final class ReviewResult {
     private List<Issue> issues = new ArrayList<>();
 
     @JsonProperty("non_blocking_notes")
+    @JsonAlias("nonBlockingNotes")
     private List<Note> nonBlockingNotes = new ArrayList<>();
 
+    @JsonProperty("llm_provider")
     private String llmProvider;
+
+    @JsonProperty("llm_model")
     private String llmModel;
+
+    @JsonProperty("raw_llm_response")
     private String rawLlmResponse;
+
+    @JsonProperty("files_analyzed")
+    private int filesAnalyzed;
 
     private Builder() {}
 
@@ -118,6 +152,11 @@ public final class ReviewResult {
       return this;
     }
 
+    public Builder filesAnalyzed(final int filesAnalyzed) {
+      this.filesAnalyzed = filesAnalyzed;
+      return this;
+    }
+
     public ReviewResult build() {
       return new ReviewResult(this);
     }
@@ -135,13 +174,24 @@ public final class ReviewResult {
     private final String severity;
     private final String title;
     private final String suggestion;
+
+    @JsonProperty("inline_comment_posted")
     private final Boolean inlineCommentPosted;
+
+    @JsonProperty("scm_comment_id")
     private final String scmCommentId;
+
+    @JsonProperty("fallback_reason")
     private final String fallbackReason;
+
+    @JsonProperty("position_metadata")
     private final String positionMetadata;
+
+    @JsonProperty("confidence_score")
     private final Double confidenceScore;
+
+    @JsonProperty("confidence_explanation")
     private final String confidenceExplanation;
-    private final String suggestedFix;
 
     private Issue(final IssueBuilder builder) {
       this.file = builder.file;
@@ -155,15 +205,11 @@ public final class ReviewResult {
       this.positionMetadata = builder.positionMetadata;
       this.confidenceScore = builder.confidenceScore;
       this.confidenceExplanation = builder.confidenceExplanation;
-      this.suggestedFix = builder.suggestedFix;
     }
 
+    @JsonProperty("high_confidence")
     public boolean isHighConfidence() {
       return confidenceScore != null && confidenceScore >= 0.7;
-    }
-
-    public boolean hasFixSuggestion() {
-      return suggestedFix != null && !suggestedFix.isBlank();
     }
 
     public Issue withConfidenceScore(final Double score) {
@@ -179,7 +225,6 @@ public final class ReviewResult {
           .positionMetadata(this.positionMetadata)
           .confidenceScore(score)
           .confidenceExplanation(this.confidenceExplanation)
-          .suggestedFix(this.suggestedFix)
           .build();
     }
 
@@ -196,24 +241,6 @@ public final class ReviewResult {
           .positionMetadata(this.positionMetadata)
           .confidenceScore(this.confidenceScore)
           .confidenceExplanation(explanation)
-          .suggestedFix(this.suggestedFix)
-          .build();
-    }
-
-    public Issue withSuggestedFix(final String fix) {
-      return issueBuilder()
-          .file(this.file)
-          .startLine(this.startLine)
-          .severity(this.severity)
-          .title(this.title)
-          .suggestion(this.suggestion)
-          .inlineCommentPosted(this.inlineCommentPosted)
-          .scmCommentId(this.scmCommentId)
-          .fallbackReason(this.fallbackReason)
-          .positionMetadata(this.positionMetadata)
-          .confidenceScore(this.confidenceScore)
-          .confidenceExplanation(this.confidenceExplanation)
-          .suggestedFix(fix)
           .build();
     }
 
@@ -231,7 +258,6 @@ public final class ReviewResult {
           .positionMetadata(metadata)
           .confidenceScore(this.confidenceScore)
           .confidenceExplanation(this.confidenceExplanation)
-          .suggestedFix(this.suggestedFix)
           .build();
     }
 
@@ -244,18 +270,32 @@ public final class ReviewResult {
       private String file;
 
       @JsonProperty("start_line")
+      @JsonAlias("startLine")
       private int startLine;
 
       private String severity;
       private String title;
       private String suggestion;
+
+      @JsonProperty("inline_comment_posted")
       private Boolean inlineCommentPosted;
+
+      @JsonProperty("scm_comment_id")
       private String scmCommentId;
+
+      @JsonProperty("fallback_reason")
       private String fallbackReason;
+
+      @JsonProperty("position_metadata")
       private String positionMetadata;
+
+      @JsonProperty("confidence_score")
+      @JsonAlias("confidenceScore")
       private Double confidenceScore;
+
+      @JsonProperty("confidence_explanation")
+      @JsonAlias("confidenceExplanation")
       private String confidenceExplanation;
-      private String suggestedFix;
 
       private IssueBuilder() {}
 
@@ -314,11 +354,6 @@ public final class ReviewResult {
         return this;
       }
 
-      public IssueBuilder suggestedFix(final String suggestedFix) {
-        this.suggestedFix = suggestedFix;
-        return this;
-      }
-
       public Issue build() {
         return new Issue(this);
       }
@@ -332,9 +367,17 @@ public final class ReviewResult {
     private final String file;
     private final int line;
     private final String note;
+
+    @JsonProperty("inline_comment_posted")
     private final Boolean inlineCommentPosted;
+
+    @JsonProperty("scm_comment_id")
     private final String scmCommentId;
+
+    @JsonProperty("fallback_reason")
     private final String fallbackReason;
+
+    @JsonProperty("position_metadata")
     private final String positionMetadata;
 
     private Note(final NoteBuilder builder) {
@@ -369,9 +412,17 @@ public final class ReviewResult {
       private String file;
       private int line;
       private String note;
+
+      @JsonProperty("inline_comment_posted")
       private Boolean inlineCommentPosted;
+
+      @JsonProperty("scm_comment_id")
       private String scmCommentId;
+
+      @JsonProperty("fallback_reason")
       private String fallbackReason;
+
+      @JsonProperty("position_metadata")
       private String positionMetadata;
 
       private NoteBuilder() {}

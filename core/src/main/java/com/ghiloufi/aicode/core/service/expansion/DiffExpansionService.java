@@ -4,10 +4,10 @@ import com.ghiloufi.aicode.core.config.ContextRetrievalConfig;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
 import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.ExpandedFileContext;
+import com.ghiloufi.aicode.core.domain.model.GitFileModification;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,42 +29,72 @@ public final class DiffExpansionService {
       return Mono.just(DiffExpansionResult.disabled());
     }
 
-    final List<String> filePaths = extractModifiedFilePaths(bundle);
-    final int totalFiles = filePaths.size();
+    final List<GitFileModification> allFiles = bundle.structuredDiff().files;
+    final List<GitFileModification> modifiedFiles = extractFilesNeedingExpansion(allFiles);
+    final int newFilesSkipped = countNewFiles(allFiles);
 
-    if (filePaths.isEmpty()) {
+    if (modifiedFiles.isEmpty()) {
+      if (newFilesSkipped > 0) {
+        log.debug(
+            "No files to expand: {} new file(s) skipped (full content already in diff)",
+            newFilesSkipped);
+      }
       return Mono.just(DiffExpansionResult.empty());
     }
 
     final var expansionConfig = config.diffExpansion();
     final List<String> filesToExpand =
-        filePaths.stream()
+        modifiedFiles.stream()
+            .map(GitFileModification::getEffectivePath)
             .filter(this::shouldIncludeFile)
             .limit(expansionConfig.maxFilesToExpand())
             .toList();
 
-    log.info("Expanding {} of {} modified files", filesToExpand.size(), totalFiles);
+    final int totalCandidates = modifiedFiles.size();
+    log.info(
+        "Expanding {} of {} modified files ({} new files skipped - full content in diff)",
+        filesToExpand.size(),
+        totalCandidates,
+        newFilesSkipped);
 
     final int concurrency = Math.min(filesToExpand.size(), expansionConfig.maxFilesToExpand());
     return Flux.fromIterable(filesToExpand)
         .flatMap(path -> fetchFileContent(bundle.repositoryIdentifier(), path), concurrency)
         .collectList()
         .map(
-            expanded ->
-                new DiffExpansionResult(
-                    expanded,
-                    totalFiles,
-                    expanded.size(),
-                    totalFiles - expanded.size(),
-                    totalFiles > expansionConfig.maxFilesToExpand() ? "max files limit" : null));
+            expanded -> {
+              final int totalRequested = totalCandidates + newFilesSkipped;
+              final int skipped = totalRequested - expanded.size();
+              final String skipReason =
+                  buildSkipReason(totalRequested, expansionConfig, newFilesSkipped);
+              return new DiffExpansionResult(
+                  expanded, totalRequested, expanded.size(), skipped, skipReason);
+            });
   }
 
-  private List<String> extractModifiedFilePaths(final DiffAnalysisBundle bundle) {
-    return bundle.structuredDiff().files.stream()
-        .map(file -> file.newPath)
-        .filter(Objects::nonNull)
-        .filter(path -> !path.equals("/dev/null"))
+  private List<GitFileModification> extractFilesNeedingExpansion(
+      final List<GitFileModification> files) {
+    return files.stream()
+        .filter(file -> !file.isNewFile())
+        .filter(file -> !file.isDeleted())
         .toList();
+  }
+
+  private int countNewFiles(final List<GitFileModification> files) {
+    return (int) files.stream().filter(GitFileModification::isNewFile).count();
+  }
+
+  private String buildSkipReason(
+      final int totalRequested,
+      final ContextRetrievalConfig.DiffExpansionConfig expansionConfig,
+      final int newFilesSkipped) {
+    if (totalRequested > expansionConfig.maxFilesToExpand()) {
+      return "max files limit";
+    }
+    if (newFilesSkipped > 0) {
+      return newFilesSkipped + " new file(s) skipped (full content in diff)";
+    }
+    return null;
   }
 
   private boolean shouldIncludeFile(final String filePath) {

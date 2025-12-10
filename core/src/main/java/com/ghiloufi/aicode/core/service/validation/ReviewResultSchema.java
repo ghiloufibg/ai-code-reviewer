@@ -44,19 +44,15 @@ public final class ReviewResultSchema {
                   "type": "string",
                   "description": "Suggested fix or improvement"
                 },
-                "confidenceScore": {
+                "confidence_score": {
                   "type": "number",
                   "minimum": 0.0,
                   "maximum": 1.0,
                   "description": "AI confidence level (0.0-1.0) indicating certainty about the issue"
                 },
-                "confidenceExplanation": {
+                "confidence_explanation": {
                   "type": "string",
                   "description": "Brief explanation of the confidence score considering pattern clarity, context completeness, and false positive risk"
-                },
-                "suggestedFix": {
-                  "type": "string",
-                  "description": "Base64-encoded markdown diff block showing the fix. The LLM should: 1) Create markdown diff with ```diff markers, 2) Base64-encode the entire diff, 3) Put the Base64 string here. Only provide for high-confidence issues (score >= 0.7) where an automated fix is safe and clear."
                 }
               },
               "additionalProperties": false

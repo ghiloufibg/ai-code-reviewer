@@ -16,6 +16,13 @@ prompts:
       5. Context: Surrounding code, dependencies, patterns
 
       Focus on changed lines ±5 context. Prioritize critical/major over style.
+
+      CRITICAL LINE NUMBER RULE:
+      Every issue MUST reference a specific line number from the diff (start_line >= 1).
+      - NEVER use start_line: 0 - this is INVALID
+      - For architectural issues, reference the most relevant line where the pattern occurs
+      - For cross-file issues, pick the primary location in the diff
+      - If an issue cannot be tied to any line in the diff, report it in non_blocking_notes instead
       </task>
 
       <json_requirements>
@@ -27,32 +34,6 @@ prompts:
 
       ENTIRE response must parse with JSON.parse()
       </json_requirements>
-
-    fix-generation: |
-      <fix_generation>
-      For high-confidence issues (≥ 0.7) with clear, safe fixes:
-
-      Base64-encode suggestedFix to avoid JSON escaping:
-      1. Create markdown diff: ```diff with +/- prefixes
-      2. Base64-encode entire block
-      3. Insert: "suggestedFix": "[BASE64_STRING]"
-
-      Provide fixes for:
-      • Security vulnerabilities (SQL injection, XSS)
-      • Null checks and resource leaks
-      • API misuse with documented alternatives
-
-      Skip fixes for:
-      • Architecture changes
-      • Subjective style preferences
-      • Complex refactorings
-      </fix_generation>
-
-      <examples>
-      SQL Injection Fix (Python, Base64): YGBgZGlmZgotIHF1ZXJ5ID0gZiJTRUxFQ1QgKiBGUk9NIHVzZXJzIFdIRVJFIGlkID0ge3VzZXJfaWR9Igotcursor.execute(query)CisgcXVlcnkgPSAiU0VMRUNUICogRlJPTSB1c2VycyBXSEVSRSBpZCA9ICVzIgorIGN1cnNvci5leGVjdXRlKHF1ZXJ5LCAodXNlcl9pZCwpKQpgYGA=
-
-      Resource Leak Fix (Python, Base64): YGBgZGlmZgotIGZpbGUgPSBvcGVuKCdkYXRhLnR4dCcsICdyJykKLSBjb250ZW50ID0gZmlsZS5yZWFkKCkKKyB3aXRoIG9wZW4oJ2RhdGEudHh0JywgJ3InKSBhcyBmaWxlOgorICAgY29udGVudCA9IGZpbGUucmVhZCgpCmBgYA==
-      </examples>
 
     confidence: |
       <confidence_scoring>
@@ -92,9 +73,8 @@ prompts:
                 "severity": {"type": "string", "enum": ["critical", "major", "minor", "info"]},
                 "title": {"type": "string", "maxLength": 100, "description": "Brief issue title"},
                 "suggestion": {"type": "string", "maxLength": 500, "description": "How to fix"},
-                "confidenceScore": {"type": "number", "minimum": 0.0, "maximum": 1.0},
-                "confidenceExplanation": {"type": "string", "maxLength": 200},
-                "suggestedFix": {"type": "string", "description": "Base64-encoded markdown diff (optional, for high-confidence fixes)"}
+                "confidence_score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "confidence_explanation": {"type": "string", "maxLength": 200}
               }
             }
           },
@@ -120,9 +100,19 @@ prompts:
       ❌ NO "end_line" field - only use "start_line"
       ❌ NO "category" field - severity is sufficient
 
+      LINE NUMBER REQUIREMENTS (CRITICAL):
+      ✅ start_line MUST be >= 1 (reference actual line from diff)
+      ❌ start_line: 0 is INVALID and will cause the issue to be rejected
+      ❌ line: 0 is INVALID for non_blocking_notes
+
+      For issues that span multiple lines or are architectural:
+      → Use the line number where the pattern FIRST appears in the diff
+      → If no specific line applies, move to non_blocking_notes with a valid line
+
       non_blocking_notes MUST be objects with file, line, note:
       ✅ CORRECT: {"file": "src/Main.java", "line": 10, "note": "Consider renaming"}
       ❌ WRONG: "Consider renaming variable"
+      ❌ WRONG: {"file": "src/Main.java", "line": 0, "note": "..."}
       </critical_schema_rules>
 
     output-requirements: |
@@ -133,8 +123,8 @@ prompts:
       ☐ All strings escaped (no literal newlines, quotes escaped)
       ☐ NO markdown code blocks (```json)
       ☐ NO text before { or after }
-      ☐ suggestedFix is Base64-encoded or omitted
       ☐ Parseable by standard JSON parser
+      ☐ ALL start_line and line values are >= 1 (NO zeros!)
 
       If NO to any → FIX before responding
       </output_requirements>

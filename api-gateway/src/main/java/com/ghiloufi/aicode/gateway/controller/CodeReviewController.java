@@ -351,15 +351,7 @@ public class CodeReviewController {
                                         "confidenceExplanation",
                                         issue.getConfidenceExplanation() != null
                                             ? issue.getConfidenceExplanation()
-                                            : ""),
-                                    Map.entry(
-                                        "suggestedFix",
-                                        issue.getSuggestedFix() != null
-                                            ? issue.getSuggestedFix()
-                                            : ""),
-                                    Map.entry(
-                                        "fixDiff",
-                                        issue.getFixDiff() != null ? issue.getFixDiff() : ""))))
+                                            : ""))))
                     .orElseGet(
                         () ->
                             Mono.just(

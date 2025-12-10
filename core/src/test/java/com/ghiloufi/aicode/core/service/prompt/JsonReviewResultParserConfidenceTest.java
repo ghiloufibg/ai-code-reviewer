@@ -34,8 +34,8 @@ class JsonReviewResultParserConfidenceTest {
             "severity": "major",
             "title": "Security issue",
             "suggestion": "Fix the vulnerability",
-            "confidenceScore": 0.85,
-            "confidenceExplanation": "Clear SQL injection pattern with user input"
+            "confidence_score": 0.85,
+            "confidence_explanation": "Clear SQL injection pattern with user input"
           }],
           "non_blocking_notes": []
         }
@@ -63,8 +63,8 @@ class JsonReviewResultParserConfidenceTest {
             "severity": "major",
             "title": "Issue with blank explanation",
             "suggestion": "Fix it",
-            "confidenceScore": 0.7,
-            "confidenceExplanation": "   "
+            "confidence_score": 0.7,
+            "confidence_explanation": "   "
           }],
           "non_blocking_notes": []
         }
@@ -91,8 +91,8 @@ class JsonReviewResultParserConfidenceTest {
               "severity": "major",
               "title": "Issue with min confidence",
               "suggestion": "Fix it",
-              "confidenceScore": 0.0,
-              "confidenceExplanation": "Minimum confidence"
+              "confidence_score": 0.0,
+              "confidence_explanation": "Minimum confidence"
             },
             {
               "file": "Test2.java",
@@ -100,8 +100,8 @@ class JsonReviewResultParserConfidenceTest {
               "severity": "critical",
               "title": "Issue with max confidence",
               "suggestion": "Fix it",
-              "confidenceScore": 1.0,
-              "confidenceExplanation": "Maximum confidence"
+              "confidence_score": 1.0,
+              "confidence_explanation": "Maximum confidence"
             }
           ],
           "non_blocking_notes": []
@@ -129,8 +129,8 @@ class JsonReviewResultParserConfidenceTest {
               "severity": "critical",
               "title": "High confidence issue",
               "suggestion": "Fix immediately",
-              "confidenceScore": 0.95,
-              "confidenceExplanation": "Clear security vulnerability"
+              "confidence_score": 0.95,
+              "confidence_explanation": "Clear security vulnerability"
             },
             {
               "file": "Test2.java",
@@ -138,8 +138,8 @@ class JsonReviewResultParserConfidenceTest {
               "severity": "minor",
               "title": "Medium confidence issue",
               "suggestion": "Consider refactoring",
-              "confidenceScore": 0.6,
-              "confidenceExplanation": "Possible code smell"
+              "confidence_score": 0.6,
+              "confidence_explanation": "Possible code smell"
             },
             {
               "file": "Test3.java",
@@ -147,8 +147,8 @@ class JsonReviewResultParserConfidenceTest {
               "severity": "info",
               "title": "Low confidence issue",
               "suggestion": "Optional improvement",
-              "confidenceScore": 0.3,
-              "confidenceExplanation": "Stylistic preference"
+              "confidence_score": 0.3,
+              "confidence_explanation": "Stylistic preference"
             }
           ],
           "non_blocking_notes": []

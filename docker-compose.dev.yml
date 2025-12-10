@@ -1,4 +1,21 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: ai-code-reviewer-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-reviewer-network
+
   postgres:
     image: postgres:15-alpine
     container_name: ai-code-reviewer-postgres-dev
@@ -38,6 +55,20 @@ services:
       postgres:
         condition: service_healthy
 
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: ai-code-reviewer-redis-insight-dev
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis-insight-data:/data
+    networks:
+      - ai-reviewer-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
   ai-code-reviewer:
     build:
       context: .
@@ -47,6 +78,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       # Spring profile for development
@@ -83,6 +116,13 @@ services:
       TICKET_ANALYSIS_LLM_BASE_URL: "${TICKET_ANALYSIS_BASE_URL:-${LLM_BASE_URL:-https://api.openai.com/v1}}"
       TICKET_ANALYSIS_LLM_MODEL: "${TICKET_ANALYSIS_MODEL:-${LLM_MODEL:-gpt-4o-mini}}"
       TICKET_ANALYSIS_LLM_API_KEY: "${TICKET_ANALYSIS_API_KEY:-${LLM_API_KEY}}"
+
+      # Redis Configuration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      # Async Review Consumer (enables automatic SCM publishing after LLM worker completes)
+      ASYNC_CONSUMER_ENABLED: "true"
 
       # Feature Flags
       FEATURES_SUMMARY_COMMENT_ENABLED: "true"
@@ -137,6 +177,77 @@ services:
     networks:
       - ai-reviewer-network
 
+  llm-worker:
+    build:
+      context: .
+      dockerfile: llm-worker/Dockerfile
+      no_cache: true
+    container_name: llm-worker-dev
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # LLM Provider Configuration
+      LLM_PROVIDER: ${LLM_WORKER_PROVIDER:-openai}
+
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${LLM_API_KEY}
+      OPENAI_MODEL: ${LLM_MODEL:-gpt-4o}
+      OPENAI_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+
+      # Alternative Providers (configure as needed)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-pro}
+
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+
+      # SCM Provider Configuration
+      GITLAB_ENABLED: ${GITLAB_ENABLED:-true}
+      GITLAB_API_URL: ${GITLAB_API_URL:-http://host.docker.internal:80}
+      GITLAB_TOKEN: ${GITLAB_TOKEN}
+
+      GITHUB_ENABLED: ${GITHUB_ENABLED:-false}
+      GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+
+      # Ticket System Configuration (enabled by default, graceful failure when no token)
+      JIRA_ENABLED: ${JIRA_ENABLED:-true}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-http://host.docker.internal:8080}
+      JIRA_TOKEN: ${JIRA_TOKEN:-}
+
+      # Worker Configuration
+      WORKER_CONSUMER_GROUP: llm-workers
+      WORKER_CONSUMER_ID: worker-1
+      WORKER_BATCH_SIZE: 10
+      WORKER_TIMEOUT_SECONDS: 120
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORE_LOG_LEVEL: ${CORE_LOG_LEVEL:-INFO}
+      LANGCHAIN4J_LOG_LEVEL: ${LANGCHAIN4J_LOG_LEVEL:-INFO}
+
+      # JVM Options
+      JAVA_OPTS: "-Xmx512m -Xms256m -XX:+UseZGC"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ai-reviewer-network
+
 volumes:
   ai-reviewer-logs:
     name: ai-reviewer-logs-dev
@@ -144,6 +255,10 @@ volumes:
     name: ai-reviewer-postgres-data-dev
   pgadmin-data:
     name: ai-reviewer-pgadmin-data-dev
+  redis-data:
+    name: ai-reviewer-redis-data-dev
+  redis-insight-data:
+    name: ai-reviewer-redis-insight-data-dev
 
 networks:
   ai-reviewer-network:

@@ -1,0 +1,118 @@
+spring:
+  config:
+    import:
+      - classpath:application-prompts.yml
+      - classpath:application-prompts-optimized.yml
+  application:
+    name: llm-worker
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+llm:
+  provider: ${LLM_PROVIDER:openai}
+  timeout: ${LLM_TIMEOUT:120s}
+
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o}
+    base-url: ${OPENAI_BASE_URL:}
+
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-sonnet-4-20250514}
+
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-1.5-pro}
+
+  ollama:
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL:llama3}
+
+worker:
+  consumer-group: ${WORKER_CONSUMER_GROUP:llm-workers}
+  consumer-id: ${WORKER_CONSUMER_ID:}
+  stream-key: ${WORKER_STREAM_KEY:review:requests}
+  batch-size: ${WORKER_BATCH_SIZE:10}
+  timeout-seconds: ${WORKER_TIMEOUT_SECONDS:120}
+
+scm:
+  providers:
+    github:
+      enabled: ${GITHUB_ENABLED:false}
+      api-url: ${GITHUB_API_URL:https://api.github.com}
+      token: ${GITHUB_TOKEN:}
+
+    gitlab:
+      enabled: ${GITLAB_ENABLED:true}
+      api-url: ${GITLAB_API_URL:https://gitlab.com/api/v4}
+      token: ${GITLAB_TOKEN:}
+
+ticket-system:
+  jira:
+    enabled: ${JIRA_ENABLED:true}
+    base-url: ${JIRA_BASE_URL:http://localhost:8080}
+    token: ${JIRA_TOKEN:}
+
+context-retrieval:
+  enabled: ${CONTEXT_RETRIEVAL_ENABLED:true}
+  strategy-timeout-seconds: 5
+  enabled-strategies:
+    - metadata-based
+  rollout:
+    percentage: 100
+    skip-large-diffs: true
+    max-diff-lines: 5000
+  diff-expansion:
+    enabled: ${DIFF_EXPANSION_ENABLED:true}
+    max-file-size-kb: 100
+    max-line-count: 500
+    max-files-to-expand: 10
+    excluded-extensions:
+      - .lock
+      - .svg
+      - .png
+      - .jpg
+      - .gif
+      - .ico
+  pr-metadata:
+    enabled: true
+    include-labels: true
+    include-commits: true
+    include-author: true
+    max-commit-messages: 5
+  policies:
+    enabled: true
+    max-content-chars: 5000
+    files:
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - .github/PULL_REQUEST_TEMPLATE.md
+
+prompts:
+  variant: ${PROMPTS_VARIANT:OPTIMIZED}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.ghiloufi.aicode.llmworker: ${LOG_LEVEL:INFO}
+    com.ghiloufi.aicode.core: ${CORE_LOG_LEVEL:INFO}
+    dev.langchain4j: ${LANGCHAIN4J_LOG_LEVEL:INFO}

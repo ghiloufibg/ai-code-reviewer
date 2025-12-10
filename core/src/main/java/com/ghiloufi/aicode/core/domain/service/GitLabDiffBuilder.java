@@ -25,8 +25,18 @@ public final class GitLabDiffBuilder {
         .append(" b/")
         .append(diff.getNewPath())
         .append("\n");
-    builder.append("--- a/").append(diff.getOldPath()).append("\n");
-    builder.append("+++ b/").append(diff.getNewPath()).append("\n");
+
+    if (Boolean.TRUE.equals(diff.getNewFile())) {
+      builder.append("--- /dev/null\n");
+    } else {
+      builder.append("--- a/").append(diff.getOldPath()).append("\n");
+    }
+
+    if (Boolean.TRUE.equals(diff.getDeletedFile())) {
+      builder.append("+++ /dev/null\n");
+    } else {
+      builder.append("+++ b/").append(diff.getNewPath()).append("\n");
+    }
   }
 
   private void appendDiffContent(final StringBuilder builder, final Diff diff) {

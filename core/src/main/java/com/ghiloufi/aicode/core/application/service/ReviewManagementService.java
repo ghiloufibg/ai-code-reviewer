@@ -184,11 +184,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
             + changeRequest.getNumber()
             + "_"
             + repository.getProvider().name().toLowerCase();
+    final ReviewResult filteredResult = filterHighConfidenceIssues(result);
 
     return publishSummaryComment(repository, changeRequest, result)
         .then(
             scmPort
-                .publishReview(repository, changeRequest, result)
+                .publishReview(repository, changeRequest, filteredResult)
                 .transform(resilience.criticalMono("scm-publish-review"))
                 .doOnSuccess(
                     v ->
@@ -249,11 +250,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
     final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
     final ReviewResult enrichedResult =
         reviewResult.withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+    final ReviewResult filteredResult = filterHighConfidenceIssues(enrichedResult);
 
     return publishSummaryComment(repository, changeRequest, enrichedResult)
         .then(
             scmPort
-                .publishReview(repository, changeRequest, enrichedResult)
+                .publishReview(repository, changeRequest, filteredResult)
                 .transform(resilience.criticalMono("scm-publish-review"))
                 .doOnSuccess(
                     v ->
@@ -336,5 +338,77 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .doOnNext(repo -> log.debug("Found repository: {}", repo.fullName()))
         .doOnComplete(() -> log.info("Completed fetching repositories for: {}", provider))
         .doOnError(error -> log.error("Failed to fetch repositories for: {}", provider, error));
+  }
+
+  @Override
+  public Mono<Void> publishReviewFromAsync(
+      final SourceProvider provider,
+      final String repositoryId,
+      final int changeRequestId,
+      final ReviewResult reviewResult) {
+    log.info(
+        "Publishing async review result: provider={}, repository={}, changeRequest={}",
+        provider,
+        repositoryId,
+        changeRequestId);
+
+    final RepositoryIdentifier repository = RepositoryIdentifier.create(provider, repositoryId);
+    final ChangeRequestIdentifier changeRequest =
+        ChangeRequestIdentifier.create(provider, changeRequestId);
+    final SCMPort scmPort = scmProviderFactory.getProvider(provider);
+    final ReviewResult filteredResult = filterHighConfidenceIssues(reviewResult);
+
+    return publishSummaryComment(repository, changeRequest, reviewResult)
+        .then(
+            scmPort
+                .publishReview(repository, changeRequest, filteredResult)
+                .transform(resilience.criticalMono("scm-publish-review"))
+                .doOnSuccess(
+                    v ->
+                        log.info(
+                            "Async review published successfully for {}/{}",
+                            repository.getDisplayName(),
+                            changeRequest.getDisplayName())))
+        .then(
+            Mono.defer(
+                    () -> {
+                      final String reviewId =
+                          repository.getDisplayName()
+                              + "_"
+                              + changeRequest.getNumber()
+                              + "_"
+                              + provider.name().toLowerCase();
+                      log.debug("Saving async review to database: {}", reviewId);
+                      return reviewRepository.save(reviewId, reviewResult);
+                    })
+                .transform(resilience.bestEffortMono("db-save-review")))
+        .doOnSuccess(
+            v ->
+                log.info(
+                    "Async review saved to database for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName()))
+        .doOnError(
+            error ->
+                log.error(
+                    "Failed to publish/save async review for {}/{}",
+                    repository.getDisplayName(),
+                    changeRequest.getDisplayName(),
+                    error));
+  }
+
+  private ReviewResult filterHighConfidenceIssues(final ReviewResult reviewResult) {
+    final List<ReviewResult.Issue> highConfidenceIssues =
+        reviewResult.getIssues().stream().filter(ReviewResult.Issue::isHighConfidence).toList();
+
+    final int filteredCount = reviewResult.getIssues().size() - highConfidenceIssues.size();
+    if (filteredCount > 0) {
+      log.info(
+          "Filtered {} low-confidence issues from SCM publishing (kept {} high-confidence)",
+          filteredCount,
+          highConfidenceIssues.size());
+    }
+
+    return reviewResult.withIssues(highConfidenceIssues);
   }
 }

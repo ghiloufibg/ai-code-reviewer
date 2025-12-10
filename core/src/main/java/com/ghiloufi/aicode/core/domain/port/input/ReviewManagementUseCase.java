@@ -23,6 +23,9 @@ public interface ReviewManagementUseCase {
       ChangeRequestIdentifier changeRequest,
       ReviewResult reviewResult);
 
+  Mono<Void> publishReviewFromAsync(
+      SourceProvider provider, String repositoryId, int changeRequestId, ReviewResult reviewResult);
+
   Flux<MergeRequestSummary> getOpenChangeRequests(RepositoryIdentifier repository);
 
   Flux<RepositoryInfo> getAllRepositories(SourceProvider provider);

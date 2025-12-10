@@ -7,7 +7,6 @@ import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.entity.ReviewIssueEntity;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -112,93 +111,6 @@ class DatabaseMigrationV3IntegrationTest {
   }
 
   @Test
-  @DisplayName("should_persist_suggested_fix_and_fix_diff")
-  void should_persist_suggested_fix_and_fix_diff() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    final String suggestedFix =
-        "public String sanitizeInput(String input) {\n"
-            + "  return input.replaceAll(\"[^a-zA-Z0-9]\", \"\");\n"
-            + "}";
-
-    final String fixDiff =
-        "@@ -42,1 +42,3 @@\n"
-            + "-return userInput;\n"
-            + "+String sanitized = sanitizeInput(userInput);\n"
-            + "+return sanitized;\n";
-
-    issue.setSuggestedFix(suggestedFix);
-    issue.setFixDiff(fixDiff);
-
-    final ReviewEntity savedReview = jpaRepository.save(review);
-    jpaRepository.flush();
-
-    final ReviewEntity retrievedReview = jpaRepository.findById(savedReview.getId()).orElseThrow();
-    final ReviewIssueEntity retrievedIssue = retrievedReview.getIssues().get(0);
-
-    assertThat(retrievedIssue.getSuggestedFix()).isEqualTo(suggestedFix);
-    assertThat(retrievedIssue.getFixDiff()).isEqualTo(fixDiff);
-  }
-
-  @Test
-  @DisplayName("should_track_fix_application_state")
-  void should_track_fix_application_state() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    issue.setSuggestedFix("corrected code");
-    issue.setFixDiff("@@ -1,1 +1,1 @@");
-    issue.setFixApplied(false);
-
-    assertThat(issue.isFixApplied()).isFalse();
-
-    final ReviewEntity savedReview = jpaRepository.save(review);
-
-    final ReviewIssueEntity retrievedIssue = savedReview.getIssues().get(0);
-    assertThat(retrievedIssue.isFixApplied()).isFalse();
-    assertThat(retrievedIssue.getAppliedAt()).isNull();
-    assertThat(retrievedIssue.getAppliedCommitSha()).isNull();
-  }
-
-  @Test
-  @DisplayName("should_persist_fix_application_metadata_when_applied")
-  void should_persist_fix_application_metadata_when_applied() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    issue.setSuggestedFix("corrected code");
-    issue.setFixDiff("@@ -1,1 +1,1 @@");
-    issue.setFixApplied(true);
-    issue.setAppliedAt(Instant.now());
-    issue.setAppliedCommitSha("a1b2c3d4e5f6789abc123def456ghi789jkl012");
-
-    final ReviewEntity savedReview = jpaRepository.save(review);
-    jpaRepository.flush();
-
-    final ReviewEntity retrievedReview = jpaRepository.findById(savedReview.getId()).orElseThrow();
-    final ReviewIssueEntity retrievedIssue = retrievedReview.getIssues().get(0);
-
-    assertThat(retrievedIssue.isFixApplied()).isTrue();
-    assertThat(retrievedIssue.getAppliedAt()).isNotNull();
-    assertThat(retrievedIssue.getAppliedCommitSha())
-        .isEqualTo("a1b2c3d4e5f6789abc123def456ghi789jkl012");
-  }
-
-  @Test
-  @DisplayName("should_validate_commit_sha_length_constraint")
-  void should_validate_commit_sha_length_constraint() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    final String validSha = "abc123def456ghi789jkl012mno345pqr678st9";
-    issue.setAppliedCommitSha(validSha);
-
-    final ReviewEntity savedReview = jpaRepository.save(review);
-    assertThat(savedReview.getIssues().get(0).getAppliedCommitSha()).isEqualTo(validSha);
-  }
-
-  @Test
   @DisplayName("should_support_isHighConfidence_helper_method")
   void should_support_isHighConfidence_helper_method() {
     final ReviewEntity review = createReviewWithConfidenceFields();
@@ -218,25 +130,6 @@ class DatabaseMigrationV3IntegrationTest {
 
     issue.setConfidenceScore(null);
     assertThat(issue.isHighConfidence()).isFalse();
-  }
-
-  @Test
-  @DisplayName("should_support_hasFixSuggestion_helper_method")
-  void should_support_hasFixSuggestion_helper_method() {
-    final ReviewEntity review = createReviewWithConfidenceFields();
-    final ReviewIssueEntity issue = review.getIssues().get(0);
-
-    issue.setSuggestedFix("corrected code");
-    assertThat(issue.hasFixSuggestion()).isTrue();
-
-    issue.setSuggestedFix("");
-    assertThat(issue.hasFixSuggestion()).isFalse();
-
-    issue.setSuggestedFix("   ");
-    assertThat(issue.hasFixSuggestion()).isFalse();
-
-    issue.setSuggestedFix(null);
-    assertThat(issue.hasFixSuggestion()).isFalse();
   }
 
   @Test
@@ -278,22 +171,14 @@ class DatabaseMigrationV3IntegrationTest {
   }
 
   @Test
-  @DisplayName("should_persist_large_text_fields_for_fixes_and_explanations")
-  void should_persist_large_text_fields_for_fixes_and_explanations() {
+  @DisplayName("should_persist_large_text_fields_for_explanations")
+  void should_persist_large_text_fields_for_explanations() {
     final ReviewEntity review = createReviewWithConfidenceFields();
     final ReviewIssueEntity issue = review.getIssues().get(0);
 
     final String largeExplanation = "This is a very detailed confidence explanation. ".repeat(100);
-    final String largeSuggestedFix =
-        "public void complexMethod() {\n"
-            + "  // Very long method implementation\n"
-            + "  ".repeat(200)
-            + "}\n";
-    final String largeFixDiff = "@@ -1,100 +1,100 @@\n" + "-old line\n+new line\n".repeat(100);
 
     issue.setConfidenceExplanation(largeExplanation);
-    issue.setSuggestedFix(largeSuggestedFix);
-    issue.setFixDiff(largeFixDiff);
 
     final ReviewEntity savedReview = jpaRepository.save(review);
     jpaRepository.flush();
@@ -302,8 +187,6 @@ class DatabaseMigrationV3IntegrationTest {
     final ReviewIssueEntity retrievedIssue = retrievedReview.getIssues().get(0);
 
     assertThat(retrievedIssue.getConfidenceExplanation()).hasSize(largeExplanation.length());
-    assertThat(retrievedIssue.getSuggestedFix()).hasSize(largeSuggestedFix.length());
-    assertThat(retrievedIssue.getFixDiff()).hasSize(largeFixDiff.length());
   }
 
   private ReviewEntity createReviewWithConfidenceFields() {
@@ -344,8 +227,6 @@ class DatabaseMigrationV3IntegrationTest {
             .suggestion("Fix immediately")
             .confidenceScore(new BigDecimal("0.95"))
             .confidenceExplanation("Clear SQL injection pattern")
-            .suggestedFix(
-                "PreparedStatement ps = conn.prepareStatement(\"SELECT * FROM users WHERE id = ?\");")
             .build();
 
     final ReviewIssueEntity issue2 =

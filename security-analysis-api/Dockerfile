@@ -2,12 +2,21 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
+# Copy all module pom.xml files first (required for parent pom resolution)
 COPY pom.xml .
+COPY core/pom.xml core/pom.xml
+COPY api-gateway/pom.xml api-gateway/pom.xml
+COPY security-analysis-api/pom.xml security-analysis-api/pom.xml
+COPY llm-worker/pom.xml llm-worker/pom.xml
+
+# Download dependencies (may fail for some, but caches what it can)
+RUN mvn dependency:go-offline -pl security-analysis-api -am -B || true
+
+# Copy source code for modules we need to build
 COPY core/ core/
-COPY api-gateway/ api-gateway/
 COPY security-analysis-api/ security-analysis-api/
 
-RUN mvn clean package -pl security-analysis-api -am -DskipTests
+RUN mvn clean package -pl security-analysis-api -am -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine
 
