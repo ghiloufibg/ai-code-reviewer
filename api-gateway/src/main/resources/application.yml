@@ -151,6 +151,15 @@ management:
       application: ai-code-reviewer
       service: api-gateway
 
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
 # Logging.
 logging:
   level:
