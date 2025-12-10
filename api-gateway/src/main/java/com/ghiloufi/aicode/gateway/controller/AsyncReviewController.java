@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Positive;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -164,7 +165,7 @@ public class AsyncReviewController {
   }
 
   private Mono<ResponseEntity<ReviewStatusResponse>> parseCompletedResult(
-      String requestId, java.util.Map<String, String> resultData) {
+      final String requestId, final Map<String, String> resultData) {
     try {
       final String resultJson = resultData.get("result");
       final ReviewResult result = objectMapper.readValue(resultJson, ReviewResult.class);
