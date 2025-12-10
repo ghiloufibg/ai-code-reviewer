@@ -14,16 +14,16 @@
             <includeMdcKeyName>repository</includeMdcKeyName>
             <includeMdcKeyName>changeRequestId</includeMdcKeyName>
             <includeMdcKeyName>provider</includeMdcKeyName>
-            <customFields>{"service":"ai-code-reviewer-core"}</customFields>
+            <customFields>{"service":"ai-code-reviewer-llm-worker"}</customFields>
             <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
         </encoder>
     </appender>
 
     <!-- File Appender (JSON format for production file logging) -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/ai-code-reviewer-core.log</file>
+        <file>logs/ai-code-reviewer-llm-worker.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/ai-code-reviewer-core-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>logs/ai-code-reviewer-llm-worker-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>7</maxHistory>
             <totalSizeCap>100MB</totalSizeCap>
@@ -33,18 +33,15 @@
             <includeMdcKeyName>repository</includeMdcKeyName>
             <includeMdcKeyName>changeRequestId</includeMdcKeyName>
             <includeMdcKeyName>provider</includeMdcKeyName>
-            <customFields>{"service":"ai-code-reviewer-core"}</customFields>
+            <customFields>{"service":"ai-code-reviewer-llm-worker"}</customFields>
             <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
         </encoder>
     </appender>
 
     <!-- Logger Levels -->
-    <logger name="com.ghiloufi.aicode.core" level="DEBUG"/>
-    <logger name="org.springframework.web" level="INFO"/>
-    <logger name="reactor.netty" level="INFO"/>
-    <logger name="org.kohsuke.github" level="INFO"/>
-    <logger name="org.gitlab4j" level="INFO"/>
-    <logger name="io.github.resilience4j" level="INFO"/>
+    <logger name="com.ghiloufi.aicode" level="DEBUG"/>
+    <logger name="dev.langchain4j" level="INFO"/>
+    <logger name="org.springframework.data.redis" level="INFO"/>
 
     <!-- Local/Default Profile: Human-readable console output -->
     <springProfile name="local,default,test">

@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <!-- Console Appender -->
+    <!-- Console Appender (Human-readable for local development) -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- File Appender (Production Only) -->
+    <!-- JSON Console Appender (Structured for production log aggregation) -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>repository</includeMdcKeyName>
+            <includeMdcKeyName>changeRequestId</includeMdcKeyName>
+            <includeMdcKeyName>provider</includeMdcKeyName>
+            <customFields>{"service":"ai-code-reviewer-gateway"}</customFields>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender (JSON format for production file logging) -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/ai-code-reviewer.log</file>
+        <file>logs/ai-code-reviewer-gateway.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/ai-code-reviewer-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>logs/ai-code-reviewer-gateway-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>7</maxHistory>
             <totalSizeCap>100MB</totalSizeCap>
         </rollingPolicy>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+            <includeMdcKeyName>repository</includeMdcKeyName>
+            <includeMdcKeyName>changeRequestId</includeMdcKeyName>
+            <includeMdcKeyName>provider</includeMdcKeyName>
+            <customFields>{"service":"ai-code-reviewer-gateway"}</customFields>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
         </encoder>
     </appender>
 
@@ -27,17 +44,17 @@
     <logger name="reactor.netty" level="INFO"/>
     <logger name="org.kohsuke.github" level="INFO"/>
 
-    <!-- Local Profile: Console Only -->
-    <springProfile name="local,default">
+    <!-- Local/Default Profile: Human-readable console output -->
+    <springProfile name="local,default,test">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
-    <!-- Production Profile: Console + File -->
+    <!-- Production Profile: JSON structured logs -->
     <springProfile name="prod,production">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="JSON_CONSOLE"/>
             <appender-ref ref="FILE"/>
         </root>
     </springProfile>

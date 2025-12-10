@@ -8,10 +8,12 @@ import com.ghiloufi.aicode.core.domain.model.*;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
+import com.ghiloufi.aicode.core.infrastructure.observability.ReviewMetrics;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
 import io.github.resilience4j.retry.RetryRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +44,8 @@ final class ReviewManagementServiceSummaryCommentTest {
         new SummaryCommentFormatter(summaryCommentProperties);
 
     final Resilience resilience = new Resilience(RetryRegistry.ofDefaults());
+    final ReviewMetrics reviewMetrics = new ReviewMetrics(new SimpleMeterRegistry());
+    reviewMetrics.init();
 
     return new ReviewManagementService(
         aiReviewStreamingService,
@@ -51,7 +55,8 @@ final class ReviewManagementServiceSummaryCommentTest {
         contextOrchestrator,
         summaryCommentProperties,
         summaryCommentFormatter,
-        resilience);
+        resilience,
+        reviewMetrics);
   }
 
   @Test
