@@ -25,7 +25,7 @@
         <langchain4j.version>1.1.0</langchain4j.version>
         <logstash-logback-encoder.version>8.0</logstash-logback-encoder.version>
         <jacoco.version>0.8.12</jacoco.version>
-        <sonar.organization>ghiloufi</sonar.organization>
+        <sonar.organization>ghiloufibg</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.java.source>21</sonar.java.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

@@ -76,7 +76,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} \
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=ghiloufibg_ai-code-reviewer \
+            -Dsonar.organization=ghiloufibg \
             -Dsonar.host.url=https://sonarcloud.io \
             -B
