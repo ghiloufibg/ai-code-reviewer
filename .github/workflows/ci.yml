@@ -71,6 +71,27 @@ jobs:
       - name: Build and Test with Coverage
         run: mvn clean verify -Pcoverage -B
 
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            **/target/site/jacoco/
+          retention-days: 7
+
+      - name: Generate Coverage Summary
+        if: always()
+        run: |
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for module in core api-gateway security-analysis-api llm-worker; do
+            if [ -f "$module/target/site/jacoco/index.html" ]; then
+              coverage=$(grep -oP 'Total[^%]*\K[0-9]+%' "$module/target/site/jacoco/index.html" | head -1 || echo "N/A")
+              echo "- **$module**: $coverage" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
       - name: SonarCloud Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
