@@ -100,4 +100,17 @@ jobs:
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.qualitygate.wait=true \
             -B
+
+      - name: Quality Gate Status
+        if: always()
+        run: |
+          echo "## SonarCloud Quality Gate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Quality gate enforcement is enabled. The build will fail if:" >> $GITHUB_STEP_SUMMARY
+          echo "- Code coverage drops below 70%" >> $GITHUB_STEP_SUMMARY
+          echo "- Reliability rating is worse than A (any bugs)" >> $GITHUB_STEP_SUMMARY
+          echo "- Security rating is worse than A (any vulnerabilities)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View detailed report on SonarCloud](https://sonarcloud.io/project/overview?id=${{ vars.SONAR_PROJECT_KEY }})" >> $GITHUB_STEP_SUMMARY
