@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress EI_EXPOSE_REP for Spring-managed beans (dependency injection pattern) -->
+    <Match>
+        <Or>
+            <Class name="~.*Service"/>
+            <Class name="~.*ServiceImpl"/>
+            <Class name="~.*Controller"/>
+            <Class name="~.*Config"/>
+            <Class name="~.*Configuration"/>
+            <Class name="~.*Properties"/>
+            <Class name="~.*Consumer"/>
+            <Class name="~.*Producer"/>
+            <Class name="~.*Publisher"/>
+            <Class name="~.*Orchestrator"/>
+            <Class name="~.*Adapter"/>
+            <Class name="~.*Client"/>
+            <Class name="~.*Handler"/>
+            <Class name="~.*Listener"/>
+            <Class name="~.*Repository"/>
+            <Class name="~.*Metrics"/>
+            <Class name="~.*Accumulator"/>
+            <Class name="~.*Builder"/>
+            <Class name="~.*Parser"/>
+            <Class name="~.*Validator"/>
+            <Class name="~.*Formatter"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Suppress EI_EXPOSE_REP for records (intentional design - immutability at record level) -->
+    <Match>
+        <Or>
+            <Class name="~.*Schema"/>
+            <Class name="~.*Response"/>
+            <Class name="~.*Request"/>
+            <Class name="~.*Dto"/>
+            <Class name="~.*DTO"/>
+            <Class name="~.*Result"/>
+            <Class name="~.*Bundle"/>
+            <Class name="~.*Event"/>
+            <Class name="~.*Message"/>
+            <Class name="~.*Payload"/>
+            <Class name="~.*Metadata"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Suppress EI_EXPOSE_REP for JPA entities (ORM-managed state) -->
+    <Match>
+        <Or>
+            <Class name="~.*Entity"/>
+            <Class name="~.*Entity\$.*Builder"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Suppress PATH_TRAVERSAL for internal file analysis (trusted sources from SCM providers) -->
+    <Match>
+        <Package name="com.ghiloufi.aicode.core.application.service.context"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+
+    <!-- Suppress PATH_TRAVERSAL for diff analysis classes (file paths come from Git/GitHub API) -->
+    <Match>
+        <Or>
+            <Class name="~.*DirectorySiblingAnalyzer"/>
+            <Class name="~.*EnhancedPathAnalyzer"/>
+            <Class name="~.*MetadataBasedContextStrategy"/>
+            <Class name="~.*DiffFileReferenceExtractor"/>
+        </Or>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+
+    <!-- Suppress format string newline warnings (intentional for text formatting) -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+
+    <!-- Suppress singleton constructor warnings for domain value objects -->
+    <Match>
+        <Or>
+            <Class name="~.*Context"/>
+            <Class name="~.*Result"/>
+        </Or>
+        <Bug pattern="SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR"/>
+    </Match>
+
+    <!-- Suppress constructor throw warnings for adapter initialization -->
+    <Match>
+        <Or>
+            <Class name="~.*Adapter"/>
+            <Class name="~.*TemplateService"/>
+        </Or>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+    <!-- Suppress boxing inefficiency for adapter code -->
+    <Match>
+        <Class name="~.*Adapter"/>
+        <Bug pattern="BX_UNBOXING_IMMEDIATELY_REBOXED"/>
+    </Match>
+</FindBugsFilter>

@@ -156,7 +156,11 @@ public final class EnhancedPathAnalyzer {
 
   private String extractBaseName(final String filePath) {
     final Path path = Paths.get(filePath);
-    final String fileName = path.getFileName().toString();
+    final Path fileNamePath = path.getFileName();
+    if (fileNamePath == null) {
+      return "";
+    }
+    final String fileName = fileNamePath.toString();
     final int dotIndex = fileName.lastIndexOf('.');
     return dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName;
   }

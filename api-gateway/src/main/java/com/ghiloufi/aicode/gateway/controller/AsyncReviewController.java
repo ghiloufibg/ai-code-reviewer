@@ -1,5 +1,7 @@
 package com.ghiloufi.aicode.gateway.controller;
 
+import static com.ghiloufi.aicode.gateway.util.LogSanitizer.sanitize;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
@@ -90,7 +92,7 @@ public class AsyncReviewController {
   public Mono<ResponseEntity<ReviewStatusResponse>> getStatus(
       @PathVariable final String requestId) {
 
-    log.debug("Checking status for request: {}", requestId);
+    log.debug("Checking status for request: {}", sanitize(requestId));
 
     final String resultKey = RESULT_KEY_PREFIX + requestId;
 
@@ -129,7 +131,7 @@ public class AsyncReviewController {
   public Mono<ResponseEntity<ReviewStatusResponse>> getResult(
       @PathVariable final String requestId) {
 
-    log.debug("Getting result for request: {}", requestId);
+    log.debug("Getting result for request: {}", sanitize(requestId));
 
     final String resultKey = RESULT_KEY_PREFIX + requestId;
 

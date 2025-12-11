@@ -1,5 +1,7 @@
 package com.ghiloufi.aicode.gateway.controller;
 
+import static com.ghiloufi.aicode.gateway.util.LogSanitizer.sanitize;
+
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
@@ -323,7 +325,7 @@ public class CodeReviewController {
   @GetMapping(value = "/issues/{issueId}", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<Map<String, Object>> getIssue(@PathVariable final UUID issueId) {
 
-    log.info("Retrieving issue: {}", issueId);
+    log.info("Retrieving issue: {}", sanitize(String.valueOf(issueId)));
 
     return Mono.fromCallable(() -> reviewIssueRepository.findByIdWithReview(issueId))
         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())

@@ -1,5 +1,7 @@
 package com.ghiloufi.aicode.gateway.webhook.service;
 
+import static com.ghiloufi.aicode.gateway.util.LogSanitizer.sanitize;
+
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.gateway.async.ReviewRequestProducer;
@@ -26,10 +28,10 @@ public class WebhookService {
 
     log.info(
         "Processing webhook request for {}/{} PR#{} with idempotency key: {}",
-        request.provider(),
-        request.repositoryId(),
+        sanitize(request.provider()),
+        sanitize(request.repositoryId()),
         request.changeRequestId(),
-        effectiveKey);
+        sanitize(effectiveKey));
 
     return idempotencyService
         .checkAndMark(effectiveKey)

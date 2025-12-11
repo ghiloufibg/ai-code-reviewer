@@ -277,7 +277,7 @@ public class PostgresReviewRepository {
     try {
       return UUID.fromString(reviewId);
     } catch (IllegalArgumentException e) {
-      return UUID.nameUUIDFromBytes(reviewId.getBytes());
+      return UUID.nameUUIDFromBytes(reviewId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
   }
 
