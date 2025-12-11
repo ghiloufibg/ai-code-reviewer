@@ -10,6 +10,7 @@ import com.ghiloufi.aicode.core.domain.service.GitLabProjectMapper;
 import com.ghiloufi.aicode.core.domain.service.SCMIdentifierValidator;
 import com.ghiloufi.aicode.core.exception.SCMException;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -604,7 +605,7 @@ public class GitLabAdapter implements SCMPort {
 
   @Override
   public Flux<CommitInfo> getCommitsSince(
-      final RepositoryIdentifier repo, final java.time.LocalDate since, final int maxResults) {
+      final RepositoryIdentifier repo, final LocalDate since, final int maxResults) {
     return Flux.defer(
             () -> {
               try {
@@ -664,7 +665,7 @@ public class GitLabAdapter implements SCMPort {
                     commit.getAuthorName() != null ? commit.getAuthorName() : "Unknown",
                     commit.getCommittedDate() != null
                         ? commit.getCommittedDate().toInstant()
-                        : java.time.Instant.now(),
+                        : Instant.now(),
                     changedFiles);
 
               } catch (final GitLabApiException e) {
@@ -680,9 +681,7 @@ public class GitLabAdapter implements SCMPort {
         commit.getId(),
         commit.getMessage() != null ? commit.getMessage() : "",
         commit.getAuthorName() != null ? commit.getAuthorName() : "Unknown",
-        commit.getCommittedDate() != null
-            ? commit.getCommittedDate().toInstant()
-            : java.time.Instant.now(),
+        commit.getCommittedDate() != null ? commit.getCommittedDate().toInstant() : Instant.now(),
         List.of());
   }
 

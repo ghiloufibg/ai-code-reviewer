@@ -127,6 +127,10 @@ services:
       # Feature Flags
       FEATURES_SUMMARY_COMMENT_ENABLED: "true"
 
+      # Webhook Security Configuration
+      WEBHOOK_ENABLED: "${WEBHOOK_ENABLED:-true}"
+      WEBHOOK_API_KEYS: "${WEBHOOK_API_KEYS:-${API_KEY_CICD}}"
+
       # Application Configuration (more verbose logging for dev)
       LOGGING_LEVEL_COM_GHILOUFI_AICODE: "${LOG_LEVEL:-DEBUG}"
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "DEBUG"

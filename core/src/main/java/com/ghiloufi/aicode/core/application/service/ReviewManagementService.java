@@ -14,12 +14,15 @@ import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
+import com.ghiloufi.aicode.core.infrastructure.observability.ReviewMetrics;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.infrastructure.resilience.Resilience;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +43,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
   private final SummaryCommentProperties summaryCommentProperties;
   private final SummaryCommentFormatter summaryCommentFormatter;
   private final Resilience resilience;
+  private final ReviewMetrics reviewMetrics;
 
   @Override
   public Flux<ReviewChunk> streamReview(
@@ -93,6 +97,11 @@ public class ReviewManagementService implements ReviewManagementUseCase {
     final ReviewConfiguration config = ReviewConfiguration.defaults();
     final SCMPort scmPort = scmProviderFactory.getProvider(repository.getProvider());
     final List<ReviewChunk> accumulatedChunks = Collections.synchronizedList(new ArrayList<>());
+    final Timer.Sample timerSample = reviewMetrics.startReviewTimer();
+    final AtomicReference<Integer> issueCountRef = new AtomicReference<>(0);
+
+    reviewMetrics.recordReviewInitiated(
+        repository.getDisplayName(), repository.getProvider().name());
 
     return scmPort
         .getDiff(repository, changeRequest)
@@ -127,14 +136,34 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         .transform(
             flux ->
                 chainPublishOperations(
-                    flux, accumulatedChunks, repository, changeRequest, scmPort, config))
+                    flux,
+                    accumulatedChunks,
+                    repository,
+                    changeRequest,
+                    scmPort,
+                    config,
+                    issueCountRef))
+        .doOnComplete(
+            () -> {
+              reviewMetrics.stopReviewTimer(timerSample);
+              reviewMetrics.recordReviewCompleted(
+                  repository.getDisplayName(),
+                  repository.getProvider().name(),
+                  issueCountRef.get(),
+                  0);
+            })
         .doOnError(
-            error ->
-                log.error(
-                    "Review failed for {}/{}",
-                    repository.getDisplayName(),
-                    changeRequest.getDisplayName(),
-                    error));
+            error -> {
+              reviewMetrics.recordReviewFailed(
+                  repository.getDisplayName(),
+                  repository.getProvider().name(),
+                  error.getClass().getSimpleName());
+              log.error(
+                  "Review failed for {}/{}",
+                  repository.getDisplayName(),
+                  changeRequest.getDisplayName(),
+                  error);
+            });
   }
 
   private Flux<ReviewChunk> chainPublishOperations(
@@ -143,7 +172,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
       final RepositoryIdentifier repository,
       final ChangeRequestIdentifier changeRequest,
       final SCMPort scmPort,
-      final ReviewConfiguration config) {
+      final ReviewConfiguration config,
+      final AtomicReference<Integer> issueCountRef) {
     return sourceFlux.concatWith(
         Mono.defer(
                 () -> {
@@ -167,6 +197,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                       chunkAccumulator
                           .accumulateChunks(accumulatedChunks, config)
                           .withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+
+                  issueCountRef.set(result.getIssues().size());
 
                   return publishAndSaveReview(repository, changeRequest, result, scmPort);
                 })
@@ -407,6 +439,7 @@ public class ReviewManagementService implements ReviewManagementUseCase {
           "Filtered {} low-confidence issues from SCM publishing (kept {} high-confidence)",
           filteredCount,
           highConfidenceIssues.size());
+      reviewMetrics.recordLowConfidenceFiltered(filteredCount);
     }
 
     return reviewResult.withIssues(highConfidenceIssues);

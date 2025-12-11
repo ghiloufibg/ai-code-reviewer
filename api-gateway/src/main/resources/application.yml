@@ -137,15 +137,40 @@ async:
     consumer:
       enabled: ${ASYNC_CONSUMER_ENABLED:false}
 
+# Webhook Configuration
+webhook:
+  enabled: ${WEBHOOK_ENABLED:true}
+  api-keys: ${WEBHOOK_API_KEYS:}
+  idempotency-ttl: PT24H
+  rate-limit-per-minute: 60
+  ip-whitelist: ${WEBHOOK_IP_WHITELIST:}
+
 # Management endpoints.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,retries,retryevents
   endpoint:
     health:
       show-details: always
+      show-components: always
+  health:
+    retries:
+      enabled: true
+  metrics:
+    tags:
+      application: ai-code-reviewer
+      service: api-gateway
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
 
 # Logging.
 logging:

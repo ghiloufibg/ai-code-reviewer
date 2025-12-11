@@ -23,6 +23,7 @@
         <resilience4j.version>2.1.0</resilience4j.version>
         <wiremock.version>2.35.0</wiremock.version>
         <langchain4j.version>1.1.0</langchain4j.version>
+        <logstash-logback-encoder.version>8.0</logstash-logback-encoder.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencyManagement>
@@ -45,6 +46,11 @@
                 <groupId>com.github.tomakehurst</groupId>
                 <artifactId>wiremock-jre8</artifactId>
                 <version>${wiremock.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

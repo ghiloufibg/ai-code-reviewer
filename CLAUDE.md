@@ -4,12 +4,40 @@ Ce projet est une application **Spring Boot** permettant de faire une **revue de
 diffs GitHub ou locaux. Il utilise :
 
 - Un **collecteur de diffs** (local ou GitHub).
-- Des outils d’**analyse statique**.
+- Des outils d'**analyse statique**.
 - Un **LLM (Large Language Model)** pour analyser et commenter le code.
 - Un système de **publication** des résultats (console ou GitHub PR).
 
-L’objectif est de migrer la logique vers **Spring IoC**, améliorer la **maintenabilité**, la **testabilité** et
+L'objectif est de migrer la logique vers **Spring IoC**, améliorer la **maintenabilité**, la **testabilité** et
 respecter les **bonnes pratiques modernes** (Clean Code, SOLID, Spring idioms).
+
+---
+
+## 🚀 Deployment Model: CI/CD Only (MVP)
+
+**IMPORTANT: This solution is designed for CI/CD pipeline integration only.**
+
+### Current Scope
+- **Trigger**: Reviews are triggered exclusively via CI/CD webhooks (GitLab CI, GitHub Actions, etc.)
+- **Consumers**: Server-to-server communication only (no browser clients)
+- **Authentication**: API key-based webhook authentication (`X-API-Key` header)
+
+### What This Means
+| Feature | Status | Rationale |
+|---------|--------|-----------|
+| CORS | ❌ Not needed | No browser clients |
+| Browser Auth (OAuth, Sessions) | ❌ Not needed | Server-to-server only |
+| SSE Rate Limiting | ❌ Not needed | CI/CD pipelines are controlled |
+| LLM Cost Tracking | ❌ Not needed | Provided by LLM provider (OpenAI dashboard) |
+| Webhook Rate Limiting | ✅ Implemented | Prevents runaway pipelines (60/min) |
+| Webhook Idempotency | ✅ Implemented | Prevents duplicate reviews (24h TTL) |
+| IP Whitelist | ✅ Available | Can restrict to CI/CD runner IPs |
+
+### Future Considerations
+If browser-based clients are added in the future, the following will be required:
+- CORS configuration (`CorsWebFilter` bean)
+- Rate limiting on SSE streaming endpoint (Bucket4j or Resilience4j RateLimiter)
+- Potentially OAuth2/OIDC authentication for user sessions
 
 ---
 

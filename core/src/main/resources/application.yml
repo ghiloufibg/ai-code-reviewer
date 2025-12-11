@@ -75,6 +75,14 @@ ticket-analysis:
     model: ${TICKET_ANALYSIS_LLM_MODEL:gpt-4o-mini}
     api-key: ${TICKET_ANALYSIS_LLM_API_KEY:not-required}
 
+# Standardized Timeout Configuration
+timeouts:
+  llm-request: ${LLM_TIMEOUT:120s}
+  scm-request: ${SCM_TIMEOUT:30s}
+  health-check: 5s
+  database-query: 10s
+  context-retrieval: ${CONTEXT_TIMEOUT:5s}
+
 logging:
   level:
     com.ghiloufi.aicode.core: DEBUG
@@ -83,6 +91,10 @@ logging:
 # Resilience4j Configuration
 resilience4j:
   retry:
+    metrics:
+      enabled: true
+      legacy:
+        enabled: true
     configs:
       critical:
         maxAttempts: 3
