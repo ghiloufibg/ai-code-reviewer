@@ -137,6 +137,14 @@ async:
     consumer:
       enabled: ${ASYNC_CONSUMER_ENABLED:false}
 
+# Webhook Configuration
+webhook:
+  enabled: ${WEBHOOK_ENABLED:true}
+  api-keys: ${WEBHOOK_API_KEYS:}
+  idempotency-ttl: PT24H
+  rate-limit-per-minute: 60
+  ip-whitelist: ${WEBHOOK_IP_WHITELIST:}
+
 # Management endpoints.
 management:
   endpoints:
