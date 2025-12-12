@@ -143,15 +143,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: ${{ runner.os }}-nvd-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-nvd-
+          key: ${{ runner.os }}-nvd-v2-${{ hashFiles('**/pom.xml') }}
 
       - name: Run SpotBugs with Find Security Bugs
         run: mvn compile spotbugs:check -Psecurity -B -pl '!security-analysis-api'
         continue-on-error: false
 
       - name: Run OWASP Dependency-Check
-        run: mvn dependency-check:aggregate -Psecurity -B -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+        run: |
+          rm -rf ~/.m2/repository/org/owasp/dependency-check-data/*/jsrepository.json 2>/dev/null || true
+          mvn dependency-check:aggregate -Psecurity -B -DnvdApiKey=${{ secrets.NVD_API_KEY }} -DnvdDatafeedUrl=https://nvd.nist.gov/feeds/json/cve/1.1 || mvn dependency-check:purge dependency-check:aggregate -Psecurity -B -DnvdApiKey=${{ secrets.NVD_API_KEY }}
 
       - name: Run Semgrep SAST
         run: |
