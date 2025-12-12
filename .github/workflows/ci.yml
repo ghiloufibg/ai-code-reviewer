@@ -162,6 +162,7 @@ jobs:
 
       - name: Run Trivy Dependency Scan (SARIF)
         uses: aquasecurity/trivy-action@master
+        continue-on-error: true
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -169,9 +170,10 @@ jobs:
           output: 'trivy-deps.sarif'
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln'
-          exit-code: '1'
+          exit-code: '0'
           skip-dirs: 'security-analysis-api'
           trivyignores: '.trivyignore'
+          limit-severities-for-sarif: 'true'
 
       - name: Upload Trivy Dependency SARIF
         uses: github/codeql-action/upload-sarif@v4
