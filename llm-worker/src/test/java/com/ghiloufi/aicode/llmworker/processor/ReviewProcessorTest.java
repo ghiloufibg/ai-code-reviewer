@@ -160,6 +160,113 @@ final class ReviewProcessorTest {
 
       assertThat(capturedResult.get().getIssues().get(0).getSeverity()).isEqualTo("info");
     }
+
+    @Test
+    @DisplayName("should_filter_issues_with_zero_start_line")
+    final void should_filter_issues_with_zero_start_line() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher = new TestPublisher(capturedResult);
+      final TestProviderProperties properties = new TestProviderProperties("openai", "gpt-4o");
+
+      reviewService.setResult(
+          new ReviewResultSchema(
+              "Mixed issues",
+              List.of(
+                  new IssueSchema("valid.java", 10, Severity.major, "Valid", "Fix", 0.9, "High"),
+                  new IssueSchema("invalid.java", 0, Severity.minor, "Invalid", "Skip", 0.5, "Low"),
+                  new IssueSchema("another.java", 20, Severity.info, "Valid", "Fix", 0.8, "Good")),
+              List.of()));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-filter-issue", "{}", "Review");
+
+      assertThat(capturedResult.get().getIssues()).hasSize(2);
+      assertThat(capturedResult.get().getIssues().get(0).getFile()).isEqualTo("valid.java");
+      assertThat(capturedResult.get().getIssues().get(1).getFile()).isEqualTo("another.java");
+    }
+
+    @Test
+    @DisplayName("should_filter_issues_with_negative_start_line")
+    final void should_filter_issues_with_negative_start_line() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher = new TestPublisher(capturedResult);
+      final TestProviderProperties properties = new TestProviderProperties("openai", "gpt-4o");
+
+      reviewService.setResult(
+          new ReviewResultSchema(
+              "Negative line",
+              List.of(
+                  new IssueSchema("valid.java", 5, Severity.major, "Valid", "Fix", null, null),
+                  new IssueSchema("bad.java", -1, Severity.major, "Bad", "Skip", null, null)),
+              List.of()));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-filter-neg", "{}", "Review");
+
+      assertThat(capturedResult.get().getIssues()).hasSize(1);
+      assertThat(capturedResult.get().getIssues().get(0).getFile()).isEqualTo("valid.java");
+    }
+
+    @Test
+    @DisplayName("should_filter_notes_with_zero_line")
+    final void should_filter_notes_with_zero_line() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher = new TestPublisher(capturedResult);
+      final TestProviderProperties properties = new TestProviderProperties("openai", "gpt-4o");
+
+      reviewService.setResult(
+          new ReviewResultSchema(
+              "Mixed notes",
+              List.of(),
+              List.of(
+                  new NoteSchema("valid.java", 15, "Valid note"),
+                  new NoteSchema("invalid.java", 0, "Invalid note"),
+                  new NoteSchema("another.java", 30, "Another valid"))));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-filter-note", "{}", "Review");
+
+      assertThat(capturedResult.get().getNonBlockingNotes()).hasSize(2);
+      assertThat(capturedResult.get().getNonBlockingNotes().get(0).getFile())
+          .isEqualTo("valid.java");
+      assertThat(capturedResult.get().getNonBlockingNotes().get(1).getFile())
+          .isEqualTo("another.java");
+    }
+
+    @Test
+    @DisplayName("should_filter_notes_with_negative_line")
+    final void should_filter_notes_with_negative_line() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher = new TestPublisher(capturedResult);
+      final TestProviderProperties properties = new TestProviderProperties("openai", "gpt-4o");
+
+      reviewService.setResult(
+          new ReviewResultSchema(
+              "Negative note line",
+              List.of(),
+              List.of(
+                  new NoteSchema("valid.java", 10, "Valid"),
+                  new NoteSchema("bad.java", -5, "Bad note"))));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-filter-neg-note", "{}", "Review");
+
+      assertThat(capturedResult.get().getNonBlockingNotes()).hasSize(1);
+      assertThat(capturedResult.get().getNonBlockingNotes().get(0).getFile())
+          .isEqualTo("valid.java");
+    }
   }
 
   @Nested
@@ -209,6 +316,74 @@ final class ReviewProcessorTest {
 
       assertThat(capturedProvider.get()).isEqualTo("anthropic");
       assertThat(capturedModel.get()).isEqualTo("claude-sonnet");
+    }
+
+    @Test
+    @DisplayName("should_use_gemini_provider_model")
+    final void should_use_gemini_provider_model() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final AtomicReference<String> capturedProvider = new AtomicReference<>();
+      final AtomicReference<String> capturedModel = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher =
+          new TestPublisher(capturedResult, capturedProvider, capturedModel);
+      final TestProviderProperties properties =
+          new TestProviderProperties("gemini", "gemini-1.5-pro");
+
+      reviewService.setResult(new ReviewResultSchema("Summary", List.of(), List.of()));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-gemini", "{}", "Review");
+
+      assertThat(capturedProvider.get()).isEqualTo("gemini");
+      assertThat(capturedModel.get()).isEqualTo("gemini-1.5-pro");
+    }
+
+    @Test
+    @DisplayName("should_use_ollama_provider_model")
+    final void should_use_ollama_provider_model() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final AtomicReference<String> capturedProvider = new AtomicReference<>();
+      final AtomicReference<String> capturedModel = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher =
+          new TestPublisher(capturedResult, capturedProvider, capturedModel);
+      final TestProviderProperties properties = new TestProviderProperties("ollama", "codellama");
+
+      reviewService.setResult(new ReviewResultSchema("Summary", List.of(), List.of()));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-ollama", "{}", "Review");
+
+      assertThat(capturedProvider.get()).isEqualTo("ollama");
+      assertThat(capturedModel.get()).isEqualTo("codellama");
+    }
+
+    @Test
+    @DisplayName("should_return_unknown_for_unknown_provider")
+    final void should_return_unknown_for_unknown_provider() {
+      final AtomicReference<ReviewResult> capturedResult = new AtomicReference<>();
+      final AtomicReference<String> capturedProvider = new AtomicReference<>();
+      final AtomicReference<String> capturedModel = new AtomicReference<>();
+      final TestReviewService reviewService = new TestReviewService();
+      final TestPublisher publisher =
+          new TestPublisher(capturedResult, capturedProvider, capturedModel);
+      final TestProviderProperties properties =
+          new TestProviderProperties("unknown-provider", "some-model");
+
+      reviewService.setResult(new ReviewResultSchema("Summary", List.of(), List.of()));
+
+      final ReviewProcessor processor =
+          new ReviewProcessor(reviewService, null, publisher, properties);
+
+      processor.process("req-unknown", "{}", "Review");
+
+      assertThat(capturedProvider.get()).isEqualTo("unknown-provider");
+      assertThat(capturedModel.get()).isEqualTo("unknown");
     }
   }
 

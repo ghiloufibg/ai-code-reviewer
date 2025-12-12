@@ -128,4 +128,33 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${jacoco.version}</version>
+                        <configuration>
+                            <excludes>
+                                <!-- Spring Boot main class -->
+                                <exclude>com/ghiloufi/aicode/llmworker/LlmWorkerApplication.class</exclude>
+                                <!-- LangChain4j interface - cannot be unit tested -->
+                                <exclude>com/ghiloufi/aicode/llmworker/service/CodeReviewAiService.class</exclude>
+                                <!-- Infrastructure classes requiring Redis integration -->
+                                <exclude>com/ghiloufi/aicode/llmworker/service/AsyncReviewOrchestrator.class</exclude>
+                                <exclude>com/ghiloufi/aicode/llmworker/publisher/ReviewResultPublisher.class</exclude>
+                                <exclude>com/ghiloufi/aicode/llmworker/consumer/ReviewRequestConsumer.class</exclude>
+                                <!-- LLM provider configuration - creates external clients -->
+                                <exclude>com/ghiloufi/aicode/llmworker/config/LangChain4jConfig.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
