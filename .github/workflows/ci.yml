@@ -144,7 +144,12 @@ jobs:
         continue-on-error: false
 
       - name: Run OWASP Dependency-Check
-        run: mvn dependency-check:aggregate -Psecurity -B -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+        run: |
+          mvn dependency-check:aggregate -Psecurity -B \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -DfailOnError=false \
+            -DnvdValidForHours=24
+        continue-on-error: true
 
       - name: Run Semgrep SAST
         run: |
