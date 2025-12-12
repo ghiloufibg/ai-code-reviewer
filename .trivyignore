@@ -1,0 +1,4 @@
+# Trivy ignore file
+# Exclude deprecated security-analysis-api module from scanning
+security-analysis-api/
+security-analysis-api/**
