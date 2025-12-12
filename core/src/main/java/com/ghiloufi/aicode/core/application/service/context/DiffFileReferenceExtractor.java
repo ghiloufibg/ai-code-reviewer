@@ -15,7 +15,7 @@ public final class DiffFileReferenceExtractor {
   private static final Pattern IMPORT_PATTERN =
       Pattern.compile("^\\+\\s*import\\s+([a-zA-Z0-9_.]+);", Pattern.MULTILINE);
   private static final Pattern QUALIFIED_NAME_PATTERN =
-      Pattern.compile("([a-zA-Z][a-zA-Z0-9_]*+\\.)+([A-Z][a-zA-Z0-9_]*+)");
+      Pattern.compile("(?:[a-zA-Z][a-zA-Z0-9_]{0,100}\\.){1,20}[A-Z][a-zA-Z0-9_]{0,100}");
 
   public List<ContextMatch> extractReferences(final DiffAnalysisBundle bundle) {
     if (bundle.rawDiffText() == null || bundle.rawDiffText().isBlank()) {

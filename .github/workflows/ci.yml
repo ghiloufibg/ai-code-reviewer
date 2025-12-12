@@ -156,23 +156,18 @@ jobs:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
 
       - name: Run Semgrep SAST
-        uses: returntocorp/semgrep-action@v1
+        run: |
+          pip install semgrep
+          semgrep scan --config p/java --config p/spring --config p/security-audit --config p/secrets --config p/owasp-top-ten --sarif --output semgrep.sarif . || true
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-        with:
-          config: >-
-            p/java
-            p/spring
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten
-          generateSarif: true
 
       - name: Upload Semgrep SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('semgrep.sarif') != ''
         with:
           sarif_file: semgrep.sarif
+          category: semgrep
 
       - name: Upload SpotBugs Report
         uses: actions/upload-artifact@v4
@@ -271,7 +266,7 @@ jobs:
           exit-code: '1'
 
       - name: Upload Trivy SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-${{ matrix.service }}.sarif'
