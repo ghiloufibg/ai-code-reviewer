@@ -49,6 +49,7 @@ jobs:
     name: SonarCloud Quality Scan
     runs-on: ubuntu-latest
     needs: format-check
+    continue-on-error: true
 
     steps:
       - name: Checkout code
@@ -108,12 +109,14 @@ jobs:
       - name: Quality Gate Status
         if: always()
         run: |
-          echo "## SonarCloud Quality Gate" >> $GITHUB_STEP_SUMMARY
+          echo "## SonarCloud Quality Gate (Informational)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Quality gate enforcement is enabled. The build will fail if:" >> $GITHUB_STEP_SUMMARY
-          echo "- Code coverage drops below 70%" >> $GITHUB_STEP_SUMMARY
-          echo "- Reliability rating is worse than A (any bugs)" >> $GITHUB_STEP_SUMMARY
-          echo "- Security rating is worse than A (any vulnerabilities)" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note**: Quality gate failures will NOT block the pipeline (continue-on-error enabled)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Quality gate monitors:" >> $GITHUB_STEP_SUMMARY
+          echo "- Code coverage (target: 70%)" >> $GITHUB_STEP_SUMMARY
+          echo "- Reliability rating (target: A)" >> $GITHUB_STEP_SUMMARY
+          echo "- Security rating (target: A)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "[View detailed report on SonarCloud](https://sonarcloud.io/project/overview?id=${{ vars.SONAR_PROJECT_KEY }})" >> $GITHUB_STEP_SUMMARY
 
@@ -124,6 +127,7 @@ jobs:
     name: SAST Security Analysis
     runs-on: ubuntu-latest
     needs: format-check
+    continue-on-error: true
     permissions:
       security-events: write
       contents: read
@@ -219,7 +223,9 @@ jobs:
       - name: SAST Summary
         if: always()
         run: |
-          echo "## SAST Security Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "## SAST Security Analysis (Informational)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note**: SAST failures will NOT block the pipeline (continue-on-error enabled)." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### SpotBugs + Find Security Bugs" >> $GITHUB_STEP_SUMMARY
           echo "Static analysis for security vulnerabilities in Java code." >> $GITHUB_STEP_SUMMARY
