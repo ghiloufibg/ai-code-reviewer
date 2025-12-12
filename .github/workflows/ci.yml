@@ -210,16 +210,13 @@ jobs:
           echo "### SpotBugs + Find Security Bugs" >> $GITHUB_STEP_SUMMARY
           echo "Static analysis for security vulnerabilities in Java code." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### OWASP Dependency-Check" >> $GITHUB_STEP_SUMMARY
-          echo "Scans dependencies for known CVEs (fails on CVSS >= 7.0)." >> $GITHUB_STEP_SUMMARY
+          echo "### Trivy Dependency Scan" >> $GITHUB_STEP_SUMMARY
+          echo "Scans dependencies for known CVEs (CRITICAL and HIGH severity)." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Semgrep" >> $GITHUB_STEP_SUMMARY
           echo "Pattern-based security scanning with Java, Spring, OWASP Top 10, and secrets detection." >> $GITHUB_STEP_SUMMARY
-          echo "Results uploaded to GitHub Security tab." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f "target/dependency-check/dependency-check-report.html" ]; then
-            echo "Dependency-Check report generated. Download artifacts for details." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "Results uploaded to GitHub Security tab." >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # STEP 4: Docker Build & Container SAST Scan
