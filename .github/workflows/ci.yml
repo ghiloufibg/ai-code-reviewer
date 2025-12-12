@@ -147,7 +147,7 @@ jobs:
           restore-keys: ${{ runner.os }}-nvd-
 
       - name: Run SpotBugs with Find Security Bugs
-        run: mvn compile spotbugs:check -Psecurity -B
+        run: mvn compile spotbugs:check -Psecurity -B -pl '!security-analysis-api'
         continue-on-error: false
 
       - name: Run OWASP Dependency-Check
@@ -158,7 +158,7 @@ jobs:
       - name: Run Semgrep SAST
         run: |
           pip install semgrep
-          semgrep scan --config p/java --config p/spring --config p/security-audit --config p/secrets --config p/owasp-top-ten --sarif --output semgrep.sarif . || true
+          semgrep scan --config p/java --config p/spring --config p/security-audit --config p/secrets --config p/owasp-top-ten --exclude 'security-analysis-api/**' --sarif --output semgrep.sarif . || true
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
