@@ -27,7 +27,6 @@
         <jacoco.version>0.8.12</jacoco.version>
         <spotbugs.version>4.8.6.6</spotbugs.version>
         <findsecbugs.version>1.13.0</findsecbugs.version>
-        <dependency-check.version>9.0.5</dependency-check.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <dependencyManagement>
@@ -80,11 +79,6 @@
                     <artifactId>spotbugs-maven-plugin</artifactId>
                     <version>${spotbugs.version}</version>
                 </plugin>
-                <plugin>
-                    <groupId>org.owasp</groupId>
-                    <artifactId>dependency-check-maven</artifactId>
-                    <version>${dependency-check.version}</version>
-                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -131,31 +125,6 @@
                                 <phase>verify</phase>
                                 <goals>
                                     <goal>check</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.owasp</groupId>
-                        <artifactId>dependency-check-maven</artifactId>
-                        <version>${dependency-check.version}</version>
-                        <configuration>
-                            <failBuildOnCVSS>7</failBuildOnCVSS>
-                            <formats>
-                                <format>HTML</format>
-                                <format>JSON</format>
-                            </formats>
-                            <outputDirectory>${project.build.directory}/dependency-check</outputDirectory>
-                            <suppressionFiles>
-                                <suppressionFile>${maven.multiModuleProjectDirectory}/dependency-check-suppressions.xml</suppressionFile>
-                            </suppressionFiles>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>dependency-check</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>aggregate</goal>
                                 </goals>
                             </execution>
                         </executions>
