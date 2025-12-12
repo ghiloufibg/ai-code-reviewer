@@ -3,6 +3,7 @@ name: CI Pipeline
 on:
   push:
     branches: [main, master]
+    tags: ['v*']
   pull_request:
     branches: [main, master]
 
@@ -320,7 +321,7 @@ jobs:
     name: Publish to Docker Hub
     runs-on: ubuntu-latest
     needs: docker-build-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     strategy:
       matrix:
         service: [api-gateway, llm-worker]
@@ -344,8 +345,16 @@ jobs:
           SERVICE=${{ matrix.service }}
           SHA_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
           VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout 2>/dev/null || echo "0.2.0")
+          TAGS="${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:${SHA_SHORT},${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:${VERSION},${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:latest"
+
+          # Add git tag if this is a tag push
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            GIT_TAG=${GITHUB_REF#refs/tags/}
+            TAGS="${TAGS},${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:${GIT_TAG}"
+          fi
+
           echo "image_name=${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}" >> $GITHUB_OUTPUT
-          echo "tags=${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:${SHA_SHORT},${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:${VERSION},${{ env.DOCKER_IMAGE_PREFIX }}-${SERVICE}:latest" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
