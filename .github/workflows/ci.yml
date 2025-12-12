@@ -152,7 +152,7 @@ jobs:
           output: 'trivy-deps.sarif'
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln'
-        continue-on-error: true
+          exit-code: '1'
 
       - name: Upload Trivy Dependency SARIF
         uses: github/codeql-action/upload-sarif@v4
@@ -164,7 +164,7 @@ jobs:
       - name: Run Semgrep SAST
         run: |
           pip install semgrep
-          semgrep scan --config p/java --config p/spring --config p/security-audit --config p/secrets --config p/owasp-top-ten --exclude 'security-analysis-api/**' --sarif --output semgrep.sarif . || true
+          semgrep scan --config p/java --config p/spring --config p/security-audit --config p/secrets --config p/owasp-top-ten --exclude 'security-analysis-api/**' --sarif --output semgrep.sarif .
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
@@ -230,7 +230,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        service: [api-gateway, llm-worker, security-analysis-api]
+        service: [api-gateway, llm-worker]
 
     steps:
       - name: Checkout code
@@ -303,7 +303,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     strategy:
       matrix:
-        service: [api-gateway, llm-worker, security-analysis-api]
+        service: [api-gateway, llm-worker]
 
     steps:
       - name: Checkout code

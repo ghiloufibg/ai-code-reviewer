@@ -23,7 +23,13 @@ WORKDIR /app
 
 COPY --from=builder /app/llm-worker/target/*.jar app.jar
 
-RUN mkdir -p /app/logs
+# Create logs directory and non-root user
+RUN mkdir -p /app/logs && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 EXPOSE 8080
 

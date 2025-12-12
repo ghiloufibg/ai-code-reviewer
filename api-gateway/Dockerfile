@@ -28,8 +28,13 @@ WORKDIR /app
 # Copy the built jar from builder stage
 COPY --from=builder /app/api-gateway/target/*.jar app.jar
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Create logs directory and non-root user
+RUN mkdir -p /app/logs && \
+    addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 # Expose application port and debug port
 EXPOSE 8080 5005
