@@ -31,13 +31,13 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: local-secrets
-                  key: postgres-username
+                  name: database-credentials
+                  key: username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: local-secrets
-                  key: postgres-password
+                  name: database-credentials
+                  key: password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           resources:

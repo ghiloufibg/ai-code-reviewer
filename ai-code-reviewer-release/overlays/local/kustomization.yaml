@@ -31,6 +31,6 @@ patches:
 
 images:
   - name: bgghiloufi/ai-code-reviewer-api-gateway
-    newTag: "local"
+    newTag: "v1.0.0-mvp"
   - name: bgghiloufi/ai-code-reviewer-llm-worker
-    newTag: "local"
+    newTag: "v1.0.0-mvp"

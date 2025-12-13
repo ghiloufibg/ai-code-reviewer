@@ -7,14 +7,14 @@
       value: "redis"
     - name: SPRING_DATA_REDIS_PORT
       value: "6379"
-    - name: LLM_PROVIDERS_OPENAI_API_KEY
+    - name: OPENAI_API_KEY
       valueFrom:
         secretKeyRef:
           name: llm-credentials
           key: openai-api-key
-    - name: LLM_PROVIDERS_OPENAI_BASE_URL
+    - name: LLM_OPENAI_BASE_URL
       value: "https://api.openai.com/v1"
-    - name: LLM_PROVIDERS_OPENAI_DEFAULT_MODEL
+    - name: LLM_OPENAI_MODEL
       value: "gpt-4o-mini"
     - name: SCM_PROVIDERS_GITLAB_TOKEN
       valueFrom:
@@ -28,6 +28,10 @@
           name: scm-credentials
           key: github-token
           optional: true
+    - name: WORKER_CONSUMER_ID
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
     - name: WORKER_BATCH_SIZE
       value: "10"
     - name: WORKER_TIMEOUT_SECONDS
@@ -36,3 +40,23 @@
       value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+ExitOnOutOfMemoryError"
     - name: LOGGING_LEVEL_COM_GHILOUFI_AICODE
       value: "DEBUG"
+- op: replace
+  path: /spec/template/spec/containers/0/livenessProbe
+  value:
+    httpGet:
+      path: /actuator/health/liveness
+      port: http
+    initialDelaySeconds: 120
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 5
+- op: replace
+  path: /spec/template/spec/containers/0/readinessProbe
+  value:
+    httpGet:
+      path: /actuator/health/readiness
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5

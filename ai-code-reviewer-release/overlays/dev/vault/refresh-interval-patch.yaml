@@ -1,4 +1,4 @@
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: database-credentials
@@ -6,7 +6,7 @@ metadata:
 spec:
   refreshInterval: "5m"
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: llm-credentials
@@ -14,7 +14,7 @@ metadata:
 spec:
   refreshInterval: "5m"
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: scm-credentials
@@ -22,7 +22,7 @@ metadata:
 spec:
   refreshInterval: "5m"
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: webhook-credentials
@@ -30,7 +30,7 @@ metadata:
 spec:
   refreshInterval: "5m"
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: jira-credentials

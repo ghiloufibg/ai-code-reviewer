@@ -4,11 +4,20 @@
     - name: SPRING_PROFILES_ACTIVE
       value: "local"
     - name: SPRING_DATASOURCE_URL
-      value: "jdbc:postgresql://postgres:5432/ai_code_reviewer"
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: url
     - name: SPRING_DATASOURCE_USERNAME
-      value: "postgres"
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: username
     - name: SPRING_DATASOURCE_PASSWORD
-      value: "postgres"
+      valueFrom:
+        secretKeyRef:
+          name: database-credentials
+          key: password
     - name: SPRING_DATA_REDIS_HOST
       value: "redis"
     - name: SPRING_DATA_REDIS_PORT
