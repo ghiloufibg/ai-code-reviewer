@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: ai-reviewer
+spec:
+  template:
+    spec:
+      hostAliases:
+        - ip: "host.docker.internal"
+          hostnames:
+            - "host.docker.internal"
+      containers:
+        - name: api-gateway
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "local"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/ai_code_reviewer"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: local-secrets
+                  key: postgres-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: local-secrets
+                  key: postgres-password
+            - name: SCM_PROVIDERS_GITLAB_API_URL
+              value: "http://host.docker.internal:80"
+            - name: TICKET_SYSTEM_JIRA_BASE_URL
+              value: "http://host.docker.internal:8080"
+            - name: LOGGING_LEVEL_COM_GHILOUFI_AICODE
+              value: "DEBUG"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-worker
+  namespace: ai-reviewer
+spec:
+  template:
+    spec:
+      hostAliases:
+        - ip: "host.docker.internal"
+          hostnames:
+            - "host.docker.internal"
+      containers:
+        - name: llm-worker
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "local"
+            - name: GITLAB_API_URL
+              value: "http://host.docker.internal:80"
+            - name: JIRA_BASE_URL
+              value: "http://host.docker.internal:8080"
+            - name: LOG_LEVEL
+              value: "DEBUG"

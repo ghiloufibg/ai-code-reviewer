@@ -16,8 +16,6 @@ target/
 build/
 out/
 *.class
-*.jar
-*.war
 
 # Test outputs
 **/test-results/
@@ -28,17 +26,11 @@ out/
 logs/
 
 # Documentation and tracking
-*.md
-!README.md
 claudedocs/
 trackings/
 
-# Docker files (not needed in build context)
-Dockerfile
-.dockerignore
+# Docker files (not needed in build context, except Dockerfiles)
 docker-compose*.yml
-*.sh
-*.bat
 
 # Environment files (use docker-compose env instead)
 .env
@@ -50,11 +42,6 @@ docker-compose*.yml
 *.swp
 *~
 
-# Maven wrapper (already in image)
-.mvn/
-mvnw
-mvnw.cmd
-
 # Node modules (if any)
 node_modules/
 npm-debug.log
@@ -62,3 +49,6 @@ yarn-error.log
 
 # OS files
 Thumbs.db
+
+# Kubernetes manifests (not needed in Docker build)
+ai-code-reviewer-release/

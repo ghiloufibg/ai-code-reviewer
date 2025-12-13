@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: ai-reviewer
+spec:
+  template:
+    spec:
+      containers:
+        - name: api-gateway
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: debug
+              containerPort: 5005
+              protocol: TCP
+          env:
+            - name: JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-worker
+  namespace: ai-reviewer
+spec:
+  template:
+    spec:
+      containers:
+        - name: llm-worker
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: debug
+              containerPort: 5006
+              protocol: TCP
+          env:
+            - name: JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006"

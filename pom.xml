@@ -11,7 +11,6 @@
     <modules>
         <module>core</module>
         <module>api-gateway</module>
-        <module>security-analysis-api</module>
         <module>llm-worker</module>
     </modules>
 

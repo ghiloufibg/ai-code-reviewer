@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-reviewer
+
+resources:
+  - ../../base
+  - ../../base/external-secrets
+
+patches:
+  - path: patches/api-gateway-replicas.yaml
+  - path: patches/llm-worker-replicas.yaml
+  - path: patches/resource-limits.yaml
+  - path: vault/secret-store-patch.yaml
+  - path: vault/refresh-interval-patch.yaml
+
+images:
+  - name: ghcr.io/your-org/ai-code-reviewer/api-gateway
+    newTag: "v1.0.0-mvp"
+  - name: ghcr.io/your-org/ai-code-reviewer/llm-worker
+    newTag: "v1.0.0-mvp"
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - redis.host=your-managed-redis.cache.amazonaws.com
+      - llm.model=gpt-4o

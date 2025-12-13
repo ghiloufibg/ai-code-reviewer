@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-reviewer
+  labels:
+    app.kubernetes.io/name: ai-code-reviewer
+    app.kubernetes.io/part-of: ai-code-reviewer

@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-reviewer
+
+resources:
+  - ../../base
+  - ../../base/external-secrets
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/resource-limits.yaml
+  - path: vault/secret-store-patch.yaml
+  - path: vault/refresh-interval-patch.yaml
+
+images:
+  - name: ghcr.io/your-org/ai-code-reviewer/api-gateway
+    newTag: "staging"
+  - name: ghcr.io/your-org/ai-code-reviewer/llm-worker
+    newTag: "staging"
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - redis.host=redis
+      - redis.port=6379
+      - llm.model=gpt-4o
+      - log.level=INFO

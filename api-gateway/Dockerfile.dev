@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================================
-# AI Code Reviewer - API Gateway
-# Production-optimized multi-stage Dockerfile
+# AI Code Reviewer - API Gateway (Development)
+# Development Dockerfile with debug support
 # ============================================================================
 
 ARG JAVA_VERSION=21
@@ -13,13 +13,11 @@ ARG JAVA_VERSION=21
 FROM maven:3.9-eclipse-temurin-${JAVA_VERSION} AS deps
 WORKDIR /build
 
-# Copy all pom.xml files for dependency resolution
 COPY pom.xml .
 COPY core/pom.xml core/pom.xml
 COPY api-gateway/pom.xml api-gateway/pom.xml
 COPY llm-worker/pom.xml llm-worker/pom.xml
 
-# Download dependencies (cached layer)
 RUN --mount=type=cache,target=/root/.m2 \
     mvn dependency:go-offline -pl api-gateway -am -B -q || true
 
@@ -41,48 +39,23 @@ RUN java -Djarmode=layertools -jar api-gateway/target/app.jar extract \
     --destination api-gateway/target/extracted
 
 # ----------------------------------------------------------------------------
-# Stage 4: Production runtime
+# Stage 4: Development runtime with debug support
 # ----------------------------------------------------------------------------
-FROM eclipse-temurin:${JAVA_VERSION}-jre-alpine AS final
-
-# OCI Labels
-LABEL org.opencontainers.image.title="AI Code Reviewer - API Gateway" \
-      org.opencontainers.image.description="REST API Gateway with SSE streaming" \
-      org.opencontainers.image.vendor="Ghiloufi" \
-      org.opencontainers.image.version="v1.0.0-mvp" \
-      org.opencontainers.image.source="https://github.com/ghiloufi/ai-code-reviewer"
-
-# Security: Non-root user
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    appuser
+FROM eclipse-temurin:${JAVA_VERSION}-jre-jammy AS final
 
 WORKDIR /app
 
-# Copy layers in order: stable -> volatile (for cache optimization)
-COPY --from=extract --chown=appuser:appuser /build/api-gateway/target/extracted/dependencies/ ./
-COPY --from=extract --chown=appuser:appuser /build/api-gateway/target/extracted/spring-boot-loader/ ./
-COPY --from=extract --chown=appuser:appuser /build/api-gateway/target/extracted/snapshot-dependencies/ ./
-COPY --from=extract --chown=appuser:appuser /build/api-gateway/target/extracted/application/ ./
+# Copy layers
+COPY --from=extract /build/api-gateway/target/extracted/dependencies/ ./
+COPY --from=extract /build/api-gateway/target/extracted/spring-boot-loader/ ./
+COPY --from=extract /build/api-gateway/target/extracted/snapshot-dependencies/ ./
+COPY --from=extract /build/api-gateway/target/extracted/application/ ./
 
-USER appuser
-
-# Production JVM settings
+# Development JVM settings with remote debugging
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -XX:MaxRAMPercentage=75.0 \
-    -XX:+UseG1GC \
-    -XX:+ExitOnOutOfMemoryError \
-    -Djava.security.egd=file:/dev/./urandom"
+    -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
 
-EXPOSE 8080
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+EXPOSE 8080 5005
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
