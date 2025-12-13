@@ -10,6 +10,8 @@ resources:
   - external-secret-webhook.yaml
   - external-secret-jira.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: ai-code-reviewer
-  app.kubernetes.io/managed-by: kustomize
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ai-code-reviewer
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false

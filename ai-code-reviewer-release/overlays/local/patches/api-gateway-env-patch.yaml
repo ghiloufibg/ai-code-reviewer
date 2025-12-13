@@ -1,0 +1,49 @@
+- op: replace
+  path: /spec/template/spec/containers/0/env
+  value:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "local"
+    - name: SPRING_DATASOURCE_URL
+      value: "jdbc:postgresql://postgres:5432/ai_code_reviewer"
+    - name: SPRING_DATASOURCE_USERNAME
+      value: "postgres"
+    - name: SPRING_DATASOURCE_PASSWORD
+      value: "postgres"
+    - name: SPRING_DATA_REDIS_HOST
+      value: "redis"
+    - name: SPRING_DATA_REDIS_PORT
+      value: "6379"
+    - name: LLM_PROVIDERS_OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: llm-credentials
+          key: openai-api-key
+    - name: LLM_PROVIDERS_OPENAI_BASE_URL
+      value: "https://api.openai.com/v1"
+    - name: LLM_PROVIDERS_OPENAI_DEFAULT_MODEL
+      value: "gpt-4o-mini"
+    - name: SCM_PROVIDERS_GITLAB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: scm-credentials
+          key: gitlab-token
+          optional: true
+    - name: SCM_PROVIDERS_GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: scm-credentials
+          key: github-token
+          optional: true
+    - name: SCM_PROVIDERS_GITLAB_API_URL
+      value: "http://host.docker.internal:80"
+    - name: WEBHOOK_API_KEYS
+      valueFrom:
+        secretKeyRef:
+          name: webhook-credentials
+          key: api-keys
+    - name: TICKET_SYSTEM_JIRA_BASE_URL
+      value: "http://host.docker.internal:8080"
+    - name: LOGGING_LEVEL_COM_GHILOUFI_AICODE
+      value: "DEBUG"
+    - name: JAVA_OPTS
+      value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"

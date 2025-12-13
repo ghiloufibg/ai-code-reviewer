@@ -12,27 +12,25 @@ resources:
 patches:
   - path: patches/replicas.yaml
   - path: patches/resource-limits.yaml
-  - path: patches/local-config.yaml
   - path: patches/image-pull-policy.yaml
+  - path: patches/configmap-patch.yaml
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: api-gateway
+    path: patches/api-gateway-env-patch.yaml
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: llm-worker
+    path: patches/llm-worker-env-patch.yaml
   - path: vault/secret-store-patch.yaml
   - path: vault/refresh-interval-patch.yaml
 
 images:
-  - name: ghcr.io/your-org/ai-code-reviewer/api-gateway
-    newName: ai-code-reviewer/api-gateway
+  - name: bgghiloufi/ai-code-reviewer-api-gateway
     newTag: "local"
-  - name: ghcr.io/your-org/ai-code-reviewer/llm-worker
-    newName: ai-code-reviewer/llm-worker
+  - name: bgghiloufi/ai-code-reviewer-llm-worker
     newTag: "local"
-
-configMapGenerator:
-  - name: app-config
-    behavior: merge
-    literals:
-      - redis.host=redis
-      - redis.port=6379
-      - llm.model=gpt-4o-mini
-      - llm.base-url=https://api.openai.com/v1
-      - log.level=DEBUG
-      - gitlab.api-url=http://host.docker.internal:80
-      - jira.base-url=http://host.docker.internal:8080

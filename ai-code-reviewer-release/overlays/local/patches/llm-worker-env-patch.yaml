@@ -1,0 +1,38 @@
+- op: replace
+  path: /spec/template/spec/containers/0/env
+  value:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "local"
+    - name: SPRING_DATA_REDIS_HOST
+      value: "redis"
+    - name: SPRING_DATA_REDIS_PORT
+      value: "6379"
+    - name: LLM_PROVIDERS_OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: llm-credentials
+          key: openai-api-key
+    - name: LLM_PROVIDERS_OPENAI_BASE_URL
+      value: "https://api.openai.com/v1"
+    - name: LLM_PROVIDERS_OPENAI_DEFAULT_MODEL
+      value: "gpt-4o-mini"
+    - name: SCM_PROVIDERS_GITLAB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: scm-credentials
+          key: gitlab-token
+          optional: true
+    - name: SCM_PROVIDERS_GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: scm-credentials
+          key: github-token
+          optional: true
+    - name: WORKER_BATCH_SIZE
+      value: "10"
+    - name: WORKER_TIMEOUT_SECONDS
+      value: "120"
+    - name: JAVA_OPTS
+      value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+ExitOnOutOfMemoryError"
+    - name: LOGGING_LEVEL_COM_GHILOUFI_AICODE
+      value: "DEBUG"
