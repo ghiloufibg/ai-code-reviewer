@@ -28,7 +28,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: llm-worker
-          image: ghcr.io/your-org/ai-code-reviewer/llm-worker:v1.0.0-mvp
+          image: bgghiloufi/ai-code-reviewer-llm-worker:v1.0.0-mvp
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
