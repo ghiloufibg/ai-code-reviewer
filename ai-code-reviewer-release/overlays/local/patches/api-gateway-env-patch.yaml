@@ -2,7 +2,7 @@
   path: /spec/template/spec/containers/0/env
   value:
     - name: SPRING_PROFILES_ACTIVE
-      value: "local"
+      value: "k8s"
     - name: SPRING_DATASOURCE_URL
       valueFrom:
         secretKeyRef:

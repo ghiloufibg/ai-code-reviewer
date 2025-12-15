@@ -50,11 +50,18 @@
         </root>
     </springProfile>
 
-    <!-- Production Profile: JSON structured logs -->
+    <!-- Production Profile: JSON structured logs with file -->
     <springProfile name="prod,production">
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
             <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- Kubernetes Profile: JSON structured logs to console only (no file) -->
+    <springProfile name="k8s,kubernetes">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
         </root>
     </springProfile>
 </configuration>

@@ -2,7 +2,7 @@
   path: /spec/template/spec/containers/0/env
   value:
     - name: SPRING_PROFILES_ACTIVE
-      value: "local"
+      value: "k8s"
     - name: SPRING_DATA_REDIS_HOST
       value: "redis"
     - name: SPRING_DATA_REDIS_PORT
@@ -28,6 +28,8 @@
           name: scm-credentials
           key: github-token
           optional: true
+    - name: SCM_PROVIDERS_GITLAB_API_URL
+      value: "http://host.docker.internal:80"
     - name: WORKER_CONSUMER_ID
       valueFrom:
         fieldRef:
