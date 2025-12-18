@@ -1,6 +1,5 @@
 package com.ghiloufi.aicode.llmworker;
 
-import com.ghiloufi.aicode.core.application.service.AIReviewStreamingService;
 import com.ghiloufi.aicode.core.application.service.ReviewManagementService;
 import com.ghiloufi.aicode.core.infrastructure.persistence.PostgresReviewRepository;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
@@ -24,7 +23,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
             classes = {
               ReviewManagementService.class,
               PostgresReviewRepository.class,
-              AIReviewStreamingService.class,
               ReviewChunkAccumulator.class
             }))
 public class LlmWorkerApplication {

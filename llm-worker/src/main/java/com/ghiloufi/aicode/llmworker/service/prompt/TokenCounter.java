@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.service.prompt;
+package com.ghiloufi.aicode.llmworker.service.prompt;
 
 import org.springframework.stereotype.Component;
 

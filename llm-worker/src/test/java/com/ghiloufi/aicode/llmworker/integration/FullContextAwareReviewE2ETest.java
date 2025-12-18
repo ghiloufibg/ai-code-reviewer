@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.integration;
+package com.ghiloufi.aicode.llmworker.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,9 +39,9 @@ import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
 import com.ghiloufi.aicode.core.service.expansion.DiffExpansionService;
 import com.ghiloufi.aicode.core.service.metadata.PrMetadataExtractor;
 import com.ghiloufi.aicode.core.service.policy.RepositoryPolicyProvider;
-import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
-import com.ghiloufi.aicode.core.service.prompt.PromptTemplateService;
-import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
+import com.ghiloufi.aicode.llmworker.service.prompt.PromptBuilder;
+import com.ghiloufi.aicode.llmworker.service.prompt.PromptTemplateService;
+import com.ghiloufi.aicode.llmworker.service.prompt.ReviewPromptResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -625,7 +625,7 @@ final class FullContextAwareReviewE2ETest {
   }
 
   private static final class TestContextRetrievalStrategy implements ContextRetrievalStrategy {
-    private List<ContextMatch> matchesToReturn =
+    private final List<ContextMatch> matchesToReturn =
         List.of(
             new ContextMatch(
                 "src/main/java/com/example/repository/UserRepository.java",

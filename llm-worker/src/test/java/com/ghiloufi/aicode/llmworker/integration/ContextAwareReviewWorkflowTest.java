@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.integration;
+package com.ghiloufi.aicode.llmworker.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,13 +10,23 @@ import com.ghiloufi.aicode.core.config.PromptProperties;
 import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
 import com.ghiloufi.aicode.core.config.PromptVariantProperties;
 import com.ghiloufi.aicode.core.config.PromptVariantProperties.Variant;
-import com.ghiloufi.aicode.core.domain.model.*;
+import com.ghiloufi.aicode.core.domain.model.ContextMatch;
+import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
+import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
+import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
+import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
+import com.ghiloufi.aicode.core.domain.model.MatchReason;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
+import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
+import com.ghiloufi.aicode.core.domain.model.SourceProvider;
+import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.port.output.ContextRetrievalStrategy;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import com.ghiloufi.aicode.core.service.diff.UnifiedDiffParser;
-import com.ghiloufi.aicode.core.service.prompt.PromptBuilder;
-import com.ghiloufi.aicode.core.service.prompt.PromptTemplateService;
-import com.ghiloufi.aicode.core.service.prompt.ReviewPromptResult;
+import com.ghiloufi.aicode.llmworker.service.prompt.PromptBuilder;
+import com.ghiloufi.aicode.llmworker.service.prompt.PromptTemplateService;
+import com.ghiloufi.aicode.llmworker.service.prompt.ReviewPromptResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;

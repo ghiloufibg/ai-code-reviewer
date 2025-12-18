@@ -1,9 +1,9 @@
-package com.ghiloufi.aicode.core.service.prompt;
+package com.ghiloufi.aicode.llmworker.service.prompt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.ghiloufi.aicode.core.service.prompt.TokenCounter.TokenComparison;
-import com.ghiloufi.aicode.core.service.prompt.TokenCounter.TokenCount;
+import com.ghiloufi.aicode.llmworker.service.prompt.TokenCounter.TokenComparison;
+import com.ghiloufi.aicode.llmworker.service.prompt.TokenCounter.TokenCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

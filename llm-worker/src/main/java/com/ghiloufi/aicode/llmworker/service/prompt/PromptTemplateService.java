@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.service.prompt;
+package com.ghiloufi.aicode.llmworker.service.prompt;
 
 import com.ghiloufi.aicode.core.config.PromptPropertiesFactory;
 import com.ghiloufi.aicode.core.config.PromptPropertiesFactory.PromptPropertiesAdapter;
