@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.application.service.context;
+package com.ghiloufi.aicode.llmworker.service.context;
 
 import com.ghiloufi.aicode.core.domain.model.ContextMatch;
 import com.ghiloufi.aicode.core.domain.model.GitFileModification;

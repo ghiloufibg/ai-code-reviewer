@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.application.service.context;
+package com.ghiloufi.aicode.llmworker.strategy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,6 +16,7 @@ import com.ghiloufi.aicode.core.domain.model.GitDiffDocument;
 import com.ghiloufi.aicode.core.domain.model.GitFileModification;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
+import com.ghiloufi.aicode.llmworker.service.context.GitHistoryCoChangeAnalyzer;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;

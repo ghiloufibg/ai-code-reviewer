@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.application.service.context;
+package com.ghiloufi.aicode.llmworker.strategy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

@@ -1,4 +1,4 @@
-package com.ghiloufi.aicode.core.application.service.context;
+package com.ghiloufi.aicode.llmworker.service.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;

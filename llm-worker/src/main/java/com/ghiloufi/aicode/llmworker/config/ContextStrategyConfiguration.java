@@ -1,15 +1,16 @@
-package com.ghiloufi.aicode.core.config;
+package com.ghiloufi.aicode.llmworker.config;
 
-import com.ghiloufi.aicode.core.application.service.context.GitHistoryCoChangeAnalyzer;
-import com.ghiloufi.aicode.core.application.service.context.HistoryBasedContextStrategy;
 import com.ghiloufi.aicode.core.domain.port.output.ContextRetrievalStrategy;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.llmworker.service.context.GitHistoryCoChangeAnalyzer;
+import com.ghiloufi.aicode.llmworker.strategy.HistoryBasedContextStrategy;
+import com.ghiloufi.aicode.llmworker.strategy.MetadataBasedContextStrategy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class GitHistoryConfiguration {
+public class ContextStrategyConfiguration {
 
   @Bean
   public GitHistoryCoChangeAnalyzer gitHistoryCoChangeAnalyzer(
@@ -23,5 +24,10 @@ public class GitHistoryConfiguration {
   public ContextRetrievalStrategy historyBasedContextStrategy(
       final GitHistoryCoChangeAnalyzer analyzer) {
     return new HistoryBasedContextStrategy(analyzer);
+  }
+
+  @Bean
+  public ContextRetrievalStrategy metadataBasedContextStrategy(final SCMPort scmPort) {
+    return new MetadataBasedContextStrategy(scmPort);
   }
 }

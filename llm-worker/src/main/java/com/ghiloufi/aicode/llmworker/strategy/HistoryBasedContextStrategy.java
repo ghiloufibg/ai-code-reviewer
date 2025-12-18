@@ -1,51 +1,51 @@
-package com.ghiloufi.aicode.core.application.service.context;
+package com.ghiloufi.aicode.llmworker.strategy;
 
 import com.ghiloufi.aicode.core.domain.model.ContextMatch;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalMetadata;
 import com.ghiloufi.aicode.core.domain.model.ContextRetrievalResult;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
-import com.ghiloufi.aicode.core.domain.model.GitFileModification;
 import com.ghiloufi.aicode.core.domain.model.MatchReason;
+import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.port.output.ContextRetrievalStrategy;
-import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.llmworker.service.context.GitHistoryCoChangeAnalyzer;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public final class MetadataBasedContextStrategy implements ContextRetrievalStrategy {
+public final class HistoryBasedContextStrategy implements ContextRetrievalStrategy {
 
-  private static final String STRATEGY_NAME = "metadata-based";
-  private static final int DEFAULT_PRIORITY = 10;
+  private static final String STRATEGY_NAME = "git-history";
+  private static final int DEFAULT_PRIORITY = 20;
 
-  private final SCMPort scmPort;
-  private final DiffFileReferenceExtractor referenceExtractor;
-  private final DirectorySiblingAnalyzer siblingAnalyzer;
-  private final EnhancedPathAnalyzer pathAnalyzer;
+  private final GitHistoryCoChangeAnalyzer analyzer;
 
-  public MetadataBasedContextStrategy(final SCMPort scmPort) {
-    this.scmPort = Objects.requireNonNull(scmPort, "SCMPort cannot be null");
-    this.referenceExtractor = new DiffFileReferenceExtractor();
-    this.siblingAnalyzer = new DirectorySiblingAnalyzer();
-    this.pathAnalyzer = new EnhancedPathAnalyzer();
+  public HistoryBasedContextStrategy(final GitHistoryCoChangeAnalyzer analyzer) {
+    this.analyzer = Objects.requireNonNull(analyzer, "GitHistoryCoChangeAnalyzer cannot be null");
   }
 
   @Override
   public Mono<ContextRetrievalResult> retrieveContext(final DiffAnalysisBundle diffBundle) {
     final Instant startTime = Instant.now();
+    final RepositoryIdentifier repository = diffBundle.repositoryIdentifier();
+    final List<String> changedFiles =
+        diffBundle.structuredDiff().files.stream()
+            .map(file -> file.newPath)
+            .filter(Objects::nonNull)
+            .toList();
 
-    return scmPort
-        .listRepositoryFiles()
+    return Flux.fromIterable(changedFiles)
+        .flatMap(targetFile -> analyzer.analyzeCoChanges(repository, targetFile))
+        .flatMap(result -> Flux.fromIterable(result.toContextMatches()))
+        .collectList()
         .map(
-            repositoryFiles -> {
-              final List<ContextMatch> allMatches = collectAllMatches(diffBundle, repositoryFiles);
-              final List<ContextMatch> deduplicated = deduplicateMatches(allMatches);
+            matches -> {
+              final List<ContextMatch> deduplicated = deduplicateMatches(matches);
               final ContextRetrievalMetadata metadata = buildMetadata(deduplicated, startTime);
-
               return new ContextRetrievalResult(deduplicated, metadata);
             });
   }
@@ -58,19 +58,6 @@ public final class MetadataBasedContextStrategy implements ContextRetrievalStrat
   @Override
   public int getPriority() {
     return DEFAULT_PRIORITY;
-  }
-
-  private List<ContextMatch> collectAllMatches(
-      final DiffAnalysisBundle diffBundle, final List<String> repositoryFiles) {
-
-    final List<ContextMatch> allMatches =
-        new ArrayList<>(referenceExtractor.extractReferences(diffBundle));
-
-    final List<GitFileModification> modifiedFiles = diffBundle.structuredDiff().files;
-    allMatches.addAll(siblingAnalyzer.analyzeSiblings(modifiedFiles, repositoryFiles));
-    allMatches.addAll(pathAnalyzer.analyzePathPatterns(modifiedFiles, repositoryFiles));
-
-    return allMatches;
   }
 
   private List<ContextMatch> deduplicateMatches(final List<ContextMatch> matches) {
@@ -89,7 +76,7 @@ public final class MetadataBasedContextStrategy implements ContextRetrievalStrat
       }
     }
 
-    return new ArrayList<>(uniqueMatches.values());
+    return uniqueMatches.values().stream().toList();
   }
 
   private ContextRetrievalMetadata buildMetadata(
