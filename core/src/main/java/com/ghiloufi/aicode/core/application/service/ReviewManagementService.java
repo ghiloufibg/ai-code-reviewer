@@ -11,6 +11,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
+import com.ghiloufi.aicode.core.domain.port.output.ReviewAnalysisPort;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
@@ -35,7 +36,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ReviewManagementService implements ReviewManagementUseCase {
 
-  private final AIReviewStreamingService aiReviewStreamingService;
+  private final ReviewAnalysisPort reviewAnalysisPort;
   private final SCMProviderFactory scmProviderFactory;
   private final ReviewChunkAccumulator chunkAccumulator;
   private final PostgresReviewRepository reviewRepository;
@@ -72,8 +73,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     enrichedDiff.getContextMatchCount()))
         .flatMapMany(
             enrichedDiff ->
-                aiReviewStreamingService
-                    .reviewCodeStreaming(enrichedDiff, config)
+                reviewAnalysisPort
+                    .analyzeCode(enrichedDiff, config)
                     .transform(resilience.criticalFlux("ai-streaming")))
         .doOnNext(
             chunk ->
@@ -121,8 +122,8 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                     enrichedDiff.getContextMatchCount()))
         .flatMapMany(
             enrichedDiff ->
-                aiReviewStreamingService
-                    .reviewCodeStreaming(enrichedDiff, config)
+                reviewAnalysisPort
+                    .analyzeCode(enrichedDiff, config)
                     .transform(resilience.criticalFlux("ai-streaming")))
         .doOnNext(
             chunk -> {
@@ -192,11 +193,12 @@ public class ReviewManagementService implements ReviewManagementUseCase {
                       repository.getDisplayName(),
                       changeRequest.getDisplayName());
 
-                  final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
                   final ReviewResult result =
                       chunkAccumulator
                           .accumulateChunks(accumulatedChunks, config)
-                          .withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+                          .withLlmMetadata(
+                              reviewAnalysisPort.getProviderName(),
+                              reviewAnalysisPort.getModelName());
 
                   issueCountRef.set(result.getIssues().size());
 
@@ -279,9 +281,9 @@ public class ReviewManagementService implements ReviewManagementUseCase {
         "Publishing review for {}/{}", repository.getDisplayName(), changeRequest.getDisplayName());
 
     final SCMPort scmPort = scmProviderFactory.getProvider(repository.getProvider());
-    final ReviewConfiguration llmMetadata = aiReviewStreamingService.getLlmMetadata();
     final ReviewResult enrichedResult =
-        reviewResult.withLlmMetadata(llmMetadata.llmProvider(), llmMetadata.llmModel());
+        reviewResult.withLlmMetadata(
+            reviewAnalysisPort.getProviderName(), reviewAnalysisPort.getModelName());
     final ReviewResult filteredResult = filterHighConfidenceIssues(enrichedResult);
 
     return publishSummaryComment(repository, changeRequest, enrichedResult)

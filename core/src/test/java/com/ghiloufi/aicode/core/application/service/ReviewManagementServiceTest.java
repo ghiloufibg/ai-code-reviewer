@@ -20,6 +20,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.ReviewState;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
+import com.ghiloufi.aicode.core.domain.port.output.ReviewAnalysisPort;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
@@ -47,7 +48,7 @@ final class ReviewManagementServiceTest {
   private ReviewManagementService reviewManagementService;
   private TestSCMPort testSCMPort;
   private SCMProviderFactory scmProviderFactory;
-  private TestAIReviewStreamingService testAIReviewStreamingService;
+  private TestReviewAnalysisPort testReviewAnalysisPort;
   private TestReviewChunkAccumulator testReviewChunkAccumulator;
   private TestPostgresReviewRepository testReviewRepository;
   private TestContextOrchestrator testContextOrchestrator;
@@ -56,7 +57,7 @@ final class ReviewManagementServiceTest {
   final void setUp() {
     testSCMPort = new TestSCMPort();
     scmProviderFactory = new TestSCMProviderFactory(testSCMPort);
-    testAIReviewStreamingService = new TestAIReviewStreamingService();
+    testReviewAnalysisPort = new TestReviewAnalysisPort();
     testReviewChunkAccumulator = new TestReviewChunkAccumulator();
     testReviewRepository = new TestPostgresReviewRepository();
     testContextOrchestrator = new TestContextOrchestrator();
@@ -71,7 +72,7 @@ final class ReviewManagementServiceTest {
 
     reviewManagementService =
         new ReviewManagementService(
-            testAIReviewStreamingService,
+            testReviewAnalysisPort,
             scmProviderFactory,
             testReviewChunkAccumulator,
             testReviewRepository,
@@ -380,7 +381,7 @@ final class ReviewManagementServiceTest {
                 ReviewChunk.ChunkType.PERFORMANCE, "Performance issue in file.java:20", null),
             new ReviewChunk(ReviewChunk.ChunkType.SUGGESTION, "Code improvement suggestion", null));
 
-    testAIReviewStreamingService.setChunks(chunks);
+    testReviewAnalysisPort.setChunks(chunks);
     testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
     testSCMPort.setShouldFailPublish(false);
 
@@ -403,7 +404,7 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    testAIReviewStreamingService.setChunks(List.of());
+    testReviewAnalysisPort.setChunks(List.of());
     testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
 
     final Flux<ReviewChunk> result =
@@ -425,7 +426,7 @@ final class ReviewManagementServiceTest {
             new ReviewChunk(ReviewChunk.ChunkType.SECURITY, "Security issue", null),
             new ReviewChunk(ReviewChunk.ChunkType.SUGGESTION, "Improvement suggestion", null));
 
-    testAIReviewStreamingService.setChunks(chunks);
+    testReviewAnalysisPort.setChunks(chunks);
     testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
     testSCMPort.setShouldFailPublish(true);
 
@@ -451,7 +452,7 @@ final class ReviewManagementServiceTest {
     final List<ReviewChunk> chunks =
         List.of(new ReviewChunk(ReviewChunk.ChunkType.SECURITY, "Security issue", null));
 
-    testAIReviewStreamingService.setChunks(chunks);
+    testReviewAnalysisPort.setChunks(chunks);
     testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
     testSCMPort.setShouldFailPublish(false);
     testReviewRepository.setShouldFail(true);
@@ -472,7 +473,7 @@ final class ReviewManagementServiceTest {
     final RepositoryIdentifier repository = new GitLabRepositoryId("test-project");
     final MergeRequestId changeRequest = new MergeRequestId(1);
 
-    testAIReviewStreamingService.setShouldFail(true);
+    testReviewAnalysisPort.setShouldFail(true);
     testSCMPort.setDiffAnalysisBundle(createTestDiffAnalysisBundle());
 
     final Flux<ReviewChunk> result =
@@ -644,14 +645,10 @@ final class ReviewManagementServiceTest {
     }
   }
 
-  private static final class TestAIReviewStreamingService extends AIReviewStreamingService {
+  private static final class TestReviewAnalysisPort implements ReviewAnalysisPort {
 
     private List<ReviewChunk> chunks = List.of();
     private boolean shouldFail = false;
-
-    TestAIReviewStreamingService() {
-      super(null, null, null, null, null);
-    }
 
     final void setChunks(final List<ReviewChunk> chunks) {
       this.chunks = chunks;
@@ -662,8 +659,8 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
-    public Flux<ReviewChunk> reviewCodeStreaming(
-        final EnrichedDiffAnalysisBundle enrichedDiff, final ReviewConfiguration config) {
+    public Flux<ReviewChunk> analyzeCode(
+        final EnrichedDiffAnalysisBundle enrichedBundle, final ReviewConfiguration configuration) {
       if (shouldFail) {
         return Flux.error(new RuntimeException("Streaming failed"));
       }
@@ -671,8 +668,18 @@ final class ReviewManagementServiceTest {
     }
 
     @Override
-    public ReviewConfiguration getLlmMetadata() {
-      return ReviewConfiguration.defaults().withLlmMetadata("test-provider", "test-model");
+    public String getAnalysisMethod() {
+      return "test-analysis";
+    }
+
+    @Override
+    public String getProviderName() {
+      return "test-provider";
+    }
+
+    @Override
+    public String getModelName() {
+      return "test-model";
     }
   }
 

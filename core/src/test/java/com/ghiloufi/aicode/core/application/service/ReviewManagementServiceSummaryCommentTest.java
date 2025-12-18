@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ghiloufi.aicode.core.application.service.context.ContextOrchestrator;
 import com.ghiloufi.aicode.core.config.SummaryCommentProperties;
 import com.ghiloufi.aicode.core.domain.model.*;
+import com.ghiloufi.aicode.core.domain.port.output.ReviewAnalysisPort;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.domain.service.SummaryCommentFormatter;
 import com.ghiloufi.aicode.core.infrastructure.factory.SCMProviderFactory;
@@ -36,7 +37,7 @@ final class ReviewManagementServiceSummaryCommentTest {
   private ReviewManagementService createReviewManagementService(
       final SummaryCommentProperties summaryCommentProperties) {
     final SCMProviderFactory scmProviderFactory = new TestSCMProviderFactory(testSCMPort);
-    final AIReviewStreamingService aiReviewStreamingService = new TestAIReviewStreamingService();
+    final ReviewAnalysisPort reviewAnalysisPort = new TestReviewAnalysisPort();
     final ReviewChunkAccumulator chunkAccumulator = new TestReviewChunkAccumulator();
     final PostgresReviewRepository reviewRepository = new TestPostgresReviewRepository();
     final ContextOrchestrator contextOrchestrator = new TestContextOrchestrator();
@@ -48,7 +49,7 @@ final class ReviewManagementServiceSummaryCommentTest {
     reviewMetrics.init();
 
     return new ReviewManagementService(
-        aiReviewStreamingService,
+        reviewAnalysisPort,
         scmProviderFactory,
         chunkAccumulator,
         reviewRepository,
@@ -343,15 +344,26 @@ final class ReviewManagementServiceSummaryCommentTest {
     }
   }
 
-  private static final class TestAIReviewStreamingService extends AIReviewStreamingService {
-    TestAIReviewStreamingService() {
-      super(null, null, null, null, null);
+  private static final class TestReviewAnalysisPort implements ReviewAnalysisPort {
+    @Override
+    public Flux<ReviewChunk> analyzeCode(
+        final EnrichedDiffAnalysisBundle enrichedBundle, final ReviewConfiguration configuration) {
+      return Flux.empty();
     }
 
     @Override
-    public ReviewConfiguration getLlmMetadata() {
-      return new ReviewConfiguration(
-          null, null, false, null, null, "test-provider", "test-model", 0.0);
+    public String getAnalysisMethod() {
+      return "test-analysis";
+    }
+
+    @Override
+    public String getProviderName() {
+      return "test-provider";
+    }
+
+    @Override
+    public String getModelName() {
+      return "test-model";
     }
   }
 
