@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.application.service.AnalyzingTicketContextService;
 import com.ghiloufi.aicode.core.application.service.TicketContextService;
 import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
@@ -12,7 +13,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import reactor.core.publisher.Mono;
 
 final class TicketAnalysisConfigurationTest {
@@ -74,17 +77,17 @@ final class TicketAnalysisConfigurationTest {
     }
   }
 
-  @org.springframework.boot.test.context.TestConfiguration
+  @TestConfiguration
   static class TestConfig {
 
-    @org.springframework.context.annotation.Bean
+    @Bean
     TicketSystemPort ticketSystemPort() {
       return ticketId -> Mono.just(new TicketBusinessContext(ticketId, "Test", "Description"));
     }
 
-    @org.springframework.context.annotation.Bean
-    com.fasterxml.jackson.databind.ObjectMapper objectMapper() {
-      return new com.fasterxml.jackson.databind.ObjectMapper();
+    @Bean
+    ObjectMapper objectMapper() {
+      return new ObjectMapper();
     }
   }
 }

@@ -17,6 +17,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
+import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
 import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +26,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
@@ -40,11 +42,7 @@ final class CodeReviewControllerTest {
     reviewManagementUseCase = new TestReviewManagementUseCase();
     final ObjectMapper objectMapper = new ObjectMapper();
     final SSEFormatter sseFormatter = new SSEFormatter(objectMapper);
-    final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
-        mockRepository =
-            org.mockito.Mockito.mock(
-                com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository
-                    .class);
+    final ReviewIssueRepository mockRepository = Mockito.mock(ReviewIssueRepository.class);
     final CodeReviewController controller =
         new CodeReviewController(reviewManagementUseCase, sseFormatter, mockRepository);
 

@@ -9,6 +9,7 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.service.ReviewSummaryFormatter;
 import com.ghiloufi.aicode.core.exception.JsonValidationException;
 import com.ghiloufi.aicode.core.service.accumulator.ReviewChunkAccumulator;
+import com.ghiloufi.aicode.core.service.filter.ConfidenceFilter;
 import com.ghiloufi.aicode.core.service.prompt.JsonReviewResultParser;
 import com.ghiloufi.aicode.core.service.validation.ReviewResultValidator;
 import java.util.List;
@@ -31,8 +32,7 @@ class JsonParsingIntegrationTest {
     validator = new ReviewResultValidator(objectMapper);
     summaryFormatter = new ReviewSummaryFormatter();
     jsonParser = new JsonReviewResultParser(validator, objectMapper);
-    final com.ghiloufi.aicode.core.service.filter.ConfidenceFilter confidenceFilter =
-        new com.ghiloufi.aicode.core.service.filter.ConfidenceFilter();
+    final ConfidenceFilter confidenceFilter = new ConfidenceFilter();
     chunkAccumulator = new ReviewChunkAccumulator(summaryFormatter, jsonParser, confidenceFilter);
   }
 

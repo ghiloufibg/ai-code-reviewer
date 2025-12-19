@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.core.infrastructure.persistence;
 
+import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -18,8 +19,7 @@ public class TestConfig {
   static class RepositoryTestConfig {
     @Bean
     public PostgresReviewRepository postgresReviewRepository(
-        final com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewJpaRepository
-            jpaRepository) {
+        final ReviewJpaRepository jpaRepository) {
       return new PostgresReviewRepository(jpaRepository);
     }
   }
