@@ -1,7 +1,8 @@
-package com.ghiloufi.aicode.core.application.service;
+package com.ghiloufi.aicode.llmworker.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.application.service.TicketContextService;
 import com.ghiloufi.aicode.core.domain.model.TicketBusinessContext;
 import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.port.output.TicketSystemPort;

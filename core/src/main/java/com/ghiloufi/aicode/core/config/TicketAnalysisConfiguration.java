@@ -2,7 +2,6 @@ package com.ghiloufi.aicode.core.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.application.service.AnalyzingTicketContextService;
-import com.ghiloufi.aicode.core.application.service.DefaultTicketContextService;
 import com.ghiloufi.aicode.core.application.service.TicketContextService;
 import com.ghiloufi.aicode.core.domain.port.output.TicketAnalysisPort;
 import com.ghiloufi.aicode.core.domain.port.output.TicketSystemPort;
@@ -16,15 +15,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(TicketAnalysisPromptProperties.class)
 public class TicketAnalysisConfiguration {
-
-  @Bean
-  @ConditionalOnProperty(
-      name = "ticket-analysis.llm.enabled",
-      havingValue = "false",
-      matchIfMissing = true)
-  public TicketContextService defaultTicketContextService(final TicketSystemPort ticketSystemPort) {
-    return new DefaultTicketContextService(ticketSystemPort);
-  }
 
   @Bean
   @ConditionalOnProperty(name = "ticket-analysis.llm.enabled", havingValue = "true")
