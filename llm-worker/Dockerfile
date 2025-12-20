@@ -29,7 +29,7 @@ COPY core/ core/
 COPY llm-worker/ llm-worker/
 RUN --mount=type=cache,target=/root/.m2 \
     mvn package -pl llm-worker -am -DskipTests -B -q && \
-    mv llm-worker/target/*.jar llm-worker/target/app.jar
+    mv llm-worker/target/*-exec.jar llm-worker/target/app.jar
 
 # ----------------------------------------------------------------------------
 # Stage 3: Extract layered JAR

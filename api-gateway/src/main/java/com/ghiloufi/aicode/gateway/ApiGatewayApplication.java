@@ -9,7 +9,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication(
-    scanBasePackages = {"com.ghiloufi.aicode.gateway", "com.ghiloufi.aicode.core"})
+    scanBasePackages = {
+      "com.ghiloufi.aicode.gateway",
+      "com.ghiloufi.aicode.core",
+      "com.ghiloufi.aicode.llmworker"
+    })
 @EnableJpaRepositories(
     basePackages = "com.ghiloufi.aicode.core.infrastructure.persistence.repository")
 @EntityScan(basePackages = "com.ghiloufi.aicode.core.infrastructure.persistence.entity")
