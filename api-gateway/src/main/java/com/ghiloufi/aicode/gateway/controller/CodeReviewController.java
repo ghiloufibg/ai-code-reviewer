@@ -10,13 +10,11 @@ import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
-import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import jakarta.validation.constraints.Positive;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,132 +37,7 @@ import reactor.core.publisher.Mono;
 public class CodeReviewController {
 
   private final ReviewManagementUseCase reviewManagementUseCase;
-  private final SSEFormatter sseFormatter;
   private final ReviewIssueRepository reviewIssueRepository;
-
-  @GetMapping(
-      value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/stream",
-      produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<String> streamReviewAnalysis(
-      @PathVariable final String provider,
-      @PathVariable final String repositoryId,
-      @PathVariable @Positive final int changeRequestId) {
-
-    final SourceProvider sourceProvider = SourceProvider.fromString(provider);
-    final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);
-
-    log.info(
-        "Starting code review stream: provider={}, repository={}, changeRequest={}",
-        sourceProvider,
-        decodedRepositoryId,
-        changeRequestId);
-
-    final RepositoryIdentifier repository =
-        RepositoryIdentifier.create(sourceProvider, decodedRepositoryId);
-    final ChangeRequestIdentifier changeRequest =
-        ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
-
-    log.debug(
-        "Created domain identifiers: repository={}, changeRequest={}",
-        repository.getClass().getSimpleName(),
-        changeRequest.getClass().getSimpleName());
-
-    return reviewManagementUseCase
-        .streamReview(repository, changeRequest)
-        .map(sseFormatter::formatReviewChunk)
-        .concatWith(Mono.just(sseFormatter.formatDone()))
-        .doOnSubscribe(
-            s ->
-                log.info(
-                    "Client subscribed to review stream: provider={}, repo={}, cr={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId))
-        .doOnNext(
-            sse ->
-                log.debug(
-                    "Streaming SSE chunk: {} bytes",
-                    Optional.ofNullable(sse).map(String::length).orElse(0)))
-        .doOnComplete(
-            () ->
-                log.info(
-                    "Review stream completed: provider={}, repo={}, cr={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId))
-        .doOnError(
-            error ->
-                log.error(
-                    "Review stream error: provider={}, repo={}, cr={}, error={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    error.getMessage()))
-        .onErrorResume(error -> Flux.just(sseFormatter.formatError(error)))
-        .timeout(Duration.ofMinutes(10));
-  }
-
-  @GetMapping(
-      value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/stream-and-publish",
-      produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<String> streamReviewAndPublish(
-      @PathVariable final String provider,
-      @PathVariable final String repositoryId,
-      @PathVariable @Positive final int changeRequestId) {
-
-    final SourceProvider sourceProvider = SourceProvider.fromString(provider);
-    final String decodedRepositoryId = URLDecoder.decode(repositoryId, StandardCharsets.UTF_8);
-
-    log.info(
-        "Starting code review stream with auto-publish: provider={}, repository={}, changeRequest={}",
-        sourceProvider,
-        decodedRepositoryId,
-        changeRequestId);
-
-    final RepositoryIdentifier repository =
-        RepositoryIdentifier.create(sourceProvider, decodedRepositoryId);
-    final ChangeRequestIdentifier changeRequest =
-        ChangeRequestIdentifier.create(sourceProvider, changeRequestId);
-
-    log.debug(
-        "Created domain identifiers for stream-and-publish: repository={}, changeRequest={}",
-        repository.getClass().getSimpleName(),
-        changeRequest.getClass().getSimpleName());
-
-    return reviewManagementUseCase
-        .streamAndPublishReview(repository, changeRequest)
-        .map(sseFormatter::formatReviewChunk)
-        .concatWith(Mono.just(sseFormatter.formatPublished()))
-        .doOnSubscribe(
-            s ->
-                log.info(
-                    "Client subscribed to review stream with auto-publish: provider={}, repo={}, cr={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId))
-        .doOnNext(
-            sse ->
-                log.debug(
-                    "Streaming SSE chunk: {} bytes",
-                    Optional.ofNullable(sse).map(String::length).orElse(0)))
-        .doOnComplete(
-            () ->
-                log.info(
-                    "Review stream with auto-publish completed: provider={}, repo={}, cr={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId))
-        .doOnError(
-            error ->
-                log.error(
-                    "Review stream with auto-publish error: provider={}, repo={}, cr={}, error={}",
-                    sourceProvider,
-                    repositoryId,
-                    changeRequestId,
-                    error.getMessage()))
-        .onErrorResume(error -> Flux.just(sseFormatter.formatError(error)))
-        .timeout(Duration.ofMinutes(10));
-  }
 
   @PostMapping(
       value = "/{provider}/{repositoryId}/change-requests/{changeRequestId}/review",

@@ -3,16 +3,19 @@ package com.ghiloufi.aicode.core.service.accumulator;
 import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.port.output.ReviewAnalysisPort;
 import com.ghiloufi.aicode.core.domain.service.ReviewSummaryFormatter;
 import com.ghiloufi.aicode.core.service.filter.ConfidenceFilter;
 import com.ghiloufi.aicode.core.service.prompt.JsonReviewResultParser;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
+@ConditionalOnBean(ReviewAnalysisPort.class)
 public class ReviewChunkAccumulator {
 
   private final ReviewSummaryFormatter summaryFormatter;

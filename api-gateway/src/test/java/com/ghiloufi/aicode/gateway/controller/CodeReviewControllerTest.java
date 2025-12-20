@@ -2,7 +2,6 @@ package com.ghiloufi.aicode.gateway.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.domain.model.ChangeRequestIdentifier;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.DiffAnalysisBundle;
@@ -12,13 +11,11 @@ import com.ghiloufi.aicode.core.domain.model.MergeRequestSummary;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryIdentifier;
 import com.ghiloufi.aicode.core.domain.model.RepositoryInfo;
-import com.ghiloufi.aicode.core.domain.model.ReviewChunk;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.port.input.ReviewManagementUseCase;
 import com.ghiloufi.aicode.core.domain.port.output.SCMPort;
 import com.ghiloufi.aicode.core.infrastructure.persistence.repository.ReviewIssueRepository;
-import com.ghiloufi.aicode.gateway.formatter.SSEFormatter;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,11 +37,9 @@ final class CodeReviewControllerTest {
   @BeforeEach
   final void setUp() {
     reviewManagementUseCase = new TestReviewManagementUseCase();
-    final ObjectMapper objectMapper = new ObjectMapper();
-    final SSEFormatter sseFormatter = new SSEFormatter(objectMapper);
     final ReviewIssueRepository mockRepository = Mockito.mock(ReviewIssueRepository.class);
     final CodeReviewController controller =
-        new CodeReviewController(reviewManagementUseCase, sseFormatter, mockRepository);
+        new CodeReviewController(reviewManagementUseCase, mockRepository);
 
     webTestClient =
         WebTestClient.bindToController(controller)
@@ -356,18 +351,6 @@ final class CodeReviewControllerTest {
 
     final ChangeRequestIdentifier getCapturedChangeRequest() {
       return capturedChangeRequest;
-    }
-
-    @Override
-    public Flux<ReviewChunk> streamReview(
-        final RepositoryIdentifier repository, final ChangeRequestIdentifier changeRequest) {
-      return Flux.empty();
-    }
-
-    @Override
-    public Flux<ReviewChunk> streamAndPublishReview(
-        final RepositoryIdentifier repository, final ChangeRequestIdentifier changeRequest) {
-      return Flux.empty();
     }
 
     @Override
