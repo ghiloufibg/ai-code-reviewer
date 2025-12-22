@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.core.domain.model.async.ReviewStatus;
+import com.ghiloufi.aicode.gateway.async.ReviewModeRouter;
 import com.ghiloufi.aicode.gateway.async.ReviewRequestProducer;
 import com.ghiloufi.aicode.gateway.dto.ReviewStatusResponse;
 import com.ghiloufi.aicode.gateway.dto.ReviewSubmissionResponse;
@@ -370,7 +371,7 @@ final class AsyncReviewControllerTest {
     private boolean success = true;
 
     TestReviewRequestProducer() {
-      super(null, null);
+      super(null, null, new ReviewModeRouter());
     }
 
     @Override

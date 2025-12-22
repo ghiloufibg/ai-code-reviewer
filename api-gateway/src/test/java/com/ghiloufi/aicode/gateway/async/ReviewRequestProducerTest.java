@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,13 +137,26 @@ final class ReviewRequestProducerTest {
       assertThat(json).contains("\"provider\":\"GITHUB\"");
       assertThat(json).contains("\"repositoryId\":\"owner/repo\"");
       assertThat(json).contains("\"changeRequestId\":100");
+      assertThat(json).contains("\"reviewMode\":\"DIFF\"");
+    }
+
+    @Test
+    @DisplayName("should_serialize_agentic_request_to_valid_json")
+    final void should_serialize_agentic_request_to_valid_json() throws Exception {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create(
+              "req-agentic", SourceProvider.GITHUB, "owner/repo", 100, ReviewMode.AGENTIC);
+
+      final String json = objectMapper.writeValueAsString(request);
+
+      assertThat(json).contains("\"reviewMode\":\"AGENTIC\"");
     }
 
     @Test
     @DisplayName("should_deserialize_request_from_json")
     final void should_deserialize_request_from_json() throws Exception {
       final String json =
-          "{\"requestId\":\"req-deserialize\",\"provider\":\"GITLAB\",\"repositoryId\":\"group/project\",\"changeRequestId\":50}";
+          "{\"requestId\":\"req-deserialize\",\"provider\":\"GITLAB\",\"repositoryId\":\"group/project\",\"changeRequestId\":50,\"reviewMode\":\"DIFF\"}";
 
       final AsyncReviewRequest request = objectMapper.readValue(json, AsyncReviewRequest.class);
 
@@ -150,6 +164,18 @@ final class ReviewRequestProducerTest {
       assertThat(request.provider()).isEqualTo(SourceProvider.GITLAB);
       assertThat(request.repositoryId()).isEqualTo("group/project");
       assertThat(request.changeRequestId()).isEqualTo(50);
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.DIFF);
+    }
+
+    @Test
+    @DisplayName("should_deserialize_agentic_request_from_json")
+    final void should_deserialize_agentic_request_from_json() throws Exception {
+      final String json =
+          "{\"requestId\":\"req-agentic\",\"provider\":\"GITHUB\",\"repositoryId\":\"repo\",\"changeRequestId\":1,\"reviewMode\":\"AGENTIC\"}";
+
+      final AsyncReviewRequest request = objectMapper.readValue(json, AsyncReviewRequest.class);
+
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.AGENTIC);
     }
   }
 
@@ -157,14 +183,12 @@ final class ReviewRequestProducerTest {
     private AsyncReviewRequest capturedRequest;
     private final boolean success;
     private final RuntimeException error;
-    private final ObjectMapper mapper;
 
     TestReviewRequestProducer(
         final boolean success, final RuntimeException error, final ObjectMapper mapper) {
-      super(null, mapper);
+      super(null, mapper, new ReviewModeRouter());
       this.success = success;
       this.error = error;
-      this.mapper = mapper;
     }
 
     @Override

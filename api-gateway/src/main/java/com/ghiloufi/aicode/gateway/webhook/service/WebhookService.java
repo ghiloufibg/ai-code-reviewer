@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.gateway.webhook.service;
 
 import static com.ghiloufi.aicode.gateway.util.LogSanitizer.sanitize;
 
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
 import com.ghiloufi.aicode.gateway.async.ReviewRequestProducer;
@@ -25,13 +26,15 @@ public class WebhookService {
   public Mono<WebhookResponse> processWebhook(
       final WebhookRequest request, final String idempotencyKey) {
     final String effectiveKey = resolveIdempotencyKey(request, idempotencyKey);
+    final ReviewMode reviewMode = request.resolveReviewMode();
 
     log.info(
-        "Processing webhook request for {}/{} PR#{} with idempotency key: {}",
+        "Processing webhook request for {}/{} PR#{} with idempotency key: {}, mode: {}",
         sanitize(request.provider()),
         sanitize(request.repositoryId()),
         request.changeRequestId(),
-        sanitize(effectiveKey));
+        sanitize(effectiveKey),
+        reviewMode);
 
     return idempotencyService
         .checkAndMark(effectiveKey)
@@ -62,9 +65,10 @@ public class WebhookService {
         .doOnSuccess(
             recordId ->
                 log.info(
-                    "Webhook request queued successfully: requestId={}, recordId={}",
+                    "Webhook request queued successfully: requestId={}, recordId={}, mode={}",
                     requestId,
-                    recordId))
+                    recordId,
+                    reviewRequest.reviewMode()))
         .doOnError(error -> log.error("Failed to queue webhook request: {}", requestId, error))
         .thenReturn(WebhookResponse.accepted(requestId));
   }
@@ -72,7 +76,8 @@ public class WebhookService {
   private AsyncReviewRequest mapToReviewRequest(
       final WebhookRequest request, final String requestId) {
     final SourceProvider provider = SourceProvider.fromString(request.provider());
+    final ReviewMode reviewMode = request.resolveReviewMode();
     return AsyncReviewRequest.create(
-        requestId, provider, request.repositoryId(), request.changeRequestId());
+        requestId, provider, request.repositoryId(), request.changeRequestId(), reviewMode);
   }
 }

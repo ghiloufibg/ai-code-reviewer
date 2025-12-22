@@ -17,35 +17,40 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ReviewRequestProducer {
 
-  private static final String STREAM_KEY = "review:requests";
-
   private final ReactiveStringRedisTemplate redisTemplate;
   private final ObjectMapper objectMapper;
+  private final ReviewModeRouter reviewModeRouter;
 
-  public Mono<RecordId> send(AsyncReviewRequest request) {
+  public Mono<RecordId> send(final AsyncReviewRequest request) {
+    final ReviewModeRouter.StreamKey streamKey = reviewModeRouter.route(request);
+
     return Mono.fromCallable(() -> serializeRequest(request))
         .flatMap(
             payload -> {
               final var record =
                   StreamRecords.string(Map.of("requestId", request.requestId(), "payload", payload))
-                      .withStreamKey(STREAM_KEY);
+                      .withStreamKey(streamKey.getKey());
 
               return redisTemplate.opsForStream().add(record);
             })
         .doOnSuccess(
             recordId ->
                 log.info(
-                    "Published review request {} to stream {} with record {}",
+                    "Published review request {} to stream {} with record {} (mode={})",
                     request.requestId(),
-                    STREAM_KEY,
-                    recordId))
+                    streamKey.getKey(),
+                    recordId,
+                    request.reviewMode()))
         .doOnError(
             error ->
                 log.error(
-                    "Failed to publish review request {} to stream", request.requestId(), error));
+                    "Failed to publish review request {} to stream {}",
+                    request.requestId(),
+                    streamKey.getKey(),
+                    error));
   }
 
-  private String serializeRequest(AsyncReviewRequest request) {
+  private String serializeRequest(final AsyncReviewRequest request) {
     try {
       return objectMapper.writeValueAsString(request);
     } catch (JsonProcessingException e) {

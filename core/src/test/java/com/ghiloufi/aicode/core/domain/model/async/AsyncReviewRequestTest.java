@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.core.domain.model.async;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ final class AsyncReviewRequestTest {
       assertThat(request.provider()).isEqualTo(SourceProvider.GITHUB);
       assertThat(request.repositoryId()).isEqualTo("owner/repo");
       assertThat(request.changeRequestId()).isEqualTo(42);
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.DIFF);
       assertThat(request.createdAt()).isNotNull();
       assertThat(request.createdAt()).isAfterOrEqualTo(before);
       assertThat(request.createdAt()).isBeforeOrEqualTo(after);
@@ -81,6 +83,34 @@ final class AsyncReviewRequestTest {
 
       assertThat(request.changeRequestId()).isEqualTo(Integer.MAX_VALUE);
     }
+
+    @Test
+    @DisplayName("should_default_to_diff_review_mode")
+    final void should_default_to_diff_review_mode() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create("req", SourceProvider.GITHUB, "repo", 1);
+
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.DIFF);
+    }
+
+    @Test
+    @DisplayName("should_create_request_with_agentic_review_mode")
+    final void should_create_request_with_agentic_review_mode() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create(
+              "req-agentic", SourceProvider.GITHUB, "repo", 1, ReviewMode.AGENTIC);
+
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.AGENTIC);
+    }
+
+    @Test
+    @DisplayName("should_create_request_with_diff_review_mode")
+    final void should_create_request_with_diff_review_mode() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create("req-diff", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF);
+
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.DIFF);
+    }
   }
 
   @Nested
@@ -94,7 +124,7 @@ final class AsyncReviewRequestTest {
 
       final AsyncReviewRequest request =
           new AsyncReviewRequest(
-              "req-specific", SourceProvider.GITLAB, "project", 50, specificTime);
+              "req-specific", SourceProvider.GITLAB, "project", 50, ReviewMode.DIFF, specificTime);
 
       assertThat(request.createdAt()).isEqualTo(specificTime);
     }
@@ -105,12 +135,14 @@ final class AsyncReviewRequestTest {
       final Instant timestamp = Instant.now();
 
       final AsyncReviewRequest request =
-          new AsyncReviewRequest("id", SourceProvider.GITHUB, "owner/repo", 123, timestamp);
+          new AsyncReviewRequest(
+              "id", SourceProvider.GITHUB, "owner/repo", 123, ReviewMode.AGENTIC, timestamp);
 
       assertThat(request.requestId()).isEqualTo("id");
       assertThat(request.provider()).isEqualTo(SourceProvider.GITHUB);
       assertThat(request.repositoryId()).isEqualTo("owner/repo");
       assertThat(request.changeRequestId()).isEqualTo(123);
+      assertThat(request.reviewMode()).isEqualTo(ReviewMode.AGENTIC);
       assertThat(request.createdAt()).isEqualTo(timestamp);
     }
   }
@@ -125,9 +157,11 @@ final class AsyncReviewRequestTest {
       final Instant timestamp = Instant.parse("2024-01-01T00:00:00Z");
 
       final AsyncReviewRequest request1 =
-          new AsyncReviewRequest("req", SourceProvider.GITHUB, "repo", 1, timestamp);
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF, timestamp);
       final AsyncReviewRequest request2 =
-          new AsyncReviewRequest("req", SourceProvider.GITHUB, "repo", 1, timestamp);
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF, timestamp);
 
       assertThat(request1).isEqualTo(request2);
       assertThat(request1.hashCode()).isEqualTo(request2.hashCode());
@@ -138,10 +172,20 @@ final class AsyncReviewRequestTest {
     final void should_not_be_equal_for_different_timestamps() {
       final AsyncReviewRequest request1 =
           new AsyncReviewRequest(
-              "req", SourceProvider.GITHUB, "repo", 1, Instant.parse("2024-01-01T00:00:00Z"));
+              "req",
+              SourceProvider.GITHUB,
+              "repo",
+              1,
+              ReviewMode.DIFF,
+              Instant.parse("2024-01-01T00:00:00Z"));
       final AsyncReviewRequest request2 =
           new AsyncReviewRequest(
-              "req", SourceProvider.GITHUB, "repo", 1, Instant.parse("2024-01-02T00:00:00Z"));
+              "req",
+              SourceProvider.GITHUB,
+              "repo",
+              1,
+              ReviewMode.DIFF,
+              Instant.parse("2024-01-02T00:00:00Z"));
 
       assertThat(request1).isNotEqualTo(request2);
     }
@@ -152,11 +196,60 @@ final class AsyncReviewRequestTest {
       final Instant timestamp = Instant.now();
 
       final AsyncReviewRequest request1 =
-          new AsyncReviewRequest("req", SourceProvider.GITHUB, "repo", 1, timestamp);
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF, timestamp);
       final AsyncReviewRequest request2 =
-          new AsyncReviewRequest("req", SourceProvider.GITLAB, "repo", 1, timestamp);
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITLAB, "repo", 1, ReviewMode.DIFF, timestamp);
 
       assertThat(request1).isNotEqualTo(request2);
+    }
+
+    @Test
+    @DisplayName("should_not_be_equal_for_different_review_modes")
+    final void should_not_be_equal_for_different_review_modes() {
+      final Instant timestamp = Instant.now();
+
+      final AsyncReviewRequest request1 =
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF, timestamp);
+      final AsyncReviewRequest request2 =
+          new AsyncReviewRequest(
+              "req", SourceProvider.GITHUB, "repo", 1, ReviewMode.AGENTIC, timestamp);
+
+      assertThat(request1).isNotEqualTo(request2);
+    }
+  }
+
+  @Nested
+  @DisplayName("isAgenticMode")
+  final class IsAgenticModeTests {
+
+    @Test
+    @DisplayName("should_return_true_when_agentic_mode")
+    final void should_return_true_when_agentic_mode() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create("req", SourceProvider.GITHUB, "repo", 1, ReviewMode.AGENTIC);
+
+      assertThat(request.isAgenticMode()).isTrue();
+    }
+
+    @Test
+    @DisplayName("should_return_false_when_diff_mode")
+    final void should_return_false_when_diff_mode() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create("req", SourceProvider.GITHUB, "repo", 1, ReviewMode.DIFF);
+
+      assertThat(request.isAgenticMode()).isFalse();
+    }
+
+    @Test
+    @DisplayName("should_return_false_for_default_create")
+    final void should_return_false_for_default_create() {
+      final AsyncReviewRequest request =
+          AsyncReviewRequest.create("req", SourceProvider.GITHUB, "repo", 1);
+
+      assertThat(request.isAgenticMode()).isFalse();
     }
   }
 }

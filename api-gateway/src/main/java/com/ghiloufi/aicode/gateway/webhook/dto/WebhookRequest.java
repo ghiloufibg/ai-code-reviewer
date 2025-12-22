@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.gateway.webhook.dto;
 
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -13,4 +14,14 @@ public record WebhookRequest(
     @NotNull(message = "Change request ID is required")
         @Positive(message = "Change request ID must be positive")
         Integer changeRequestId,
-    String triggerSource) {}
+    String triggerSource,
+    String reviewMode) {
+
+  public ReviewMode resolveReviewMode() {
+    return ReviewMode.fromString(reviewMode);
+  }
+
+  public boolean isAgenticMode() {
+    return resolveReviewMode() == ReviewMode.AGENTIC;
+  }
+}

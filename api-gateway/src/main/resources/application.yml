@@ -136,6 +136,9 @@ async:
   review:
     consumer:
       enabled: ${ASYNC_CONSUMER_ENABLED:false}
+    streams:
+      diff-requests: review:requests
+      agent-requests: review:agent-requests
 
 # Webhook Configuration
 webhook:
