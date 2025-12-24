@@ -113,14 +113,16 @@ public class TestRunner {
 
     return ContainerConfiguration.builder()
         .imageName(properties.getDocker().getAnalysisImage())
-        .memoryBytes(properties.getDocker().getResourceLimits().getMemoryBytes())
-        .nanoCpus(properties.getDocker().getResourceLimits().getNanoCpus())
+        .memoryLimitBytes(properties.getDocker().getResourceLimits().getMemoryBytes())
+        .cpuNanoCores(properties.getDocker().getResourceLimits().getNanoCpus())
+        .timeout(properties.getAnalysis().getTests().getTimeout())
         .workspaceVolume(repositoryPath.getParent().toString())
         .command(command)
         .environment(Map.of("CI", "true"))
-        .readOnly(false)
+        .readOnlyRootFilesystem(false)
         .autoRemove(true)
         .noNewPrivileges(true)
+        .networkDisabled(false)
         .build();
   }
 

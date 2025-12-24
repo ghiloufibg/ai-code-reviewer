@@ -89,10 +89,12 @@ public class DockerContainerManager {
   private HostConfig createHostConfig(ContainerConfiguration config) {
     final var hostConfig =
         HostConfig.newHostConfig()
-            .withMemory(config.memoryBytes())
-            .withNanoCPUs(config.nanoCpus())
+            .withMemory(config.memoryLimitBytes())
+            .withNanoCPUs(config.cpuNanoCores())
             .withAutoRemove(config.autoRemove())
-            .withReadonlyRootfs(config.readOnly());
+            .withReadonlyRootfs(config.readOnlyRootFilesystem())
+            .withPrivileged(config.privileged())
+            .withNetworkMode(config.networkDisabled() ? "none" : "bridge");
 
     if (config.workspaceVolume() != null) {
       final var workspaceVolume = new Volume("/workspace");

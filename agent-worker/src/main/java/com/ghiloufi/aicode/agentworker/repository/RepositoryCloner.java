@@ -61,14 +61,16 @@ public class RepositoryCloner {
 
     return ContainerConfiguration.builder()
         .imageName(properties.getDocker().getAnalysisImage())
-        .memoryBytes(properties.getDocker().getResourceLimits().getMemoryBytes())
-        .nanoCpus(properties.getDocker().getResourceLimits().getNanoCpus())
+        .memoryLimitBytes(properties.getDocker().getResourceLimits().getMemoryBytes())
+        .cpuNanoCores(properties.getDocker().getResourceLimits().getNanoCpus())
+        .timeout(properties.getClone().getTimeout())
         .workspaceVolume(request.targetDirectory())
         .command(cloneCommand)
         .environment(env)
-        .readOnly(false)
+        .readOnlyRootFilesystem(false)
         .autoRemove(true)
         .noNewPrivileges(true)
+        .networkDisabled(false)
         .build();
   }
 

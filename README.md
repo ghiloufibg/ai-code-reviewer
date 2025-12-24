@@ -13,7 +13,9 @@ A modern, enterprise-grade code review automation platform that streams AI-power
 ## 🎯 Project Goals
 
 - **Multi-Provider Support**: Seamlessly integrate with GitHub and GitLab platforms
+- **Dual Review Modes**: DIFF mode for fast reviews, AGENTIC mode for comprehensive analysis
 - **Real-Time Streaming**: Server-Sent Events (SSE) for live AI analysis feedback
+- **Agentic Capabilities**: Full repository cloning, test execution, and intelligent prioritization
 - **Reactive Architecture**: Built on Spring WebFlux for high concurrency and scalability
 - **Modular Design**: Clean separation between core domain logic and API gateway
 - **Production-Ready**: Database persistence, health monitoring, and Docker deployment
@@ -45,6 +47,17 @@ ai-code-reviewer/
 │       ├── diff/        # Unified diff parsing
 │       ├── prompt/      # LLM prompt engineering
 │       └── validation/  # JSON schema validation
+│
+├── llm-worker/          # Async LLM processing worker
+│   ├── consumer/        # Redis Streams consumer
+│   └── processor/       # LLM request processing
+│
+├── agent-worker/        # Agentic code review worker
+│   ├── analysis/        # Test execution and local analysis
+│   ├── aggregation/     # Result aggregation and deduplication
+│   ├── container/       # Docker container management
+│   ├── repository/      # Git repository cloning
+│   └── decision/        # AI-powered decision engine
 │
 └── docker/              # Container orchestration
     ├── Dockerfile
@@ -79,6 +92,104 @@ ai-code-reviewer/
 │  │     PostgresReviewRepository (JPA + Flyway)          │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🤖 Review Modes
+
+The AI Code Reviewer supports two distinct review modes, each optimized for different use cases:
+
+### **DIFF Mode (Default)**
+
+Traditional diff-based code review that analyzes only the changed lines in a Pull/Merge Request.
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
+│   SCM Webhook   │────▶│  API Gateway │────▶│  LLM Worker │
+│  (PR/MR Event)  │     │  (Routing)   │     │  (Analysis) │
+└─────────────────┘     └──────────────┘     └─────────────┘
+```
+
+**Characteristics:**
+- ⚡ **Fast**: Analyzes only changed lines (~seconds)
+- 📦 **Lightweight**: No repository cloning required
+- 🎯 **Focused**: Reviews diff hunks in isolation
+
+**Best For:**
+- Small to medium PRs/MRs
+- Rapid feedback during development
+- Resource-constrained environments
+
+### **AGENTIC Mode**
+
+Full-repository analysis with autonomous agent capabilities. Clones the entire repository, runs tests, and performs comprehensive code analysis.
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌─────────────────┐
+│   SCM Webhook   │────▶│  API Gateway │────▶│ Agent Worker │────▶│ Analysis Engine │
+│  (PR/MR Event)  │     │  (Routing)   │     │   (Clone)    │     │  (Tests + LLM)  │
+└─────────────────┘     └──────────────┘     └──────────────┘     └─────────────────┘
+                                                    │
+                                                    ▼
+                                            ┌──────────────────┐
+                                            │ Decision Engine  │
+                                            │ (Prioritization) │
+                                            └──────────────────┘
+```
+
+**Workflow Stages:**
+1. **CLONING**: Clone repository with authentication
+2. **ANALYZING**: Run tests in isolated Docker containers
+3. **REASONING**: Multi-pass LLM analysis with full context
+4. **PUBLISHING**: Post prioritized inline comments to SCM
+
+**Characteristics:**
+- 🔍 **Comprehensive**: Full repository context for better analysis
+- 🧪 **Test Execution**: Run project tests to detect regressions
+- 🧠 **Intelligent**: Prioritizes findings by severity and confidence
+- 🔒 **Secure**: Isolated container execution with resource limits
+
+**Best For:**
+- Large PRs/MRs requiring deep analysis
+- Projects with test suites for regression detection
+- Critical code paths requiring thorough review
+
+### **Mode Selection**
+
+Review mode is determined automatically based on the webhook payload or explicitly via API:
+
+```http
+POST /api/v1/reviews/{provider}/stream
+Content-Type: application/json
+
+{
+  "owner": "organization",
+  "repository": "project",
+  "pullRequestNumber": 42,
+  "reviewMode": "AGENTIC"  // Optional: DIFF (default) or AGENTIC
+}
+```
+
+### **Agent Worker Configuration**
+
+Configure the agent worker via environment variables:
+
+```yaml
+# Agent Worker Settings
+AGENT_TESTS_ENABLED: "true"              # Enable test execution
+AGENT_CLONE_DEPTH: 1                     # Git shallow clone depth
+AGENT_ANALYSIS_TIMEOUT: 600s             # Max analysis time
+
+# Container Security
+ANALYSIS_IMAGE: ai-code-reviewer-analysis:latest
+DOCKER_HOST: unix:///var/run/docker.sock
+
+# Aggregation Settings
+AGENT_AGGREGATION_DEDUPLICATION_ENABLED: "true"
+AGENT_AGGREGATION_DEDUPLICATION_SIMILARITY_THRESHOLD: "0.85"
+AGENT_AGGREGATION_FILTERING_MIN_CONFIDENCE: "0.7"
+AGENT_AGGREGATION_FILTERING_MAX_ISSUES_PER_FILE: "10"
 ```
 
 ---

@@ -230,6 +230,83 @@ services:
     networks:
       - ai-reviewer-network
 
+  # Agent Worker - Agentic Code Review with Full Repository Analysis
+  agent-worker:
+    build:
+      context: .
+      dockerfile: agent-worker/Dockerfile
+      no_cache: true
+    container_name: agent-worker-dev
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Agent Worker Configuration
+      AGENT_CONSUMER_STREAM_KEY: review:agent-requests
+      AGENT_CONSUMER_CONSUMER_GROUP: agent-workers
+      AGENT_CONSUMER_CONSUMER_ID: agent-worker-1
+      AGENT_CONSUMER_BATCH_SIZE: 1
+      AGENT_CONSUMER_POLL_TIMEOUT: 5s
+
+      # Repository Cloning
+      AGENT_CLONE_DEPTH: 1
+      AGENT_CLONE_TIMEOUT: 120s
+
+      # Analysis Configuration (tests disabled by default)
+      AGENT_TESTS_ENABLED: ${AGENT_TESTS_ENABLED:-false}
+      AGENT_ANALYSIS_TIMEOUT: 600s
+
+      # Docker Configuration (socket mounted for container management)
+      DOCKER_HOST: unix:///var/run/docker.sock
+      ANALYSIS_IMAGE: ${ANALYSIS_IMAGE:-ai-code-reviewer-analysis:latest}
+
+      # LLM Provider Configuration (for AI-powered code review)
+      LLM_PROVIDER: ${LLM_WORKER_PROVIDER:-openai}
+      OPENAI_API_KEY: ${LLM_API_KEY}
+      OPENAI_MODEL: ${LLM_MODEL:-gpt-4o}
+      OPENAI_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+
+      # SCM Provider Configuration
+      GITLAB_ENABLED: ${GITLAB_ENABLED:-true}
+      GITLAB_API_URL: ${GITLAB_API_URL:-http://host.docker.internal:80}
+      GITLAB_TOKEN: ${GITLAB_TOKEN}
+
+      GITHUB_ENABLED: ${GITHUB_ENABLED:-false}
+      GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+
+      # Aggregation Settings
+      AGENT_AGGREGATION_DEDUPLICATION_ENABLED: "true"
+      AGENT_AGGREGATION_DEDUPLICATION_SIMILARITY_THRESHOLD: "0.85"
+      AGENT_AGGREGATION_FILTERING_MIN_CONFIDENCE: "0.7"
+      AGENT_AGGREGATION_FILTERING_MAX_ISSUES_PER_FILE: "10"
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # JVM Options
+      JAVA_OPTS: "-Xmx1024m -Xms512m -XX:+UseZGC"
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Workspace for cloned repositories
+      - agent-workspace:/workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ai-reviewer-network
+
 volumes:
   ai-reviewer-logs:
     name: ai-reviewer-logs-dev
@@ -241,6 +318,8 @@ volumes:
     name: ai-reviewer-redis-data-dev
   redis-insight-data:
     name: ai-reviewer-redis-insight-data-dev
+  agent-workspace:
+    name: agent-workspace-dev
 
 networks:
   ai-reviewer-network:
