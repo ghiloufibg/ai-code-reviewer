@@ -12,6 +12,7 @@
         <module>core</module>
         <module>api-gateway</module>
         <module>llm-worker</module>
+        <module>agent-worker</module>
     </modules>
 
     <properties>

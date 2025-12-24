@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: agent-worker
+  main:
+    banner-mode: off
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# Agent Worker Configuration
+agent:
+  # Redis Stream Consumer
+  consumer:
+    stream-key: review:agent-requests
+    consumer-group: agent-workers
+    consumer-id: ${HOSTNAME:agent-worker-1}
+    batch-size: 1
+    poll-timeout: 5s
+
+  # Repository Cloning
+  clone:
+    depth: 1
+    timeout: 120s
+    auth-method: token
+
+  # Analysis Configuration
+  analysis:
+    tests:
+      enabled: ${AGENT_TESTS_ENABLED:false}
+      auto-detect: true
+      timeout: 600s
+
+  # Docker Container Settings
+  docker:
+    host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    analysis-image: ${ANALYSIS_IMAGE:ai-code-reviewer-analysis:latest}
+    resource-limits:
+      memory-bytes: 2147483648  # 2GB
+      nano-cpus: 2000000000      # 2 CPUs
+    timeout: 600s
+    auto-pull: true
+
+  # Result Aggregation
+  aggregation:
+    deduplication:
+      enabled: true
+      similarity-threshold: 0.85
+    filtering:
+      min-confidence: 0.7
+      max-issues-per-file: 10
+
+# SCM Configuration (from environment)
+scm:
+  github:
+    token: ${GITHUB_TOKEN:}
+    base-url: https://api.github.com
+  gitlab:
+    token: ${GITLAB_TOKEN:}
+    base-url: ${GITLAB_BASE_URL:https://gitlab.com}
+
+# LLM Configuration
+llm:
+  provider: ${LLM_PROVIDER:openai}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o}
+    temperature: 0.1
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.ghiloufi.aicode.agentworker: ${LOG_LEVEL:INFO}
+    com.ghiloufi.aicode.core: ${LOG_LEVEL:INFO}
+    com.github.dockerjava: WARN
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
