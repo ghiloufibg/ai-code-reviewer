@@ -172,11 +172,6 @@ public class AgentRequestConsumer {
     final var changeRequest =
         ChangeRequestIdentifier.create(request.provider(), request.changeRequestId());
 
-    final var testConfig =
-        properties.getAnalysis().getTests().isEnabled()
-            ? AgentConfiguration.TestExecutionConfig.defaults()
-            : AgentConfiguration.TestExecutionConfig.disabled();
-
     final var aggregationConfig =
         new AgentConfiguration.AggregationConfig(
             properties.getAggregation().getDeduplication().isEnabled(),
@@ -185,8 +180,7 @@ public class AgentRequestConsumer {
             properties.getAggregation().getFiltering().getMaxIssuesPerFile());
 
     final var configuration =
-        new AgentConfiguration(
-            testConfig, AgentConfiguration.DockerConfig.defaults(), aggregationConfig);
+        new AgentConfiguration(AgentConfiguration.DockerConfig.defaults(), aggregationConfig);
 
     return AgentTask.create(repository, changeRequest, configuration, request.requestId());
   }

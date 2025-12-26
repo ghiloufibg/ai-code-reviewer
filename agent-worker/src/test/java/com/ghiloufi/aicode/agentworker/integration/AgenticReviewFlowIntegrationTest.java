@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ghiloufi.aicode.agentworker.analysis.TestExecutionResult;
-import com.ghiloufi.aicode.agentworker.analysis.TestFramework;
 import com.ghiloufi.aicode.core.domain.model.AgentAction;
 import com.ghiloufi.aicode.core.domain.model.AgentConfiguration;
 import com.ghiloufi.aicode.core.domain.model.AgentStatus;
@@ -164,7 +163,7 @@ final class AgenticReviewFlowIntegrationTest {
     void should_create_success_test_result() {
       final var testResult =
           TestExecutionResult.success(
-              TestFramework.MAVEN,
+              "maven",
               List.of(
                   TestResult.passed("AuthTest", "should_authenticate_user", Duration.ofMillis(50)),
                   TestResult.passed(
@@ -188,7 +187,7 @@ final class AgenticReviewFlowIntegrationTest {
     void should_create_failure_test_result() {
       final var testResult =
           TestExecutionResult.failure(
-              TestFramework.GRADLE,
+              "gradle",
               List.of(
                   TestResult.passed("AuthTest", "should_authenticate_user", Duration.ofMillis(50)),
                   TestResult.failed(
@@ -305,12 +304,12 @@ final class AgenticReviewFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("should_create_tests_enabled_configuration")
-    void should_create_tests_enabled_configuration() {
-      final var config = AgentConfiguration.withTestsEnabled();
+    @DisplayName("should_create_configuration_with_custom_docker_settings")
+    void should_create_configuration_with_custom_docker_settings() {
+      final var config = AgentConfiguration.defaults();
 
-      assertThat(config.testExecution().enabled()).isTrue();
-      assertThat(config.testExecution().autoDetect()).isTrue();
+      assertThat(config.docker()).isNotNull();
+      assertThat(config.docker().autoRemove()).isTrue();
     }
   }
 
@@ -388,7 +387,7 @@ final class AgenticReviewFlowIntegrationTest {
       task = task.updateStatus(AgentStatus.ANALYZING);
       final var testResult =
           TestExecutionResult.failure(
-              TestFramework.MAVEN,
+              "maven",
               List.of(TestResult.failed("Test", "failing", "assertion failed", null)),
               Duration.ofSeconds(5),
               "output",

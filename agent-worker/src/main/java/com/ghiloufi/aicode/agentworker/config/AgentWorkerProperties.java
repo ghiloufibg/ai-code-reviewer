@@ -15,7 +15,6 @@ public final class AgentWorkerProperties {
 
   private final ConsumerProperties consumer;
   private final CloneProperties clone;
-  private final AnalysisProperties analysis;
   private final DockerProperties docker;
   private final AggregationProperties aggregation;
   private final DecisionProperties decision;
@@ -23,13 +22,11 @@ public final class AgentWorkerProperties {
   public AgentWorkerProperties(
       @DefaultValue ConsumerProperties consumer,
       @DefaultValue CloneProperties clone,
-      @DefaultValue AnalysisProperties analysis,
       @DefaultValue DockerProperties docker,
       @DefaultValue AggregationProperties aggregation,
       @DefaultValue DecisionProperties decision) {
     this.consumer = consumer;
     this.clone = clone;
-    this.analysis = analysis;
     this.docker = docker;
     this.aggregation = aggregation;
     this.decision = decision;
@@ -77,33 +74,6 @@ public final class AgentWorkerProperties {
       this.depth = depth;
       this.timeout = timeout;
       this.authMethod = authMethod;
-    }
-  }
-
-  @Getter
-  public static final class AnalysisProperties {
-
-    private final TestsProperties tests;
-
-    public AnalysisProperties(@DefaultValue TestsProperties tests) {
-      this.tests = tests;
-    }
-
-    @Getter
-    public static final class TestsProperties {
-
-      private final boolean enabled;
-      private final boolean autoDetect;
-      private final Duration timeout;
-
-      public TestsProperties(
-          @DefaultValue("false") boolean enabled,
-          @DefaultValue("true") boolean autoDetect,
-          @DefaultValue("600s") Duration timeout) {
-        this.enabled = enabled;
-        this.autoDetect = autoDetect;
-        this.timeout = timeout;
-      }
     }
   }
 

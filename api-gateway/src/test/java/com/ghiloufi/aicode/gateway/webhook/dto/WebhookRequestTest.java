@@ -29,7 +29,7 @@ final class WebhookRequestTest {
     @DisplayName("should_accept_valid_github_request")
     final void should_accept_valid_github_request() {
       final WebhookRequest request =
-          new WebhookRequest("github", "owner/repo", 123, "github-actions", null);
+          new WebhookRequest("github", "owner/repo", 123, "github-actions", null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -40,7 +40,7 @@ final class WebhookRequestTest {
     @DisplayName("should_accept_valid_gitlab_request")
     final void should_accept_valid_gitlab_request() {
       final WebhookRequest request =
-          new WebhookRequest("gitlab", "group/project", 456, "gitlab-ci", null);
+          new WebhookRequest("gitlab", "group/project", 456, "gitlab-ci", null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -50,7 +50,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_accept_request_without_trigger_source")
     final void should_accept_request_without_trigger_source() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -60,7 +61,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_accept_request_with_diff_review_mode")
     final void should_accept_request_with_diff_review_mode() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "diff");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "diff", null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -70,7 +72,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_accept_request_with_agentic_review_mode")
     final void should_accept_request_with_agentic_review_mode() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "agentic");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "agentic", null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -85,7 +88,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_null_provider")
     final void should_reject_null_provider() {
-      final WebhookRequest request = new WebhookRequest(null, "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest(null, "owner/repo", 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -96,7 +100,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_blank_provider")
     final void should_reject_blank_provider() {
-      final WebhookRequest request = new WebhookRequest("", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("", "owner/repo", 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -106,7 +111,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_invalid_provider")
     final void should_reject_invalid_provider() {
-      final WebhookRequest request = new WebhookRequest("bitbucket", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("bitbucket", "owner/repo", 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -123,7 +129,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_null_repository_id")
     final void should_reject_null_repository_id() {
-      final WebhookRequest request = new WebhookRequest("github", null, 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", null, 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -134,7 +141,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_blank_repository_id")
     final void should_reject_blank_repository_id() {
-      final WebhookRequest request = new WebhookRequest("github", "   ", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "   ", 1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -150,7 +158,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_null_change_request_id")
     final void should_reject_null_change_request_id() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", null, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", null, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -162,7 +171,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_zero_change_request_id")
     final void should_reject_zero_change_request_id() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 0, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 0, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -174,7 +184,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_reject_negative_change_request_id")
     final void should_reject_negative_change_request_id() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", -1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", -1, null, null, null, null);
 
       final Set<ConstraintViolation<WebhookRequest>> violations = validator.validate(request);
 
@@ -191,7 +202,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_null_review_mode_to_diff")
     final void should_resolve_null_review_mode_to_diff() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, null, null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.DIFF);
     }
@@ -199,7 +211,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_blank_review_mode_to_diff")
     final void should_resolve_blank_review_mode_to_diff() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "   ");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "   ", null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.DIFF);
     }
@@ -207,7 +220,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_diff_review_mode")
     final void should_resolve_diff_review_mode() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "diff");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "diff", null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.DIFF);
     }
@@ -215,7 +229,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_agentic_review_mode")
     final void should_resolve_agentic_review_mode() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "agentic");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "agentic", null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.AGENTIC);
     }
@@ -223,7 +238,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_agentic_review_mode_case_insensitive")
     final void should_resolve_agentic_review_mode_case_insensitive() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "AGENTIC");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "AGENTIC", null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.AGENTIC);
     }
@@ -231,7 +247,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_resolve_unknown_review_mode_to_diff")
     final void should_resolve_unknown_review_mode_to_diff() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "unknown");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "unknown", null, null);
 
       assertThat(request.resolveReviewMode()).isEqualTo(ReviewMode.DIFF);
     }
@@ -239,7 +256,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_return_false_for_agentic_mode_when_diff")
     final void should_return_false_for_agentic_mode_when_diff() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "diff");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "diff", null, null);
 
       assertThat(request.isAgenticMode()).isFalse();
     }
@@ -247,7 +265,8 @@ final class WebhookRequestTest {
     @Test
     @DisplayName("should_return_true_for_agentic_mode")
     final void should_return_true_for_agentic_mode() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "agentic");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "agentic", null, null);
 
       assertThat(request.isAgenticMode()).isTrue();
     }

@@ -5,6 +5,7 @@ import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties;
 import com.ghiloufi.aicode.agentworker.mapper.TestResultMapper;
 import com.ghiloufi.aicode.core.domain.model.AggregatedFindings;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
+import com.ghiloufi.aicode.core.domain.model.TestResults;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,6 +63,62 @@ public class ResultAggregator {
 
     log.info(
         "Aggregated {} issues ({} AI, {} tests), {} notes, confidence: {}",
+        limitedIssues.size(),
+        findingCounts.getOrDefault(SOURCE_AI, 0),
+        findingCounts.getOrDefault(SOURCE_TESTS, 0),
+        allNotes.size(),
+        String.format("%.2f", overallConfidence));
+
+    return AggregatedFindings.builder()
+        .issues(limitedIssues)
+        .notes(allNotes)
+        .summary(summary)
+        .findingCountsBySource(findingCounts)
+        .findingCountsBySeverity(severityCounts)
+        .overallConfidence(overallConfidence)
+        .totalFindingsBeforeDedup(totalBefore)
+        .totalFindingsAfterDedup(totalAfterDedup)
+        .totalFindingsFiltered(totalFiltered)
+        .build();
+  }
+
+  public AggregatedFindings aggregate(
+      final ReviewResult aiReviewResult, final TestResults cicdTestResults) {
+
+    final List<ReviewResult.Issue> allIssues = new ArrayList<>();
+    final List<ReviewResult.Note> allNotes = new ArrayList<>();
+    final Map<String, Integer> findingCounts = new HashMap<>();
+
+    if (aiReviewResult != null) {
+      final var aiIssues = filterByConfidence(aiReviewResult.getIssues());
+      allIssues.addAll(aiIssues);
+      allNotes.addAll(aiReviewResult.getNonBlockingNotes());
+      findingCounts.put(SOURCE_AI, aiIssues.size());
+      log.debug("Added {} AI issues (after confidence filtering)", aiIssues.size());
+    }
+
+    if (cicdTestResults != null && cicdTestResults.hasFailures()) {
+      final var testIssues = testResultMapper.mapTestFailures(cicdTestResults);
+      allIssues.addAll(testIssues);
+      findingCounts.put(SOURCE_TESTS, testIssues.size());
+      log.debug("Added {} CI/CD test failure issues", testIssues.size());
+    } else {
+      findingCounts.put(SOURCE_TESTS, 0);
+    }
+
+    final var deduplicatedIssues = deduplicateIssues(allIssues);
+    final var limitedIssues = limitIssuesPerFile(deduplicatedIssues);
+
+    final var summary = buildSummaryFromCicd(aiReviewResult, cicdTestResults, limitedIssues.size());
+    final var overallConfidence = calculateOverallConfidence(limitedIssues);
+
+    final var severityCounts = countBySeverity(limitedIssues);
+    final int totalBefore = allIssues.size();
+    final int totalAfterDedup = deduplicatedIssues.size();
+    final int totalFiltered = totalAfterDedup - limitedIssues.size();
+
+    log.info(
+        "Aggregated {} issues ({} AI, {} CI/CD tests), {} notes, confidence: {}",
         limitedIssues.size(),
         findingCounts.getOrDefault(SOURCE_AI, 0),
         findingCounts.getOrDefault(SOURCE_TESTS, 0),
@@ -200,6 +257,34 @@ public class ResultAggregator {
             .append(" of ")
             .append(testResult.totalTests())
             .append(" tests failed");
+      }
+    }
+
+    if (sb.isEmpty()) {
+      sb.append("Analysis complete. Found ").append(totalIssues).append(" issues.");
+    }
+
+    return sb.toString();
+  }
+
+  private String buildSummaryFromCicd(
+      ReviewResult aiReviewResult, TestResults testResults, int totalIssues) {
+
+    final var sb = new StringBuilder();
+
+    if (aiReviewResult != null && aiReviewResult.getSummary() != null) {
+      sb.append(aiReviewResult.getSummary());
+    }
+
+    if (testResults != null && testResults.wasExecuted()) {
+      if (!sb.isEmpty()) {
+        sb.append("\n\n");
+      }
+      sb.append("**CI/CD Test Results:** ");
+      if (testResults.passed()) {
+        sb.append("✅ ").append(testResults.formatSummary());
+      } else {
+        sb.append("❌ ").append(testResults.formatSummary());
       }
     }
 

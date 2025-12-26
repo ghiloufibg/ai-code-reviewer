@@ -24,7 +24,7 @@ final class TestExecutionResultTest {
 
       assertThat(result.executed()).isFalse();
       assertThat(result.success()).isTrue();
-      assertThat(result.framework()).isNull();
+      assertThat(result.frameworkName()).isNull();
       assertThat(result.testResults()).isEmpty();
       assertThat(result.totalTests()).isZero();
       assertThat(result.passedTests()).isZero();
@@ -42,7 +42,7 @@ final class TestExecutionResultTest {
 
     @Test
     void should_create_success_result_with_all_tests_passed() {
-      final var framework = TestFramework.MAVEN;
+      final var frameworkName = "maven";
       final var testResults =
           List.of(
               TestResult.passed("com.example.Test", "testMethod1", Duration.ofMillis(100)),
@@ -51,11 +51,11 @@ final class TestExecutionResultTest {
       final var rawOutput = "Build successful";
 
       final var result =
-          TestExecutionResult.success(framework, testResults, 2, 2, 0, 0, duration, rawOutput);
+          TestExecutionResult.success(frameworkName, testResults, 2, 2, 0, 0, duration, rawOutput);
 
       assertThat(result.executed()).isTrue();
       assertThat(result.success()).isTrue();
-      assertThat(result.framework()).isEqualTo(TestFramework.MAVEN);
+      assertThat(result.frameworkName()).isEqualTo("maven");
       assertThat(result.testResults()).hasSize(2);
       assertThat(result.totalTests()).isEqualTo(2);
       assertThat(result.passedTests()).isEqualTo(2);
@@ -68,7 +68,7 @@ final class TestExecutionResultTest {
 
     @Test
     void should_mark_as_failure_when_failed_tests_exist() {
-      final var framework = TestFramework.NPM;
+      final var frameworkName = "npm";
       final var testResults =
           List.of(
               TestResult.passed("Test", "passing", Duration.ZERO),
@@ -76,7 +76,7 @@ final class TestExecutionResultTest {
 
       final var result =
           TestExecutionResult.success(
-              framework, testResults, 2, 1, 1, 0, Duration.ofSeconds(1), "output");
+              frameworkName, testResults, 2, 1, 1, 0, Duration.ofSeconds(1), "output");
 
       assertThat(result.executed()).isTrue();
       assertThat(result.success()).isFalse();
@@ -90,7 +90,7 @@ final class TestExecutionResultTest {
 
     @Test
     void should_create_failure_result_with_error_message() {
-      final var framework = TestFramework.GRADLE;
+      final var frameworkName = "gradle";
       final var testResults =
           List.of(
               TestResult.passed("Test", "passing", Duration.ZERO),
@@ -99,11 +99,11 @@ final class TestExecutionResultTest {
       final var errorMessage = "Build failed with errors";
 
       final var result =
-          TestExecutionResult.failure(framework, testResults, duration, "output", errorMessage);
+          TestExecutionResult.failure(frameworkName, testResults, duration, "output", errorMessage);
 
       assertThat(result.executed()).isTrue();
       assertThat(result.success()).isFalse();
-      assertThat(result.framework()).isEqualTo(TestFramework.GRADLE);
+      assertThat(result.frameworkName()).isEqualTo("gradle");
       assertThat(result.testResults()).hasSize(2);
       assertThat(result.totalTests()).isEqualTo(2);
       assertThat(result.passedTests()).isEqualTo(1);
@@ -121,8 +121,7 @@ final class TestExecutionResultTest {
               TestResult.failed("A", "test3", "failed", null));
 
       final var result =
-          TestExecutionResult.failure(
-              TestFramework.PYTEST, testResults, Duration.ZERO, null, "error");
+          TestExecutionResult.failure("pytest", testResults, Duration.ZERO, null, "error");
 
       assertThat(result.passedTests()).isEqualTo(2);
       assertThat(result.failedTests()).isEqualTo(1);

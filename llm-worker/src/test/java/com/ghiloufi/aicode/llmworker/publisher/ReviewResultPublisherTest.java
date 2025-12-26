@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
@@ -43,7 +44,8 @@ final class ReviewResultPublisherTest {
     @DisplayName("should_publish_successful_result_to_redis")
     void should_publish_successful_result_to_redis() {
       final AsyncReviewRequest request =
-          new AsyncReviewRequest("req-123", SourceProvider.GITHUB, "owner/repo", 42, Instant.now());
+          new AsyncReviewRequest(
+              "req-123", SourceProvider.GITHUB, "owner/repo", 42, ReviewMode.DIFF, Instant.now());
 
       final ReviewResult result =
           ReviewResult.builder()
@@ -72,7 +74,7 @@ final class ReviewResultPublisherTest {
     void should_publish_status_channel_message() {
       final AsyncReviewRequest request =
           new AsyncReviewRequest(
-              "req-456", SourceProvider.GITLAB, "group/project", 99, Instant.now());
+              "req-456", SourceProvider.GITLAB, "group/project", 99, ReviewMode.DIFF, Instant.now());
 
       final ReviewResult result =
           ReviewResult.builder()
@@ -91,7 +93,8 @@ final class ReviewResultPublisherTest {
     @DisplayName("should_include_completed_at_timestamp")
     void should_include_completed_at_timestamp() {
       final AsyncReviewRequest request =
-          new AsyncReviewRequest("req-789", SourceProvider.GITHUB, "test/repo", 1, Instant.now());
+          new AsyncReviewRequest(
+              "req-789", SourceProvider.GITHUB, "test/repo", 1, ReviewMode.DIFF, Instant.now());
 
       final ReviewResult result =
           ReviewResult.builder()
@@ -193,7 +196,8 @@ final class ReviewResultPublisherTest {
           new TestableReviewResultPublisher(redisCapture, failingMapper);
 
       final AsyncReviewRequest request =
-          new AsyncReviewRequest("ser-err", SourceProvider.GITHUB, "test/repo", 1, Instant.now());
+          new AsyncReviewRequest(
+              "ser-err", SourceProvider.GITHUB, "test/repo", 1, ReviewMode.DIFF, Instant.now());
 
       final ReviewResult result =
           ReviewResult.builder()

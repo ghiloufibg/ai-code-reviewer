@@ -1,5 +1,6 @@
 package com.ghiloufi.aicode.llmworker.service.prompt;
 
+import com.ghiloufi.aicode.core.domain.model.BuildInfo;
 import com.ghiloufi.aicode.core.domain.model.CommitInfo;
 import com.ghiloufi.aicode.core.domain.model.DiffExpansionResult;
 import com.ghiloufi.aicode.core.domain.model.EnrichedDiffAnalysisBundle;
@@ -8,6 +9,8 @@ import com.ghiloufi.aicode.core.domain.model.PolicyDocument;
 import com.ghiloufi.aicode.core.domain.model.PrMetadata;
 import com.ghiloufi.aicode.core.domain.model.RepositoryPolicies;
 import com.ghiloufi.aicode.core.domain.model.ReviewConfiguration;
+import com.ghiloufi.aicode.core.domain.model.TestFailure;
+import com.ghiloufi.aicode.core.domain.model.TestResults;
 import com.ghiloufi.aicode.core.domain.model.TicketContext;
 import com.ghiloufi.aicode.core.domain.service.DiffFormatter;
 import java.util.Locale;
@@ -69,6 +72,19 @@ public class PromptBuilder {
       final DiffExpansionResult expansionResult,
       final PrMetadata prMetadata,
       final RepositoryPolicies policies) {
+    return buildStructuredReviewPrompt(
+        enrichedDiff, config, ticketContext, expansionResult, prMetadata, policies, null, null);
+  }
+
+  public ReviewPromptResult buildStructuredReviewPrompt(
+      final EnrichedDiffAnalysisBundle enrichedDiff,
+      final ReviewConfiguration config,
+      final TicketContext ticketContext,
+      final DiffExpansionResult expansionResult,
+      final PrMetadata prMetadata,
+      final RepositoryPolicies policies,
+      final BuildInfo buildInfo,
+      final TestResults testResults) {
     if (enrichedDiff == null) {
       throw new IllegalArgumentException("EnrichedDiffAnalysisBundle cannot be null");
     }
@@ -88,7 +104,9 @@ public class PromptBuilder {
             ticketContextFormatted,
             expansionResult != null ? expansionResult : DiffExpansionResult.empty(),
             prMetadata != null ? prMetadata : PrMetadata.empty(),
-            policies != null ? policies : RepositoryPolicies.empty());
+            policies != null ? policies : RepositoryPolicies.empty(),
+            buildInfo,
+            testResults);
 
     return new ReviewPromptResult(systemPrompt, userPrompt);
   }
@@ -99,7 +117,9 @@ public class PromptBuilder {
       final String ticketContext,
       final DiffExpansionResult expansionResult,
       final PrMetadata prMetadata,
-      final RepositoryPolicies policies) {
+      final RepositoryPolicies policies,
+      final BuildInfo buildInfo,
+      final TestResults testResults) {
 
     final String formattedDiff = diffFormatter.formatDiff(enrichedDiff.structuredDiff());
 
@@ -116,6 +136,7 @@ public class PromptBuilder {
     prompt.append("focus: ").append(config.focus().name()).append("\n");
     prompt.append("[/REPO]\n\n");
 
+    appendBuildSection(prompt, buildInfo);
     appendPrMetadataSection(prompt, prMetadata);
 
     prompt.append("[DIFF]\n");
@@ -132,6 +153,7 @@ public class PromptBuilder {
 
     appendExpandedFilesSection(prompt, expansionResult);
     appendPoliciesSection(prompt, policies);
+    appendTestFailuresSection(prompt, testResults);
 
     if (config.customInstructions() != null && !config.customInstructions().isBlank()) {
       prompt.append("\n[CUSTOM_INSTRUCTIONS]\n");
@@ -277,6 +299,49 @@ public class PromptBuilder {
       prompt.append("\n--- END ---\n\n");
     }
     prompt.append("[/POLICIES]\n");
+  }
+
+  private void appendBuildSection(final StringBuilder prompt, final BuildInfo buildInfo) {
+    if (buildInfo == null) {
+      return;
+    }
+
+    prompt.append("[BUILD]\n");
+    prompt.append("language: ").append(buildInfo.language()).append("\n");
+
+    if (buildInfo.hasLanguageVersion()) {
+      prompt.append("version: ").append(buildInfo.languageVersion()).append("\n");
+    }
+    if (buildInfo.hasBuildSystem()) {
+      prompt.append("buildSystem: ").append(buildInfo.buildSystem()).append("\n");
+    }
+    if (buildInfo.hasTestFramework()) {
+      prompt.append("testFramework: ").append(buildInfo.testFramework()).append("\n");
+    }
+    prompt.append("[/BUILD]\n\n");
+  }
+
+  private void appendTestFailuresSection(
+      final StringBuilder prompt, final TestResults testResults) {
+    if (testResults == null || !testResults.hasFailures()) {
+      return;
+    }
+
+    prompt.append("\n[TEST_FAILURES]\n");
+    prompt.append("The following tests failed in CI/CD (").append(testResults.formatSummary());
+    prompt.append("):\n\n");
+
+    for (final TestFailure failure : testResults.failures()) {
+      prompt.append("- ").append(failure.testClass());
+      prompt.append("#").append(failure.testMethod()).append("\n");
+      if (failure.hasMessage()) {
+        prompt.append("  Message: ").append(failure.message()).append("\n");
+      }
+      prompt.append("\n");
+    }
+
+    prompt.append("Consider these failures when reviewing the code changes.\n");
+    prompt.append("[/TEST_FAILURES]\n");
   }
 
   private void logContextSectionForLlm(

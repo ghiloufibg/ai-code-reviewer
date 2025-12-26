@@ -2,6 +2,7 @@ package com.ghiloufi.aicode.llmworker.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ghiloufi.aicode.core.domain.model.ReviewMode;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
 import com.ghiloufi.aicode.core.domain.model.SourceProvider;
 import com.ghiloufi.aicode.core.domain.model.async.AsyncReviewRequest;
@@ -53,7 +54,7 @@ final class ReviewProcessorAsyncTest {
 
       final AsyncReviewRequest request =
           new AsyncReviewRequest(
-              "async-123", SourceProvider.GITHUB, "owner/repo", 42, Instant.now());
+              "async-123", SourceProvider.GITHUB, "owner/repo", 42, ReviewMode.DIFF, Instant.now());
 
       processor.process("async-123", "{}", "Review this code");
 

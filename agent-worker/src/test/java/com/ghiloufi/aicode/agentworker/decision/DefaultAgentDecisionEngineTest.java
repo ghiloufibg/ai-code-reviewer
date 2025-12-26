@@ -6,8 +6,6 @@ import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.AggregationProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.AggregationProperties.DeduplicationProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.AggregationProperties.FilteringProperties;
-import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.AnalysisProperties;
-import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.AnalysisProperties.TestsProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.CloneProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.ConsumerProperties;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties.DecisionProperties;
@@ -249,8 +247,6 @@ final class DefaultAgentDecisionEngineTest {
         new ConsumerProperties(
             "review:agent-requests", "agent-workers", "agent-worker-1", 1, Duration.ofSeconds(5));
     final var clone = new CloneProperties(1, Duration.ofSeconds(120), "token");
-    final var tests = new TestsProperties(false, true, Duration.ofSeconds(600));
-    final var analysis = new AnalysisProperties(tests);
     final var resourceLimits = new ResourceLimitsProperties(2147483648L, 2000000000L);
     final var docker =
         new DockerProperties(
@@ -264,6 +260,6 @@ final class DefaultAgentDecisionEngineTest {
     final var aggregation = new AggregationProperties(deduplication, filtering);
     final var decision = new DecisionProperties("openai", "gpt-4o", 3);
 
-    return new AgentWorkerProperties(consumer, clone, analysis, docker, aggregation, decision);
+    return new AgentWorkerProperties(consumer, clone, docker, aggregation, decision);
   }
 }

@@ -25,13 +25,6 @@ agent:
     timeout: 120s
     auth-method: token
 
-  # Analysis Configuration
-  analysis:
-    tests:
-      enabled: ${AGENT_TESTS_ENABLED:false}
-      auto-detect: true
-      timeout: 600s
-
   # Docker Container Settings
   docker:
     host: ${DOCKER_HOST:unix:///var/run/docker.sock}

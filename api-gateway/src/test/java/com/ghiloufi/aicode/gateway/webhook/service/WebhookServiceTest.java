@@ -38,7 +38,7 @@ final class WebhookServiceTest {
     @DisplayName("should_queue_review_request_with_provided_idempotency_key")
     final void should_queue_review_request_with_provided_idempotency_key() {
       final WebhookRequest request =
-          new WebhookRequest("github", "owner/repo", 123, "github-actions", null);
+          new WebhookRequest("github", "owner/repo", 123, "github-actions", null, null, null);
       final String idempotencyKey = "commit-sha-abc123";
 
       idempotencyService.setIsNew(true);
@@ -65,7 +65,7 @@ final class WebhookServiceTest {
     @DisplayName("should_generate_idempotency_key_when_not_provided")
     final void should_generate_idempotency_key_when_not_provided() {
       final WebhookRequest request =
-          new WebhookRequest("gitlab", "group/project", 456, "gitlab-ci", null);
+          new WebhookRequest("gitlab", "group/project", 456, "gitlab-ci", null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -83,7 +83,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_generate_idempotency_key_when_blank")
     final void should_generate_idempotency_key_when_blank() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, "jenkins", null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, "jenkins", null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -101,7 +102,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_map_github_provider_correctly")
     final void should_map_github_provider_correctly() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 10, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 10, null, null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -117,7 +119,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_map_gitlab_provider_correctly")
     final void should_map_gitlab_provider_correctly() {
-      final WebhookRequest request = new WebhookRequest("gitlab", "group/project", 20, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("gitlab", "group/project", 20, null, null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -133,7 +136,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_set_diff_review_mode_by_default")
     final void should_set_diff_review_mode_by_default() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -149,7 +153,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_set_agentic_review_mode_when_specified")
     final void should_set_agentic_review_mode_when_specified() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, "agentic");
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, "agentic", null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(true);
@@ -170,7 +175,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_reject_already_processed_event")
     final void should_reject_already_processed_event() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 123, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 123, null, null, null, null);
       final String idempotencyKey = "duplicate-key";
 
       idempotencyService.setIsNew(false);
@@ -195,7 +201,8 @@ final class WebhookServiceTest {
     @Test
     @DisplayName("should_propagate_producer_errors")
     final void should_propagate_producer_errors() {
-      final WebhookRequest request = new WebhookRequest("github", "owner/repo", 1, null, null);
+      final WebhookRequest request =
+          new WebhookRequest("github", "owner/repo", 1, null, null, null, null);
 
       idempotencyService.setIsNew(true);
       reviewRequestProducer.setSuccess(false);

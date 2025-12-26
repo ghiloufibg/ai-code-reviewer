@@ -1,8 +1,6 @@
 package com.ghiloufi.aicode.agentworker.agent;
 
 import com.ghiloufi.aicode.agentworker.aggregation.ResultAggregator;
-import com.ghiloufi.aicode.agentworker.analysis.TestExecutionResult;
-import com.ghiloufi.aicode.agentworker.analysis.TestRunner;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties;
 import com.ghiloufi.aicode.agentworker.config.ScmProperties;
 import com.ghiloufi.aicode.agentworker.publisher.AgentResultPublisher;
@@ -12,15 +10,12 @@ import com.ghiloufi.aicode.core.domain.model.AgentAction;
 import com.ghiloufi.aicode.core.domain.model.AgentStatus;
 import com.ghiloufi.aicode.core.domain.model.AgentTask;
 import com.ghiloufi.aicode.core.domain.model.AggregatedFindings;
-import com.ghiloufi.aicode.core.domain.model.AnalysisMetadata;
-import com.ghiloufi.aicode.core.domain.model.LocalAnalysisResult;
 import com.ghiloufi.aicode.core.domain.model.PrioritizedFindings;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
-import com.ghiloufi.aicode.core.domain.model.TestResult;
+import com.ghiloufi.aicode.core.domain.model.TestResults;
 import com.ghiloufi.aicode.core.domain.port.output.AgentDecisionEnginePort;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -35,9 +30,9 @@ public class CodeReviewAgent {
   private static final String CONTEXT_CLONE_PATH = "clonePath";
   private static final String CONTEXT_COMMIT_HASH = "commitHash";
   private static final String CONTEXT_PRIORITIZED_FINDINGS = "prioritizedFindings";
+  private static final String CONTEXT_CICD_TEST_RESULTS = "cicdTestResults";
 
   private final RepositoryCloner repositoryCloner;
-  private final TestRunner testRunner;
   private final ResultAggregator resultAggregator;
   private final AgentResultPublisher resultPublisher;
   private final AgentDecisionEnginePort decisionEngine;
@@ -140,22 +135,26 @@ public class CodeReviewAgent {
   private AgentTask executeAnalysis(AgentTask task, Path workspacePath) {
     log.debug("Executing analysis actions for task {}", task.taskId());
 
-    final var runTestsAction = AgentAction.RunTests.started("auto-detect");
+    final var runTestsAction = AgentAction.RunTests.started("ci-cd");
     var currentTask = task.startAction(runTestsAction);
 
     try {
-      final var repoPath = workspacePath.resolve("repo");
-      final var testResult = testRunner.runTests(repoPath);
+      final var cicdTestResults = extractCicdTestResults(task);
 
-      final var localAnalysisResult = buildLocalAnalysisResult(testResult);
       currentTask =
-          currentTask.withLocalAnalysisResult(localAnalysisResult).completeCurrentAction();
+          currentTask
+              .withState(
+                  currentTask.state().withContextValue(CONTEXT_CICD_TEST_RESULTS, cicdTestResults))
+              .completeCurrentAction();
 
-      log.info(
-          "Analysis completed: {} tests executed, {} passed, {} failed",
-          testResult.totalTests(),
-          testResult.passedTests(),
-          testResult.failedTests());
+      if (cicdTestResults.wasExecuted()) {
+        log.info(
+            "CI/CD test results received: {} ({})",
+            cicdTestResults.passed() ? "PASSED" : "FAILED",
+            cicdTestResults.formatSummary());
+      } else {
+        log.info("No CI/CD test results provided");
+      }
 
       return currentTask.updateStatus(AgentStatus.REASONING);
 
@@ -163,6 +162,12 @@ public class CodeReviewAgent {
       log.error("Analysis action failed", e);
       return currentTask.fail("Analysis failed: " + e.getMessage());
     }
+  }
+
+  private TestResults extractCicdTestResults(AgentTask task) {
+    final var testResults =
+        task.state().getContextValue(CONTEXT_CICD_TEST_RESULTS, TestResults.class);
+    return testResults != null ? testResults : TestResults.none();
   }
 
   private AgentTask executeReasoning(AgentTask task) {
@@ -174,9 +179,9 @@ public class CodeReviewAgent {
     var currentTask = task.startAction(action);
 
     try {
-      final var testResult = extractTestResult(currentTask);
+      final var cicdTestResults = extractCicdTestResults(currentTask);
       final var aggregatedFindings =
-          resultAggregator.aggregate(currentTask.state().llmReviewResult(), testResult);
+          resultAggregator.aggregate(currentTask.state().llmReviewResult(), cicdTestResults);
 
       final var prioritizedFindings =
           decisionEngine
@@ -336,43 +341,6 @@ public class CodeReviewAgent {
       case GITHUB -> "https://github.com/" + displayName + ".git";
       case GITLAB -> "https://gitlab.com/" + displayName + ".git";
     };
-  }
-
-  private LocalAnalysisResult buildLocalAnalysisResult(TestExecutionResult testResult) {
-    final var frameworkName =
-        testResult.framework() != null ? testResult.framework().name() : "none";
-    final var metadata =
-        AnalysisMetadata.started("analysis-container", "local", "main", "HEAD")
-            .withToolCompleted("tests-" + frameworkName, testResult.duration())
-            .completed(0, 0);
-
-    return new LocalAnalysisResult(
-        testResult.executed() ? testResult.testResults() : List.of(), metadata);
-  }
-
-  private TestExecutionResult extractTestResult(AgentTask task) {
-    final var localResult = task.state().localAnalysisResult();
-    if (localResult == null || localResult.testResults().isEmpty()) {
-      return TestExecutionResult.notExecuted("No tests executed");
-    }
-
-    final var passed =
-        (int) localResult.testResults().stream().filter(TestResult::isSuccess).count();
-    final var failed = localResult.testResults().size() - passed;
-    final var duration =
-        localResult.metadata().totalDuration() != null
-            ? localResult.metadata().totalDuration()
-            : Duration.ZERO;
-
-    return TestExecutionResult.success(
-        null,
-        localResult.testResults(),
-        localResult.testResults().size(),
-        passed,
-        failed,
-        0,
-        duration,
-        null);
   }
 
   private ReviewResult buildReviewResult(AggregatedFindings findings) {

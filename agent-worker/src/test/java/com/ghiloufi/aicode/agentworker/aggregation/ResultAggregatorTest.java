@@ -3,7 +3,6 @@ package com.ghiloufi.aicode.agentworker.aggregation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ghiloufi.aicode.agentworker.analysis.TestExecutionResult;
-import com.ghiloufi.aicode.agentworker.analysis.TestFramework;
 import com.ghiloufi.aicode.agentworker.config.AgentWorkerProperties;
 import com.ghiloufi.aicode.agentworker.mapper.TestResultMapper;
 import com.ghiloufi.aicode.core.domain.model.ReviewResult;
@@ -36,9 +35,6 @@ final class ResultAggregatorTest {
             new AgentWorkerProperties.ConsumerProperties(
                 "test-stream", "test-group", "test-consumer", 1, Duration.ofSeconds(5)),
             new AgentWorkerProperties.CloneProperties(1, Duration.ofMinutes(2), "token"),
-            new AgentWorkerProperties.AnalysisProperties(
-                new AgentWorkerProperties.AnalysisProperties.TestsProperties(
-                    true, true, Duration.ofMinutes(10))),
             new AgentWorkerProperties.DockerProperties(
                 "unix:///var/run/docker.sock",
                 "test-image",
@@ -65,7 +61,7 @@ final class ResultAggregatorTest {
                   buildIssue("file1.java", 10, "warning", "Issue 1", 0.8),
                   buildIssue("file2.java", 20, "error", "Issue 2", 0.9)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(2);
       assertThat(result.findingCountsBySource()).containsEntry("ai", 2);
@@ -80,7 +76,7 @@ final class ResultAggregatorTest {
                   buildIssue("file1.java", 10, "warning", "High Confidence", 0.9),
                   buildIssue("file2.java", 20, "warning", "Low Confidence", 0.5)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(1);
       assertThat(result.issues().getFirst().getTitle()).isEqualTo("High Confidence");
@@ -92,7 +88,7 @@ final class ResultAggregatorTest {
           buildReviewWithIssues(
               List.of(buildIssue("file1.java", 10, "warning", "No Confidence Score", null)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(1);
     }
@@ -112,7 +108,7 @@ final class ResultAggregatorTest {
                           .build()))
               .build();
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.notes()).hasSize(1);
     }
@@ -126,7 +122,7 @@ final class ResultAggregatorTest {
     void should_add_issues_from_failed_tests() {
       final var testResult =
           TestExecutionResult.failure(
-              TestFramework.MAVEN,
+              "maven",
               List.of(
                   TestResult.passed("Test", "passing", Duration.ZERO),
                   TestResult.failed("Test", "failing", "assertion failed", null)),
@@ -144,7 +140,7 @@ final class ResultAggregatorTest {
     void should_not_add_issues_when_tests_pass() {
       final var testResult =
           TestExecutionResult.success(
-              TestFramework.MAVEN,
+              "maven",
               List.of(TestResult.passed("Test", "passing", Duration.ZERO)),
               1,
               1,
@@ -179,7 +175,7 @@ final class ResultAggregatorTest {
           buildReviewWithIssues(List.of(buildIssue("file1.java", 10, "warning", "AI Issue", 0.8)));
       final var testResult =
           TestExecutionResult.failure(
-              TestFramework.MAVEN,
+              "maven",
               List.of(TestResult.failed("Test", "failing", "error", null)),
               Duration.ofSeconds(5),
               "output",
@@ -205,7 +201,7 @@ final class ResultAggregatorTest {
                   buildIssue("file.java", 10, "warning", "Duplicate Issue", 0.8),
                   buildIssue("file.java", 10, "warning", "Duplicate Issue", 0.9)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(1);
       assertThat(result.totalFindingsBeforeDedup()).isEqualTo(2);
@@ -220,7 +216,7 @@ final class ResultAggregatorTest {
                   buildIssue("file.java", 10, "warning", "Issue 1", 0.8),
                   buildIssue("file.java", 20, "warning", "Issue 2", 0.8)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(2);
     }
@@ -238,7 +234,7 @@ final class ResultAggregatorTest {
       }
       final var aiReview = buildReviewWithIssues(issues);
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(10);
       assertThat(result.totalFindingsFiltered()).isEqualTo(5);
@@ -253,7 +249,7 @@ final class ResultAggregatorTest {
       }
       final var aiReview = buildReviewWithIssues(issues);
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.issues()).hasSize(10);
     }
@@ -272,7 +268,7 @@ final class ResultAggregatorTest {
               .nonBlockingNotes(List.of())
               .build();
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.summary()).contains("AI found issues in the code");
     }
@@ -281,7 +277,7 @@ final class ResultAggregatorTest {
     void should_append_test_execution_status() {
       final var testResult =
           TestExecutionResult.success(
-              TestFramework.MAVEN,
+              "maven",
               List.of(
                   TestResult.passed("Test", "test1", Duration.ZERO),
                   TestResult.passed("Test", "test2", Duration.ZERO)),
@@ -302,7 +298,7 @@ final class ResultAggregatorTest {
     void should_show_failed_test_count_in_summary() {
       final var testResult =
           TestExecutionResult.failure(
-              TestFramework.MAVEN,
+              "maven",
               List.of(
                   TestResult.passed("Test", "passing", Duration.ZERO),
                   TestResult.failed("Test", "failing1", "error", null),
@@ -329,7 +325,7 @@ final class ResultAggregatorTest {
                   buildIssue("file1.java", 10, "warning", "Issue 1", 0.8),
                   buildIssue("file2.java", 20, "warning", "Issue 2", 0.9)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.overallConfidence())
           .isCloseTo(0.85, org.assertj.core.api.Assertions.within(0.0001));
@@ -337,7 +333,7 @@ final class ResultAggregatorTest {
 
     @Test
     void should_return_1_0_when_no_issues() {
-      final var result = aggregator.aggregate(null, null);
+      final var result = aggregator.aggregate(null, (TestExecutionResult) null);
 
       assertThat(result.overallConfidence()).isEqualTo(1.0);
     }
@@ -347,7 +343,7 @@ final class ResultAggregatorTest {
       final var aiReview =
           buildReviewWithIssues(List.of(buildIssue("file1.java", 10, "warning", "Issue 1", null)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.overallConfidence()).isEqualTo(0.7);
     }
@@ -366,7 +362,7 @@ final class ResultAggregatorTest {
                   buildIssue("file2.java", 20, "warning", "Warning Issue", 0.8),
                   buildIssue("file3.java", 30, "warning", "Another Warning", 0.8)));
 
-      final var result = aggregator.aggregate(aiReview, null);
+      final var result = aggregator.aggregate(aiReview, (TestExecutionResult) null);
 
       assertThat(result.findingCountsBySeverity()).containsEntry("error", 1);
       assertThat(result.findingCountsBySeverity()).containsEntry("warning", 2);

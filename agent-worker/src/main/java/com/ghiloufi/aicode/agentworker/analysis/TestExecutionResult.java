@@ -7,7 +7,7 @@ import java.util.List;
 public record TestExecutionResult(
     boolean executed,
     boolean success,
-    TestFramework framework,
+    String frameworkName,
     List<TestResult> testResults,
     int totalTests,
     int passedTests,
@@ -23,7 +23,7 @@ public record TestExecutionResult(
   }
 
   public static TestExecutionResult success(
-      TestFramework framework,
+      String frameworkName,
       List<TestResult> testResults,
       int total,
       int passed,
@@ -34,7 +34,7 @@ public record TestExecutionResult(
     return new TestExecutionResult(
         true,
         failed == 0,
-        framework,
+        frameworkName,
         testResults,
         total,
         passed,
@@ -46,7 +46,7 @@ public record TestExecutionResult(
   }
 
   public static TestExecutionResult failure(
-      TestFramework framework,
+      String frameworkName,
       List<TestResult> testResults,
       Duration duration,
       String rawOutput,
@@ -56,7 +56,7 @@ public record TestExecutionResult(
     return new TestExecutionResult(
         true,
         false,
-        framework,
+        frameworkName,
         testResults,
         testResults.size(),
         passed,
